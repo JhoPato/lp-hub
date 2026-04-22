@@ -39,3 +39,5 @@ desktop/.vite/
 
 # Local assistant/tool state
 .claude/
+AGENTS.md
+CLAUDE.md
