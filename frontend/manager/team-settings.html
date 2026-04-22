@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Team Settings</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.settings-section { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:24px; }
+        .settings-section-title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+        .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+        @media(max-width:640px){ .form-row-3 { grid-template-columns:1fr; } }
+        .logo-row { display:flex; gap:20px; align-items:center; }
+        .logo-preview { width:72px; height:72px; border-radius:var(--radius); border:1px solid var(--border); object-fit:cover; background:var(--bg3); }
+        .logo-placeholder { width:72px; height:72px; border-radius:var(--radius); border:2px dashed var(--border); background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:1.6rem; flex-shrink:0; }
+
+        .player-table { width:100%; border-collapse:collapse; }
+        .player-table th { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; color:var(--text-muted); padding:8px 12px; border-bottom:1px solid var(--border); text-align:left; }
+        .player-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.84rem; vertical-align:middle; }
+        .player-table tr:last-child td { border-bottom:none; }
+        .player-table tr:hover td { background:rgba(255,255,255,0.02); }
+        .player-avatar { width:30px; height:30px; border-radius:50%; background:var(--bg3); border:1px solid var(--border); object-fit:cover; flex-shrink:0; display:inline-block; vertical-align:middle; }
+        .player-name-cell { display:flex; align-items:center; gap:8px; }
+        .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+        .status-dot.active   { background:var(--success); }
+        .status-dot.inactive { background:var(--error); }
+        .select-sm { background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:3px; padding:4px 8px; font-size:0.78rem; cursor:pointer; }
+        .select-sm:focus { outline:none; border-color:var(--accent); }
+        .btn-xs { padding:4px 10px; font-size:0.72rem; }
+
+        .btn-sync-api { background:transparent; border:1px solid var(--border); border-radius:3px; padding:3px 8px; font-size:0.78rem; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+        .btn-sync-api.synced  { border-color:#22c55e; color:#22c55e; }
+        .btn-sync-api.unsynced{ border-color:#888; color:#888; }
+        .btn-sync-api.unsynced:hover { border-color:var(--accent); color:var(--accent); }
+        .btn-sync-api.synced:hover { border-color:#f87171; color:#f87171; }
+
+        .panel-status-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+        .panel-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+        .panel-dot.connected    { background:var(--success); }
+        .panel-dot.disconnected { background:var(--text-muted); }
+        .panel-team-name { font-weight:700; color:var(--accent); }
+        .panel-connect-row { display:flex; gap:10px; align-items:center; }
+        .panel-connect-row .form-input { max-width:200px; font-family:monospace; letter-spacing:0.08em; text-transform:uppercase; }
+        .panel-roster-table { width:100%; border-collapse:collapse; margin-top:12px; }
+        .panel-roster-table th { font-size:0.7rem; font-weight:700; letter-spacing:0.08em; color:var(--text-muted); padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+        .panel-roster-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .panel-roster-table tr:last-child td { border-bottom:none; }
+        .panel-input { background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:3px; padding:5px 8px; font-size:0.8rem; width:100%; }
+        .panel-input:focus { outline:none; border-color:var(--accent); }
+        .panel-actions-row { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+        .panel-section-label { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; color:var(--text-muted); text-transform:uppercase; margin:16px 0 8px; }
+        .country-select { background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:3px; padding:5px 6px; font-size:0.78rem; width:100%; }
+        .country-select:focus { outline:none; border-color:var(--accent); }
+
+        .sync-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999; display:flex; align-items:center; justify-content:center; }
+        .sync-modal { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:24px; width:90%; max-width:420px; }
+        .sync-modal h3 { margin:0 0 4px; font-size:1rem; color:var(--text); }
+        .sync-modal-sub { font-size:0.82rem; color:var(--text-muted); margin-bottom:16px; }
+        .sync-player-list { display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; }
+        .sync-player-item { display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:4px; cursor:pointer; font-size:0.85rem; transition:all 0.15s; }
+        .sync-player-item:hover { border-color:var(--accent); background:rgba(223,88,64,0.07); }
+        .sync-player-item.selected { border-color:#22c55e; background:rgba(34,197,94,0.07); }
+        .sync-modal-actions { display:flex; gap:8px; margin-top:16px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Team Settings</h1>
+            <p>Manage team info and player roster</p>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">Team Info</div>
+            <div class="logo-row" style="margin-bottom:20px;">
+                <div id="logoWrap"><div class="logo-placeholder">🐾</div></div>
+                <div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">Team Logo</div>
+                    <button class="btn btn-primary btn-xs" onclick="openLogosModal()">Manage All Logos →</button>
+                </div>
+            </div>
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label">Team Name *</label>
+                    <input class="form-input" id="fieldName" type="text">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tag (short)</label>
+                    <input class="form-input" id="fieldTag" type="text" maxlength="6" placeholder="e.g. LP">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Region</label>
+                    <select class="form-input" id="fieldRegion">
+                        <option value="BR">Brazil</option>
+                        <option value="NA">North America</option>
+                        <option value="EU">Europe</option>
+                        <option value="LATAM">LATAM</option>
+                        <option value="KR">Korea</option>
+                        <option value="AP">Asia Pacific</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="saveTeamInfo()">Save Changes</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">Player Roster</div>
+            <div id="rosterTable"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">Henrik API (Valorant Stats)</div>
+            <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;">
+                Required for ranked stats and goal tracking. Create a free <strong style="color:var(--text);">Standard</strong> key (30 req/min) at
+                <a href="https://api.henrikdev.xyz/dashboard/" target="_blank" style="color:var(--accent);">henrikdev.xyz</a> — select <em>Valorant</em> and <em>Standard</em> tier. Takes 2 minutes, no approval needed.
+            </p>
+            <p style="font-size:0.78rem;color:var(--text-muted);opacity:0.6;margin-bottom:16px;">
+                Each team needs its own key so rate limits stay isolated. The Standard tier is free and more than enough for a roster of 5–7 players.
+            </p>
+            <div id="henrikKeyStatus" style="font-size:0.8rem;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                <div class="form-group" style="flex:1;min-width:200px;margin:0;">
+                    <label class="form-label">API Key</label>
+                    <input class="form-input" id="henrikKeyInput" type="password" placeholder="HVAPI-XXXX-XXXX-XXXX" autocomplete="new-password">
+                </div>
+                <button class="btn btn-primary" onclick="saveHenrikKey()">Save Key</button>
+                <button class="btn btn-ghost" onclick="clearHenrikKey()" style="color:var(--error);">Clear</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">Panel Connection (LP-API)</div>
+            <div id="panelDisconnected">
+                <div class="panel-status-row">
+                    <div class="panel-dot disconnected"></div>
+                    <span style="color:var(--text-muted);font-size:0.85rem;">Not connected</span>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:0;">Ask your Owner to link this team to LP-API via the Site Roster page.</p>
+            </div>
+
+            <div id="panelConnected" style="display:none;">
+                <div class="panel-status-row">
+                    <div class="panel-dot connected"></div>
+                    <span style="color:var(--text-muted);font-size:0.85rem;">Connected to</span>
+                    <span class="panel-team-name" id="panelTeamName"></span>
+                </div>
+
+                <div id="panelRosterWrap">
+                    <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem;">
+                        <button class="btn btn-secondary" onclick="loadPanelRoster()">Load Roster from Panel</button>
+                    </div>
+                </div>
+
+                <div class="panel-actions-row" id="panelActions" style="display:none;">
+                    <button class="btn btn-secondary" onclick="syncLogo()">Sync Logo</button>
+                    <button class="btn btn-secondary" onclick="syncPhotos()">Sync Photos</button>
+                    <button class="btn btn-primary"   onclick="savePanelRoster()">💾 Save to Panel</button>
+                </div>
+            </div>
+        
+        <div class="settings-section" id="websiteRosterSection">
+            <div class="settings-section-title">Website Public Roster</div>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:16px;">
+                Define which players and coaches appear on the public website. Changes here don't affect the Hub's internal roster or expose trials/subs.
+            </p>
+            <div id="wrStatus" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;"></div>
+
+            <div class="panel-section-label" style="margin-top:0;">Players</div>
+            <div id="wrPlayerList" style="margin-bottom:14px;"></div>
+            <button class="btn btn-secondary" style="font-size:0.78rem;padding:5px 12px;" onclick="addWrRow('player')">+ Add Player</button>
+
+            <div class="panel-section-label">Coaches</div>
+            <div id="wrCoachList" style="margin-bottom:14px;"></div>
+            <button class="btn btn-secondary" style="font-size:0.78rem;padding:5px 12px;" onclick="addWrRow('coach')">+ Add Coach</button>
+
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+                <button class="btn btn-secondary" onclick="saveWebsiteRoster()">Save Roster</button>
+                <button class="btn btn-primary" id="wrSyncBtn" onclick="syncWebsiteRoster()" style="display:none;">Sync to Site →</button>
+            </div>
+        </div>
+
+        </div>
+        </div>
+    </main>
+</div>
+
+<div class="sync-modal-overlay" id="logosModal" style="display:none;" onclick="if(event.target===this)closeLogosModal()">
+    <div class="sync-modal" style="max-width:560px;width:90%;" onclick="event.stopPropagation()">
+        <h3>Team Logos</h3>
+        <div class="sync-modal-sub">Upload up to 4 logo variants. The Main logo is used across the Hub and website.</div>
+        <div id="logosModalBody" style="display:flex;flex-direction:column;gap:14px;"></div>
+        <div class="sync-modal-actions" style="margin-top:20px;">
+            <button class="btn btn-secondary" onclick="closeLogosModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<div class="sync-modal-overlay" id="syncModal" style="display:none;" onclick="closeSyncModal(event)">
+    <div class="sync-modal" onclick="event.stopPropagation()">
+        <h3>Sync to LP-API</h3>
+        <div class="sync-modal-sub" id="syncModalSub"></div>
+        <div class="sync-player-list" id="syncPlayerList"></div>
+        <div class="sync-modal-actions">
+            <button class="btn btn-secondary" onclick="closeSyncModal()">Cancel</button>
+            <button class="btn btn-secondary" id="syncClearBtn" style="color:var(--error);border-color:var(--error);" onclick="confirmSyncClear()">Remove Mapping</button>
+        </div>
+    </div>
+</div>
+
+<div class="sync-modal-overlay" id="wrEditModal" style="display:none;" onclick="if(event.target===document.getElementById('wrEditModal'))closeWrModal()">
+    <div class="sync-modal" style="max-width:480px;" onclick="event.stopPropagation()">
+        <h3 id="wrModalTitle">Add Entry</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+            <div>
+                <label class="form-label" style="font-size:0.72rem;margin-bottom:4px;display:block;">Name *</label>
+                <input class="panel-input" id="wrEditName" placeholder='Player nick or type "OPEN"'>
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.72rem;margin-bottom:4px;display:block;">Country</label>
+                <select class="country-select" id="wrEditCountry"></select>
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.72rem;margin-bottom:4px;display:block;">Twitter / X</label>
+                <input class="panel-input" id="wrEditTwitter" placeholder="https://x.com/...">
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.72rem;margin-bottom:4px;display:block;">VLR.gg</label>
+                <input class="panel-input" id="wrEditVlr" placeholder="https://vlr.gg/player/...">
+            </div>
+        </div>
+        <div class="sync-modal-actions" style="margin-top:16px;">
+            <button class="btn btn-secondary" onclick="closeWrModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmWrEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager']);
+
+let cachedApiPlayers = null;
+let syncTargetUserId  = null;
+let syncTargetName    = null;
+let teamId   = null;
+let teamLogos = {};
+
+window.uploadLogo       = uploadLogo;
+window.saveTeamInfo     = saveTeamInfo;
+window.changeRole       = changeRole;
+window.toggleActive     = toggleActive;
+window.loadPanelRoster  = loadPanelRoster;
+window.savePanelRoster  = savePanelRoster;
+window.syncLogo         = syncLogo;
+window.syncPhotos       = syncPhotos;
+window.removePanelRow   = removePanelRow;
+window.addPanelPlayer   = addPanelPlayer;
+window.addPanelCoach    = addPanelCoach;
+window.openSyncModal    = openSyncModal;
+window.closeSyncModal   = closeSyncModal;
+window.confirmSyncClear = confirmSyncClear;
+
+const PRIORITY_CODES = ['br','us','gb','ar','cl','co','mx','pt','es','fr','de','it','tr','kr','jp','au','ca','pl','se','dk','no','ru','cn','il','sa'];
+const HARDCODED_EXTRA = { 'gb-eng':'England','gb-wls':'Wales','gb-sct':'Scotland','gb-nir':'Northern Ireland' };
+
+let countryMap = {};
+
+async function loadCountries() {
+    try {
+        const r = await fetch('https://flagcdn.com/en/codes.json');
+        const data = await r.json();
+        const priority = PRIORITY_CODES.filter(c => data[c]).map(c => ({ code:c, name:data[c] }));
+        const rest = Object.entries(data)
+            .filter(([c]) => !PRIORITY_CODES.includes(c))
+            .sort((a,b) => a[1].localeCompare(b[1]))
+            .map(([c,n]) => ({ code:c, name:n }));
+        const extra = Object.entries(HARDCODED_EXTRA).map(([c,n]) => ({ code:c, name:n }));
+        const gbIdx = priority.findIndex(c => c.code === 'gb');
+        if (gbIdx >= 0) priority.splice(gbIdx + 1, 0, ...extra);
+        const all = [...priority, ...rest];
+        countryMap = Object.fromEntries(all.map(c => [c.code, c.name]));
+        countryMap = { ...countryMap, ...HARDCODED_EXTRA };
+    } catch {
+        const fallback = [
+            ['br','Brazil'],['us','USA'],['gb','UK'],['gb-eng','England'],['gb-wls','Wales'],['gb-sct','Scotland'],['gb-nir','Northern Ireland'],
+            ['ar','Argentina'],['cl','Chile'],['co','Colombia'],['mx','Mexico'],['pt','Portugal'],['es','Spain'],
+            ['fr','France'],['de','Germany'],['it','Italy'],['tr','Turkey'],['kr','Korea'],['jp','Japan'],
+            ['au','Australia'],['ca','Canada'],['pl','Poland'],['se','Sweden'],['dk','Denmark'],['no','Norway'],
+        ];
+        countryMap = Object.fromEntries(fallback);
+    }
+}
+
+function countrySelectHtml(val = 'br') {
+    const entries = Object.entries(countryMap);
+    const options = entries.map(([code, name]) =>
+        `<option value="${code}" ${code === val ? 'selected' : ''}>${name}</option>`).join('');
+    return `<select class="country-select">${options}</select>`;
+}
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'settings');
+    (async () => {
+        await Promise.all([loadCountries(), loadTeam()]);
+        loadRoster();
+        loadHenrikKeyStatus();
+    })();
+}
+
+async function loadTeam() {
+    try {
+        const team = await api('/api/team');
+        teamId    = team._id;
+        teamLogos = team.logos || {};
+        document.getElementById('fieldName').value   = team.name   || '';
+        document.getElementById('fieldTag').value    = team.tag    || '';
+        document.getElementById('fieldRegion').value = team.region || 'BR';
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = team.name || '';
+        if (team.logoUrl) {
+            document.getElementById('logoWrap').innerHTML =
+                `<img class="logo-preview" src="${team.logoUrl}" alt="logo">`;
+        }
+        if (team.lpApiTeam?.region != null) {
+            document.getElementById('panelDisconnected').style.display = 'none';
+            document.getElementById('panelConnected').style.display    = 'block';
+            api('/api/team/panel/roster').then(data => {
+                document.getElementById('panelTeamName').textContent = data.teamName || 'LP-API';
+            }).catch(() => {
+                document.getElementById('panelTeamName').textContent = 'LP-API';
+            });
+        }
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+
+async function loadPanelRoster() {
+    try {
+        const data = await api('/api/team/panel/roster');
+        cachedApiPlayers = [...(data.players || []), ...(data.coaches || [])];
+        renderPanelRoster(data.players || [], data.coaches || []);
+        document.getElementById('panelActions').style.display = 'flex';
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+function renderPanelRoster(players, coaches) {
+    const wrap = document.getElementById('panelRosterWrap');
+    wrap.innerHTML = `
+        <div class="panel-section-label">Active Players</div>
+        <table class="panel-roster-table" id="panelPlayersTable">
+            <thead><tr>
+                <th style="width:30%">Nick</th>
+                <th style="width:20%">Country</th>
+                <th style="width:23%">Twitter / X</th>
+                <th style="width:23%">VLR.gg</th>
+                <th style="width:4%"></th>
+            </tr></thead>
+            <tbody id="panelPlayerRows">
+                ${players.map((p, i) => panelPlayerRow(p, i, 'player')).join('')}
+            </tbody>
+        </table>
+        <button class="btn btn-secondary btn-xs" style="margin-top:8px;" onclick="addPanelPlayer()">+ Add Player</button>
+
+        <div class="panel-section-label" style="margin-top:20px;">Coaching Staff &amp; Management</div>
+        <table class="panel-roster-table" id="panelCoachesTable">
+            <thead><tr>
+                <th style="width:30%">Nick</th>
+                <th style="width:20%">Country</th>
+                <th style="width:23%">Twitter / X</th>
+                <th style="width:23%">VLR.gg</th>
+                <th style="width:4%"></th>
+            </tr></thead>
+            <tbody id="panelCoachRows">
+                ${coaches.map((c, i) => panelPlayerRow(c, i, 'coach')).join('')}
+            </tbody>
+        </table>
+        <button class="btn btn-secondary btn-xs" style="margin-top:8px;" onclick="addPanelCoach()">+ Add Staff</button>`;
+}
+
+function panelPlayerRow(p, i, type) {
+    return `<tr id="panel-${type}-${i}">
+        <td><input class="panel-input" value="${p.name  || ''}" placeholder="Nick"></td>
+        <td>${countrySelectHtml(p.country || 'br')}</td>
+        <td><input class="panel-input" value="${p.twitter || ''}" placeholder="https://x.com/..."></td>
+        <td><input class="panel-input" value="${p.vlr    || ''}" placeholder="https://vlr.gg/..."></td>
+        <td><button class="btn btn-secondary btn-xs" onclick="removePanelRow('panel-${type}-${i}')" style="color:var(--error);border-color:var(--error);">✕</button></td>
+    </tr>`;
+}
+
+function removePanelRow(id) { document.getElementById(id)?.remove(); }
+
+function addPanelPlayer() {
+    const tbody = document.getElementById('panelPlayerRows');
+    const i = tbody.children.length;
+    tbody.insertAdjacentHTML('beforeend', panelPlayerRow({ name:'', country:'br', twitter:'', vlr:'' }, i, 'player'));
+}
+
+function addPanelCoach() {
+    const tbody = document.getElementById('panelCoachRows');
+    const i = tbody.children.length;
+    tbody.insertAdjacentHTML('beforeend', panelPlayerRow({ name:'', country:'br', twitter:'', vlr:'' }, i, 'coach'));
+}
+
+function collectPanelRows(tbodyId) {
+    return Array.from(document.getElementById(tbodyId)?.rows || []).map(row => {
+        const inputs  = row.querySelectorAll('input');
+        const country = row.querySelector('select')?.value || 'br';
+        return { name: inputs[0]?.value.trim() || '', country, twitter: inputs[1]?.value.trim() || '', vlr: inputs[2]?.value.trim() || '' };
+    }).filter(r => r.name);
+}
+
+async function savePanelRoster() {
+    const players = collectPanelRows('panelPlayerRows');
+    const coaches = collectPanelRows('panelCoachRows');
+    try {
+        await api('/api/team/panel/roster', { method: 'PUT', body: JSON.stringify({ players, coaches }) });
+        toast('Roster saved to LP-API!', 'success');
+        cachedApiPlayers = [...players, ...coaches];
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function syncLogo() {
+    try {
+        const res = await api('/api/team/panel/sync-logo', { method: 'POST' });
+        toast(res.message, 'success');
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function syncPhotos() {
+    try {
+        const res = await api('/api/team/panel/sync-photos', { method: 'POST' });
+        toast(res.message, 'success');
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function openSyncModal(hubUserId, hubUsername, currentMapping) {
+    syncTargetUserId = hubUserId;
+    syncTargetName   = hubUsername;
+
+    document.getElementById('syncModalSub').textContent =
+        `Choose which LP-API player maps to Hub player "${hubUsername}"`;
+    document.getElementById('syncClearBtn').style.display = currentMapping ? 'block' : 'none';
+    document.getElementById('syncModal').style.display = 'flex';
+
+    const listEl = document.getElementById('syncPlayerList');
+    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;padding:8px;">Loading...</div>';
+
+    if (!cachedApiPlayers) {
+        try {
+            const data = await api('/api/team/panel/roster');
+            cachedApiPlayers = [...(data.players || []), ...(data.coaches || [])];
+        } catch {
+            listEl.innerHTML = '<div style="color:var(--error);font-size:0.82rem;padding:8px;">Could not load LP-API roster. Load it first.</div>';
+            return;
+        }
+    }
+
+    if (!cachedApiPlayers.length) {
+        listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;padding:8px;">No players in LP-API roster. Load it first.</div>';
+        return;
+    }
+
+    listEl.innerHTML = cachedApiPlayers.map(p =>
+        `<div class="sync-player-item ${p.name === currentMapping ? 'selected' : ''}"
+              onclick="confirmSync('${p.name.replace(/'/g,"\\'")}')">
+            <span>${p.name}</span>
+            ${p.name === currentMapping ? '<span style="margin-left:auto;font-size:0.72rem;color:#22c55e;">Current</span>' : ''}
+        </div>`
+    ).join('');
+}
+
+window.confirmSync = async function(apiPlayerName) {
+    try {
+        const player = await api(`/api/team/players/${syncTargetUserId}/panel-sync`, {
+            method: 'PATCH',
+            body: JSON.stringify({ apiPanelPlayerName: apiPlayerName }),
+        });
+        toast(`Synced "${syncTargetName}" → "${apiPlayerName}"`, 'success');
+        closeSyncModal();
+        loadRoster();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+async function confirmSyncClear() {
+    try {
+        await api(`/api/team/players/${syncTargetUserId}/panel-sync`, {
+            method: 'PATCH',
+            body: JSON.stringify({ apiPanelPlayerName: null }),
+        });
+        toast('Mapping removed.', 'success');
+        closeSyncModal();
+        loadRoster();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+function closeSyncModal(e) {
+    if (e && e.target !== document.getElementById('syncModal')) return;
+    document.getElementById('syncModal').style.display = 'none';
+    syncTargetUserId = null;
+    syncTargetName   = null;
+}
+
+async function loadRoster() {
+    try {
+        const players = await api('/api/team/players');
+
+        const wrap = document.getElementById('rosterTable');
+        if (!players.length) { wrap.innerHTML = '<p style="color:var(--text-muted);">No players yet.</p>'; return; }
+
+        const showSync = document.getElementById('panelConnected').style.display !== 'none';
+
+        wrap.innerHTML = `
+            <table class="player-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>${showSync ? 'Actions' : 'Actions'}</th>
+                        ${showSync ? '<th style="white-space:nowrap;">LP-API Sync</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${players.map(p => {
+                        const mapped = p.apiPanelPlayerName;
+                        const syncBtn = showSync ? `
+                            <td>
+                                <button class="btn-sync-api ${mapped ? 'synced' : 'unsynced'}"
+                                    onclick="openSyncModal('${p._id}', '${(p.username||'').replace(/'/g,"\\'")}', ${mapped ? `'${(mapped).replace(/'/g,"\\'")}'` : 'null'})"
+                                    title="${mapped ? `Mapped to: ${mapped}. Click to change.` : 'Not mapped. Click to sync.'}">
+                                    ${mapped ? mapped : 'Not synced'}
+                                </button>
+                            </td>` : '';
+                        return `
+                    <tr>
+                        <td>
+                            <div class="player-name-cell">
+                                ${p.profilePhotoUrl ? `<img class="player-avatar" src="${p.profilePhotoUrl}" alt="${p.username}">` : `<div class="player-avatar" style="display:inline-flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;">${(p.username||'??').slice(0,2).toUpperCase()}</div>`}
+                                <span>${p.username}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <select class="select-sm" id="role-${p._id}" onchange="changeRole('${p._id}')">
+                                <option value="player"  ${p.role==='player'  ?'selected':''}>Player</option>
+                                <option value="captain" ${p.role==='captain' ?'selected':''}>Captain</option>
+                                <option value="manager" ${p.role==='manager' ?'selected':''}>Manager</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div class="status-dot ${p.isActive !== false ? 'active' : 'inactive'}"></div>
+                                <span style="font-size:0.78rem;color:var(--text-muted);">${p.isActive !== false ? 'Active' : 'Inactive'}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary btn-xs" onclick="toggleActive('${p._id}', ${p.isActive !== false})">
+                                ${p.isActive !== false ? 'Deactivate' : 'Activate'}
+                            </button>
+                        </td>
+                        ${syncBtn}
+                    </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function saveTeamInfo() {
+    const name   = document.getElementById('fieldName').value.trim();
+    const tag    = document.getElementById('fieldTag').value.trim();
+    const region = document.getElementById('fieldRegion').value;
+    if (!name) { toast('Team name is required.', 'error'); return; }
+    try {
+        const team = await api('/api/team', { method: 'PUT', body: JSON.stringify({ name, tag, region }) });
+        toast('Team info saved!', 'success');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = team.name;
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function uploadLogo() {
+    const file = document.getElementById('logoFile').files[0];
+    if (!file) { toast('Select an image first.', 'error'); return; }
+    const fd = new FormData();
+    fd.append('logo', file);
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch('/api/team/logo', {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed.');
+        document.getElementById('logoWrap').innerHTML =
+            `<img class="logo-preview" src="${data.logoUrl}" alt="logo">`;
+        toast('Logo updated!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function changeRole(playerId) {
+    const role = document.getElementById(`role-${playerId}`).value;
+    try {
+        await api(`/api/team/players/${playerId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+        toast('Role updated!', 'success');
+    } catch (err) {
+        toast(err.message, 'error');
+        loadRoster();
+    }
+}
+
+async function toggleActive(playerId, currentlyActive) {
+    try {
+        await api(`/api/team/players/${playerId}/deactivate`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive: !currentlyActive }),
+        });
+        toast(currentlyActive ? 'Player deactivated.' : 'Player activated.', 'success');
+        loadRoster();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+// ── Website Roster ─────────────────────────────────────────────────────────
+let websiteRoster = { players: [], coaches: [] };
+
+async function loadWebsiteRoster() {
+    try {
+        const data = await api('/api/site/roster');
+        websiteRoster = data.websiteRoster || { players: [], coaches: [] };
+        const lastSync = websiteRoster.lastSynced
+            ? `Last synced: ${new Date(websiteRoster.lastSynced).toLocaleString('en-GB')}`
+            : 'Not synced yet.';
+        document.getElementById('wrStatus').textContent = lastSync;
+        document.getElementById('wrSyncBtn').style.display = 'inline-block';
+        renderWrList('player');
+        renderWrList('coach');
+    } catch (err) {
+        document.getElementById('wrStatus').textContent = 'No panel code linked — connect the LP-API panel first.';
+        document.getElementById('websiteRosterSection').style.opacity = '0.5';
+    }
+}
+
+function renderWrList(type) {
+    const list = type === 'player' ? websiteRoster.players : websiteRoster.coaches;
+    const elId = type === 'player' ? 'wrPlayerList' : 'wrCoachList';
+    const el = document.getElementById(elId);
+    if (!list.length) { el.innerHTML = `<p style="font-size:0.78rem;color:var(--text-muted);">No ${type}s added.</p>`; return; }
+    el.innerHTML = list.map((p, i) => {
+        const name = typeof p === 'object' ? (p.name || 'OPEN') : p;
+        const isOpen = p === 'OPEN' || name === 'OPEN';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.82rem;flex:1;${isOpen?'color:var(--text-muted);font-style:italic;':''}">${esc(name)}</span>
+            <button class="btn btn-secondary" style="font-size:0.7rem;padding:3px 8px;" onclick="editWrEntry('${type}',${i})">Edit</button>
+            <button class="btn btn-secondary" style="font-size:0.7rem;padding:3px 8px;color:var(--error);border-color:var(--error);" onclick="removeWrEntry('${type}',${i})">✕</button>
+        </div>`;
+    }).join('');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+window.addWrRow = (type) => openWrModal(type);
+
+window.editWrEntry = (type, idx) => openWrModal(type, idx);
+
+window.removeWrEntry = (type, idx) => {
+    if (type === 'player') websiteRoster.players.splice(idx, 1);
+    else websiteRoster.coaches.splice(idx, 1);
+    renderWrList(type);
+};
+
+window.saveWebsiteRoster = async () => {
+    try {
+        await api('/api/site/roster', {
+            method: 'PUT',
+            body: JSON.stringify({ players: websiteRoster.players, coaches: websiteRoster.coaches }),
+        });
+        toast('Website roster saved.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.syncWebsiteRoster = async () => {
+    if (!confirm('Sync this roster to the public website? This will update the live LP page.')) return;
+    try {
+        const res = await api('/api/site/roster/sync', { method: 'POST' });
+        document.getElementById('wrStatus').textContent = `Last synced: ${new Date(res.lastSynced).toLocaleString('en-GB')}`;
+        toast('Synced to public site!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+let wrEditState = { type: null, idx: null };
+
+function openWrModal(type, idx = null) {
+    wrEditState = { type, idx };
+    const list = type === 'player' ? websiteRoster.players : websiteRoster.coaches;
+    const entry = idx !== null ? list[idx] : null;
+    const label = type === 'player' ? 'Player' : 'Coach';
+    document.getElementById('wrModalTitle').textContent = (idx === null ? 'Add ' : 'Edit ') + label;
+    const name = entry ? (typeof entry === 'object' ? entry.name || '' : entry) : '';
+    document.getElementById('wrEditName').value = name;
+    document.getElementById('wrEditTwitter').value = (entry && typeof entry === 'object') ? (entry.twitter || '') : '';
+    document.getElementById('wrEditVlr').value = (entry && typeof entry === 'object') ? (entry.vlr || '') : '';
+    const currentCountry = (entry && typeof entry === 'object') ? (entry.country || 'br') : 'br';
+    document.getElementById('wrEditCountry').innerHTML = Object.entries(countryMap).map(([code, nm]) =>
+        `<option value="${code}" ${code === currentCountry ? 'selected' : ''}>${nm}</option>`
+    ).join('');
+    document.getElementById('wrEditModal').style.display = 'flex';
+    document.getElementById('wrEditName').focus();
+}
+
+window.closeWrModal = function() {
+    document.getElementById('wrEditModal').style.display = 'none';
+};
+
+window.confirmWrEdit = function() {
+    const name = document.getElementById('wrEditName').value.trim();
+    if (!name) { toast('Name is required.', 'error'); return; }
+    const country = document.getElementById('wrEditCountry').value;
+    const twitter = document.getElementById('wrEditTwitter').value.trim();
+    const vlr = document.getElementById('wrEditVlr').value.trim();
+    const isOpen = name.toUpperCase() === 'OPEN';
+    const entry = isOpen ? 'OPEN' : { name, country, twitter, vlr, photo: '' };
+    const list = wrEditState.type === 'player' ? websiteRoster.players : websiteRoster.coaches;
+    if (wrEditState.idx !== null) list[wrEditState.idx] = entry;
+    else list.push(entry);
+    renderWrList(wrEditState.type);
+    closeWrModal();
+};
+
+const LOGO_SLOTS = [
+    { key: 'main',      label: 'Main Logo',            note: 'Primary logo used across Hub and website.' },
+    { key: 'whiteBg',   label: 'White Background',     note: 'Logo variant on white background.' },
+    { key: 'blackBg',   label: 'Black Background',     note: 'Logo variant on black background.' },
+    { key: 'coloredBg', label: 'Colored Background',   note: 'Logo variant on colored background.' },
+];
+
+window.openLogosModal = () => {
+    renderLogosModal();
+    document.getElementById('logosModal').style.display = 'flex';
+};
+
+window.closeLogosModal = () => {
+    document.getElementById('logosModal').style.display = 'none';
+};
+
+function renderLogosModal() {
+    document.getElementById('logosModalBody').innerHTML = LOGO_SLOTS.map(slot => {
+        const logo = teamLogos[slot.key] || {};
+        return `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;gap:14px;align-items:center;">
+            <div style="width:72px;height:72px;border-radius:var(--radius);background:repeating-conic-gradient(#333 0% 25%,#2a2a2a 0% 50%) 0 0/12px 12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;" id="logoPreview-${slot.key}">
+                ${logo.url ? `<img src="${logo.url}" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span style="font-size:1.4rem;">🐾</span>`}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:700;font-size:0.85rem;">${slot.label}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:8px;">${slot.note}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <label class="btn btn-primary btn-xs" style="cursor:pointer;">
+                        Upload<input type="file" accept="image/*" style="display:none;" onchange="uploadLogoSlot('${slot.key}', this)">
+                    </label>
+                    ${logo.url ? `<a href="${logo.url}" download target="_blank" class="btn btn-secondary btn-xs">⬇ Download</a>` : ''}
+                    ${logo.url ? `<button class="btn btn-secondary btn-xs" style="color:var(--error);border-color:var(--error);" onclick="deleteLogoSlot('${slot.key}')">Remove</button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.uploadLogoSlot = async (category, input) => {
+    if (!teamId) { toast('Team not loaded.', 'error'); return; }
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch(`/api/gallery/team/${teamId}/logo/${category}`, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd,
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        teamLogos[category] = { url: d.url, publicId: d.publicId };
+        if (category === 'main') {
+            document.getElementById('logoWrap').innerHTML =
+                `<img class="logo-preview" src="${d.url}" alt="logo">`;
+        }
+        toast('Logo uploaded!', 'success');
+        renderLogosModal();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteLogoSlot = async (category) => {
+    if (!teamId || !confirm('Remove this logo?')) return;
+    try {
+        await api(`/api/gallery/team/${teamId}/logo/${category}`, { method: 'DELETE' });
+        teamLogos[category] = { url: '', publicId: '' };
+        if (category === 'main') document.getElementById('logoWrap').innerHTML = '<div class="logo-placeholder">🐾</div>';
+        toast('Logo removed.', 'success');
+        renderLogosModal();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+loadWebsiteRoster();
+
+// ── Henrik API Key ───────────────────────────────────────────────────────────
+async function loadHenrikKeyStatus() {
+    try {
+        const team = await api('/api/team');
+        const el = document.getElementById('henrikKeyStatus');
+        if (!el) return;
+        if (team.hasHenrikKey) {
+            el.innerHTML = '<span style="color:var(--success);">● API key configured</span>';
+        } else {
+            el.innerHTML = '<span style="color:var(--text-muted);">○ No API key — using free tier</span>';
+        }
+    } catch {}
+}
+
+window.saveHenrikKey = async () => {
+    const key = document.getElementById('henrikKeyInput').value.trim();
+    if (!key) return;
+    try {
+        await api('/api/team/henrik-key', { method: 'PATCH', body: JSON.stringify({ henrikApiKey: key }) });
+        document.getElementById('henrikKeyStatus').innerHTML = '<span style="color:var(--success);">● API key saved</span>';
+        document.getElementById('henrikKeyInput').value = '';
+        toast('Henrik API key saved!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.clearHenrikKey = async () => {
+    if (!confirm('Remove the Henrik API key?')) return;
+    try {
+        await api('/api/team/henrik-key', { method: 'PATCH', body: JSON.stringify({ henrikApiKey: '' }) });
+        document.getElementById('henrikKeyStatus').innerHTML = '<span style="color:var(--text-muted);">○ No API key — using free tier</span>';
+        toast('API key removed.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Announcements</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.announcement-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:12px; }
+        .announcement-card.pinned { border-left:3px solid var(--accent); }
+        .ann-title { font-size:1rem; font-weight:700; margin-bottom:6px; }
+        .ann-body  { font-size:0.88rem; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
+        .ann-meta  { font-size:0.72rem; color:rgba(255,255,255,0.3); margin-top:10px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Announcements</h1>
+            <p>Messages from your manager</p>
+        </div>
+        <div id="announcementsList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDateTime } from '/js/utils.js';
+
+const user = requireAuth();
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'announcements');
+    localStorage.setItem('lpHub_lastSeenAnn', Date.now().toString());
+    load();
+}
+
+async function load() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+
+        const { items } = await api('/api/announcements');
+        const el = document.getElementById('announcementsList');
+        if (!items.length) { el.innerHTML = '<p style="color:var(--text-muted);">No announcements yet.</p>'; return; }
+        el.innerHTML = items.map(a => `
+            <div class="announcement-card ${a.isPinned ? 'pinned' : ''}">
+                <div class="ann-title">${a.isPinned ? '📌 ' : ''}${a.title}</div>
+                <div class="ann-body">${a.body}</div>
+                <div class="ann-meta">Posted by ${a.authorId?.username || 'Manager'} · ${formatDateTime(a.createdAt)}</div>
+            </div>`).join('');
+    } catch (err) {
+        document.getElementById('announcementsList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}</script>
+</body>
+</html>

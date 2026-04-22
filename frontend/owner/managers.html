@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Managers</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.mgr-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .mgr-table th { text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; border-bottom:1px solid var(--border); }
+        .mgr-table td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .mgr-table tr:last-child td { border-bottom:none; }
+        .mgr-table tr:hover td { background:var(--bg3); }
+        .mgr-avatar { width:30px; height:30px; border-radius:50%; background:var(--bg3); border:1px solid var(--border); object-fit:cover; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; color:var(--accent); flex-shrink:0; vertical-align:middle; }
+        .team-tag { font-family:monospace; font-size:0.72rem; font-weight:700; background:var(--bg3); border:1px solid var(--border); border-radius:3px; padding:2px 6px; color:var(--text-muted); margin-right:4px; }
+        .status-dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; }
+        .status-dot.active { background:var(--success); }
+        .status-dot.inactive { background:var(--error); }
+        .actions-cell { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .btn-sm { padding:3px 10px; font-size:0.72rem; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Managers</h1>
+            <p>Manage all managers across all teams</p>
+        </div>
+        <div class="card">
+            <div id="managersWrap"><p style="color:var(--text-muted);font-size:0.85rem;">Loading...</p></div>
+        </div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error();
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'managers');
+
+let managers = [];
+
+async function load() {
+    try {
+        managers = await api('/api/admin/managers');
+        render();
+    } catch {
+        document.getElementById('managersWrap').innerHTML = '<p style="color:var(--error);font-size:0.85rem;">Failed to load.</p>';
+    }
+}
+
+function render() {
+    const el = document.getElementById('managersWrap');
+    if (!managers.length) { el.innerHTML = '<p style="color:var(--text-muted);padding:12px;">No managers found.</p>'; return; }
+    el.innerHTML = `<table class="mgr-table">
+        <thead><tr>
+            <th>Manager</th>
+            <th>Email</th>
+            <th>Teams</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr></thead>
+        <tbody>${managers.map(m => {
+            const initials = (m.username || '??').slice(0,2).toUpperCase();
+            const allTeams = Array.isArray(m.teamIds) && m.teamIds.length
+                ? m.teamIds
+                : (m.teamId ? [m.teamId] : []);
+            const teamDisplay = allTeams.length
+                ? allTeams.map(t => `<span class="team-tag">${t.tag || '??'}</span><span style="font-size:0.82rem;">${t.name || '—'}</span>`).join(' ')
+                : '<span style="color:var(--text-muted);">No team</span>';
+            const removeButtons = allTeams.map(t =>
+                `<button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:rgba(255,68,68,0.4);" onclick="removeTeam('${m._id}', '${t._id}', '${(t.name||'').replace(/'/g,'')}')">✕ ${t.tag || t.name}</button>`
+            ).join('');
+            return `<tr id="mrow-${m._id}">
+                <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        ${m.profilePhotoUrl ? `<img class="mgr-avatar" src="${m.profilePhotoUrl}" alt="">` : `<div class="mgr-avatar">${initials}</div>`}
+                        <span style="font-weight:600;">${m.username}</span>
+                    </div>
+                </td>
+                <td style="color:var(--text-muted);font-size:0.78rem;">${m.email}</td>
+                <td>${teamDisplay}</td>
+                <td>
+                    <span class="status-dot ${m.isActive ? 'active' : 'inactive'}"></span>
+                    <span style="font-size:0.78rem;color:var(--text-muted);">${m.isActive ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td>
+                    <div class="actions-cell">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleActive('${m._id}', ${!m.isActive})">
+                            ${m.isActive ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                        ${removeButtons}
+                        ${allTeams.length ? `<button class="btn btn-secondary btn-sm" onclick="viewTeam('${allTeams[0]._id}')">View Team</button>` : ''}
+                        <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:rgba(255,68,68,0.4);" onclick="deleteManager('${m._id}', '${(m.username||'').replace(/'/g,'')}')">🗑 Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('')}
+        </tbody>
+    </table>`;
+}
+
+window.toggleActive = async (userId, makeActive) => {
+    try {
+        await api(`/api/admin/managers/${userId}/active`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive: makeActive }),
+        });
+        toast(makeActive ? 'Manager reactivated.' : 'Manager deactivated.', 'success');
+        await load();
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+};
+
+window.removeTeam = async (userId, teamId, teamName) => {
+    if (!confirm(`Remove this manager from "${teamName}"?`)) return;
+    try {
+        await api(`/api/admin/managers/${userId}/remove-team`, {
+            method: 'PATCH',
+            body: JSON.stringify({ teamId }),
+        });
+        toast('Manager removed from team.', 'success');
+        await load();
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+};
+
+window.viewTeam = (teamId) => {
+    if (!teamId) return;
+    window.location.href = `/owner/teams.html?team=${teamId}`;
+};
+
+window.deleteManager = async (userId, username) => {
+    if (!confirm(`Permanently delete account "${username}"?\n\nThis cannot be undone.`)) return;
+    try {
+        await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
+        toast(`Account "${username}" deleted.`, 'success');
+        await load();
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+};
+
+load();</script>
+</body>
+</html>

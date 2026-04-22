@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Team Gallery</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .gallery-section { margin-bottom: 36px; }
+        .section-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .section-h2 { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin: 28px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .admin-badge { font-size: 0.62rem; background: rgba(223,88,64,0.15); color: var(--accent); border: 1px solid rgba(223,88,64,0.3); padding: 2px 7px; border-radius: 3px; font-weight: 700; letter-spacing: 0.06em; }
+
+        .logo-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .logo-slot { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .logo-slot.main { grid-column: 1; grid-row: 1 / 4; display: flex; flex-direction: column; }
+        .logo-slot-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); padding: 10px 14px 6px; }
+        .logo-preview { flex: 1; min-height: 160px; display: flex; align-items: center; justify-content: center; background: repeating-conic-gradient(#333 0% 25%, #2a2a2a 0% 50%) 0 0 / 16px 16px; position: relative; overflow: hidden; }
+        .logo-slot.main .logo-preview { min-height: 240px; }
+        .logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+        .logo-preview-empty { color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+        .logo-actions { display: flex; gap: 6px; padding: 10px 14px; }
+
+        .profiles-grid { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 4px; }
+        .profile-card { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 80px; }
+        .profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--bg3); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: var(--accent); overflow: hidden; }
+        .profile-name { font-size: 0.72rem; font-weight: 600; text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .gallery-thumb { aspect-ratio: 4/3; border-radius: var(--radius); overflow: hidden; position: relative; background: var(--bg3); cursor: pointer; }
+        .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+        .gallery-thumb:hover img { transform: scale(1.06); }
+        .gallery-thumb-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background 0.2s; }
+        .gallery-thumb:hover .gallery-thumb-overlay { background: rgba(0,0,0,0.45); }
+        .gallery-thumb-expand { opacity: 0; font-size: 0.72rem; color: rgba(255,255,255,0.85); transition: opacity 0.15s; pointer-events: none; letter-spacing: 0.04em; }
+        .gallery-thumb:hover .gallery-thumb-expand { opacity: 1; }
+        .gallery-thumb-actions { position: absolute; bottom: 6px; left: 6px; right: 6px; display: flex; justify-content: space-between; }
+        .gallery-thumb-dl { opacity: 0; background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 3px; cursor: pointer; padding: 3px 8px; font-size: 0.7rem; transition: opacity 0.15s; text-decoration: none; display: inline-flex; align-items: center; }
+        .gallery-thumb-del { opacity: 0; background: rgba(200,40,40,0.85); border: none; color: #fff; border-radius: 3px; cursor: pointer; padding: 3px 8px; font-size: 0.7rem; transition: opacity 0.15s; }
+        .gallery-thumb:hover .gallery-thumb-dl,
+        .gallery-thumb:hover .gallery-thumb-del { opacity: 1; }
+        .gallery-uploader { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .disclaimer { background: rgba(223,88,64,0.06); border: 1px solid rgba(223,88,64,0.2); border-radius: var(--radius); padding: 10px 14px; font-size: 0.76rem; color: var(--text-muted); margin-bottom: 14px; }
+
+        .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; transition: border-color 0.15s; }
+        .upload-zone:hover { border-color: var(--accent); color: var(--text); }
+        .empty-note { color: var(--text-muted); font-size: 0.82rem; font-style: italic; padding: 10px 0; }
+
+        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.93); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .lightbox-inner { position: relative; max-width: 900px; width: 100%; }
+        .lightbox-inner img { width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--radius); display: block; }
+        .lightbox-close { position: absolute; top: -36px; right: 0; background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; line-height: 1; }
+        .lightbox-meta { margin-top: 10px; font-size: 0.82rem; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 10px; }
+        .lightbox-actions { margin-top: 8px; display: flex; gap: 8px; }
+        .lb-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 14px; border-radius: 3px; cursor: pointer; font-size: 0.78rem; }
+        .lb-btn:hover { background: rgba(255,255,255,0.2); }
+        .lb-btn.danger { color: #ff6b6b; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 18px; }
+        .admin-upload-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; }
+
+        @media (max-width: 600px) { .logo-layout { grid-template-columns: 1fr; } .logo-slot.main { grid-column: 1; grid-row: auto; } }
+    </style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1 id="pageTitle">Team Gallery</h1>
+                <p id="pageSubtitle" style="color:var(--text-muted);font-size:0.82rem;">Loading...</p>
+            </div>
+            <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+        </div>
+
+        <div id="pageBody"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="lightbox" id="lightbox" style="display:none;" onclick="if(event.target===this)closeLightbox()">
+    <div class="lightbox-inner">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <img id="lbImg" src="" alt="">
+        <div class="lightbox-meta"><span id="lbMeta"></span></div>
+        <div class="lightbox-actions">
+            <a id="lbDownload" href="#" download class="lb-btn">⬇ Download</a>
+            <button class="lb-btn danger" id="lbDelete" onclick="deleteLbItem()">🗑 Delete</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="adminUploadModal" onclick="if(event.target===this)closeAdminUploadModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="adminUploadTitle">Admin Upload</div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;">These uploads are only visible to owner and social. Players cannot see them.</p>
+        <div class="form-group">
+            <label class="form-label">Image</label>
+            <input type="file" id="adminUploadFile" accept="image/*" class="form-input" style="padding:6px;">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label class="form-label">Caption (optional)</label>
+            <input type="text" id="adminUploadCaption" class="form-input" placeholder="Caption…" maxlength="200">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+            <button class="btn btn-secondary" onclick="closeAdminUploadModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitAdminUpload()">Upload</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner', 'social']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role, user.role === 'owner' ? 'teams' : 'assets');
+
+const params  = new URLSearchParams(location.search);
+const teamId  = params.get('team');
+if (!teamId) { document.getElementById('pageBody').innerHTML = '<p style="color:var(--error);">No team specified.</p>'; throw new Error('no team'); }
+
+let data = null;
+let lbCurrentId = null;
+
+async function load() {
+    try {
+        data = await api(`/api/gallery/team/${teamId}`);
+        document.getElementById('pageTitle').textContent    = data.team.name + ' Gallery';
+        document.getElementById('pageSubtitle').textContent = data.team.region + ' · ' + (data.team.game || 'Valorant');
+        render();
+    } catch (err) {
+        document.getElementById('pageBody').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+    const { team, players, managers, playerGallery, managerGallery, adminPlayerUploads, adminManagerUploads } = data;
+    const logos = team.logos || {};
+
+    const logoSlotHtml = (key, label, isMain) => {
+        const logo = logos[key] || {};
+        return `
+        <div class="logo-slot${isMain ? ' main' : ''}">
+            <div class="logo-slot-label">${label}</div>
+            <div class="logo-preview" id="preview-${key}">
+                ${logo.url ? `<img src="${esc(logo.url)}" alt="${label}">` : `<div class="logo-preview-empty">No logo</div>`}
+            </div>
+            <div class="logo-actions">
+                ${logo.url ? `<a href="${esc(logo.url)}" download class="btn btn-secondary btn-sm" style="font-size:0.74rem;">⬇ Download</a>` : ''}
+                <label class="btn btn-primary btn-sm" style="font-size:0.74rem;cursor:pointer;">
+                    Upload<input type="file" accept="image/*" style="display:none;" onchange="uploadLogo('${key}', this)">
+                </label>
+                ${logo.url ? `<button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);font-size:0.74rem;" onclick="deleteLogo('${key}')">Remove</button>` : ''}
+            </div>
+        </div>`;
+    };
+
+    const profilesHtml = (members) => {
+        if (!members.length) return '<p class="empty-note">No members yet.</p>';
+        return `<div class="profiles-grid">${members.map(m => {
+            const initials = (m.username || '?').slice(0, 2).toUpperCase();
+            const avatar = m.profilePhotoUrl
+                ? `<img src="${esc(m.profilePhotoUrl)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">`
+                : `<div class="profile-avatar">${initials}</div>`;
+            const dl = m.profilePhotoUrl
+                ? `<a href="${esc(m.profilePhotoUrl)}" download target="_blank" style="font-size:0.65rem;color:var(--accent);text-decoration:none;">⬇ Download</a>`
+                : '';
+            return `<div class="profile-card">${avatar}<div class="profile-name">${esc(m.username)}</div>${dl}</div>`;
+        }).join('')}</div>`;
+    };
+
+    const galleryGridHtml = (items) => {
+        if (!items.length) return '<p class="empty-note">No uploads yet.</p>';
+        return `<div class="gallery-grid">${items.map(m => `
+            <div>
+                <div class="gallery-thumb" onclick="openLightbox('${m._id}','${esc(m.url)}','${esc(m.uploadedBy?.username||'')}')">
+                    <img src="${esc(m.url)}" loading="lazy" alt="">
+                    <div class="gallery-thumb-overlay">
+                        <span class="gallery-thumb-expand">click to expand</span>
+                        <div class="gallery-thumb-actions">
+                            <a class="gallery-thumb-dl" href="${esc(m.url)}" download target="_blank" onclick="event.stopPropagation()">⬇</a>
+                            <button class="gallery-thumb-del" onclick="event.stopPropagation();deleteItem('${m._id}')">🗑</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="gallery-uploader">${esc(m.uploadedBy?.username || '—')}</div>
+            </div>`).join('')}</div>`;
+    };
+
+    document.getElementById('pageBody').innerHTML = `
+        <div class="gallery-section">
+            <div class="section-title">Logos</div>
+            <div class="logo-layout">
+                ${logoSlotHtml('main', 'Main Logo', true)}
+                ${logoSlotHtml('whiteBg', 'White Background', false)}
+                ${logoSlotHtml('blackBg', 'Black Background', false)}
+                ${logoSlotHtml('coloredBg', 'Colored Background', false)}
+            </div>
+        </div>
+
+        <div class="section-h2">👤 Players</div>
+
+        <div class="gallery-section">
+            <div class="section-title">Profile Photos</div>
+            ${profilesHtml(players)}
+        </div>
+
+        <div class="gallery-section">
+            <div class="section-title">Gallery Uploads</div>
+            <div class="disclaimer">These images may be used in social media posts and promotional content. Players who upload photos here agree to allow Lost Puppies to use them for content creation purposes.</div>
+            ${galleryGridHtml(playerGallery)}
+        </div>
+
+        <div class="gallery-section">
+            <div class="section-title">
+                Admin Uploads <span class="admin-badge">NOT VISIBLE TO PLAYERS</span>
+                <button class="btn btn-primary btn-sm" style="font-size:0.74rem;" onclick="openAdminUpload('players')">+ Upload</button>
+            </div>
+            ${galleryGridHtml(adminPlayerUploads)}
+        </div>
+
+        <div class="section-h2">🔑 Managers</div>
+
+        <div class="gallery-section">
+            <div class="section-title">Profile Photos</div>
+            ${profilesHtml(managers)}
+        </div>
+
+        <div class="gallery-section">
+            <div class="section-title">Gallery Uploads</div>
+            <div class="disclaimer">These images may be used in social media posts and promotional content. Managers who upload photos here agree to allow Lost Puppies to use them for content creation purposes.</div>
+            ${galleryGridHtml(managerGallery)}
+        </div>
+
+        <div class="gallery-section">
+            <div class="section-title">
+                Admin Uploads <span class="admin-badge">NOT VISIBLE TO MANAGERS</span>
+                <button class="btn btn-primary btn-sm" style="font-size:0.74rem;" onclick="openAdminUpload('managers')">+ Upload</button>
+            </div>
+            ${galleryGridHtml(adminManagerUploads)}
+        </div>
+    `;
+}
+
+window.uploadLogo = async (category, input) => {
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch(`/api/gallery/team/${teamId}/logo/${category}`, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd,
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast('Logo uploaded!', 'success');
+        await load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteLogo = async (category) => {
+    if (!confirm('Remove this logo?')) return;
+    try {
+        await api(`/api/gallery/team/${teamId}/logo/${category}`, { method: 'DELETE' });
+        toast('Logo removed.', 'success');
+        await load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteItem = async (id) => {
+    if (!confirm('Delete this photo permanently?')) return;
+    try {
+        await api(`/api/gallery/${id}`, { method: 'DELETE' });
+        toast('Deleted.', 'success');
+        await load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.openLightbox = (id, url, uploader) => {
+    lbCurrentId = id;
+    document.getElementById('lbImg').src = url;
+    document.getElementById('lbDownload').href = url;
+    document.getElementById('lbMeta').textContent = uploader || '';
+    document.getElementById('lightbox').style.display = 'flex';
+};
+
+window.closeLightbox = () => {
+    document.getElementById('lightbox').style.display = 'none';
+    document.getElementById('lbImg').src = '';
+};
+
+window.deleteLbItem = async () => {
+    if (!lbCurrentId || !confirm('Delete this photo?')) return;
+    closeLightbox();
+    await deleteItem(lbCurrentId);
+};
+
+let adminUploadSection = '';
+
+window.openAdminUpload = (section) => {
+    adminUploadSection = section;
+    document.getElementById('adminUploadTitle').textContent = section === 'players' ? 'Admin Upload — Players' : 'Admin Upload — Managers';
+    document.getElementById('adminUploadFile').value = '';
+    document.getElementById('adminUploadCaption').value = '';
+    document.getElementById('adminUploadModal').classList.add('open');
+};
+
+window.closeAdminUploadModal = () => document.getElementById('adminUploadModal').classList.remove('open');
+
+window.submitAdminUpload = async () => {
+    const file = document.getElementById('adminUploadFile').files[0];
+    if (!file) { toast('Select a file first.', 'error'); return; }
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('section', adminUploadSection);
+    fd.append('caption', document.getElementById('adminUploadCaption').value.trim());
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch(`/api/gallery/team/${teamId}/admin`, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd,
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        toast('Uploaded!', 'success');
+        closeAdminUploadModal();
+        await load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeLightbox(); closeAdminUploadModal(); }
+});
+
+load();</script>
+</body>
+</html>

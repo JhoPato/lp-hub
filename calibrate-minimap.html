@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Minimap Calibrator — LP-Hub</title>
+<style>* { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0c0d10; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+
+  #panel { width: 370px; min-width: 370px; background: #13141a; border-right: 1px solid #2a2b35; display: flex; flex-direction: column; overflow-y: auto; padding: 16px; gap: 14px; }
+  #panel h1 { font-size: 14px; color: #df5840; text-transform: uppercase; letter-spacing: 1px; }
+  #panel h2 { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2b35; padding-bottom: 6px; }
+
+  #drop-zone { border: 2px dashed #3a3b48; border-radius: 8px; padding: 14px; text-align: center; color: #555; font-size: 12px; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+  #drop-zone:hover, #drop-zone.over { border-color: #df5840; color: #df5840; }
+  #drop-zone input[type=file] { display: none; }
+
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row label { width: 80px; color: #aaa; flex-shrink: 0; font-size: 12px; }
+  .row input[type=range] { flex: 1; accent-color: #df5840; }
+  .row .val { width: 80px; background: #1e1f28; border: 1px solid #333; color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 12px; text-align: right; }
+  .row .val:focus { outline: none; border-color: #df5840; }
+
+  .check-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .check-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; color: #ccc; font-size: 12px; }
+  .check-row input[type=checkbox] { accent-color: #df5840; width: 14px; height: 14px; }
+
+  #formula { background: #0c0d10; border: 1px solid #2a2b35; border-radius: 6px; padding: 9px 12px; font-family: monospace; font-size: 11px; color: #7ec8a4; line-height: 1.8; white-space: pre; }
+
+  textarea { width: 100%; background: #0c0d10; border: 1px solid #2a2b35; border-radius: 6px; color: #e0e0e0; font-family: monospace; font-size: 11px; padding: 8px; resize: vertical; }
+  textarea::placeholder { color: #555; }
+
+  input[type=text] { width: 100%; background: #0c0d10; border: 1px solid #2a2b35; border-radius: 6px; color: #e0e0e0; font-size: 11px; padding: 6px 8px; }
+  input[type=text]::placeholder { color: #555; }
+  input[type=text]:focus { outline: none; border-color: #df5840; }
+
+  .btn { background: #df5840; color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
+  .btn:hover { background: #c44d37; }
+  .btn.secondary { background: #2a2b35; color: #ccc; }
+  .btn.secondary:hover { background: #3a3b48; }
+  .btn.sm { padding: 4px 10px; font-size: 11px; border-radius: 4px; }
+
+  #status { font-size: 11px; color: #888; min-height: 16px; }
+  #status.ok  { color: #7ec8a4; }
+  #status.err { color: #df5840; }
+
+  #refs-list { display: flex; flex-direction: column; gap: 5px; }
+  .ref-row { display: flex; align-items: center; gap: 6px; background: #1a1b22; border: 1px solid #2a2b35; border-radius: 6px; padding: 5px 8px; transition: border-color 0.15s; }
+  .ref-row.placing { border-color: #df5840; background: rgba(223,88,64,0.08); }
+  .ref-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .ref-name-input { flex: 1; background: none; border: none; color: #e0e0e0; font-size: 12px; outline: none; min-width: 0; }
+  .ref-name-input:focus { color: #fff; }
+  .ref-coords-display { font-size: 10px; color: #555; font-family: monospace; white-space: nowrap; flex-shrink: 0; }
+  .ref-row.has-coords .ref-coords-display { color: #7ec8a4; }
+  .ref-place-btn { background: none; border: 1px solid #3a3b48; color: #888; border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer; flex-shrink: 0; transition: all 0.15s; white-space: nowrap; }
+  .ref-place-btn:hover { border-color: #df5840; color: #df5840; }
+  .ref-place-btn.active { background: #df5840; border-color: #df5840; color: #fff; }
+  .ref-del-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
+  .ref-del-btn:hover { color: #df5840; }
+
+  #place-hint { font-size: 11px; color: #df5840; min-height: 16px; font-style: italic; }
+
+  #canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; background: #0c0d10; position: relative; }
+  #canvas-wrap.placing-mode { cursor: crosshair; }
+  canvas { border: 1px solid #2a2b35; border-radius: 4px; }
+
+  #coords-bar { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border: 1px solid #2a2b35; border-radius: 20px; padding: 4px 14px; font-size: 11px; font-family: monospace; color: #666; pointer-events: none; }
+
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #7ec8a4; color: #0c0d10; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  #toast.show { opacity: 1; }</style>
+</head>
+<body>
+
+<div id="panel">
+  <h1>🗺 Minimap Calibrator</h1>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <h2>Map Image</h2>
+    <div id="drop-zone" onclick="document.getElementById('fileInput').click()"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <input type="file" id="fileInput" accept="image/*" onchange="loadFile(this.files[0])">
+      📁 Arraste a imagem ou clique para selecionar
+      <br><small style="color:#444;font-size:10px">Salve o PNG do valorant-api.com no disco antes</small>
+    </div>
+    <details style="margin-top:2px">
+      <summary style="cursor:pointer;color:#555;font-size:11px">▸ Ou tente via URL (pode dar CORS)</summary>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="text" id="mapUrl" value="https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-4a6c-8617084f363c/displayicon.png">
+        <button class="btn secondary sm" onclick="loadMapFromUrl()">Load</button>
+      </div>
+    </details>
+    <span id="status">Sem mapa — arraste um PNG</span>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:7px">
+    <h2>Transform</h2>
+    <div class="row">
+      <label>xScale</label>
+      <input type="range" id="xScale" min="0.000010" max="0.000200" step="0.000001" value="0.000070" oninput="syncVal(this,'xScaleVal');draw()">
+      <input type="text" class="val" id="xScaleVal" value="0.000070" onchange="syncSlider(this,'xScale');draw()">
+    </div>
+    <div class="row">
+      <label>yScale</label>
+      <input type="range" id="yScale" min="0.000010" max="0.000200" step="0.000001" value="0.000070" oninput="syncVal(this,'yScaleVal');draw()">
+      <input type="text" class="val" id="yScaleVal" value="0.000070" onchange="syncSlider(this,'yScale');draw()">
+    </div>
+    <div class="row">
+      <label>xOffset</label>
+      <input type="range" id="xOffset" min="-1.0" max="1.0" step="0.001" value="-0.070" oninput="syncVal(this,'xOffsetVal');draw()">
+      <input type="text" class="val" id="xOffsetVal" value="-0.070" onchange="syncSlider(this,'xOffset');draw()">
+    </div>
+    <div class="row">
+      <label>yOffset</label>
+      <input type="range" id="yOffset" min="-1.0" max="1.0" step="0.001" value="0.100" oninput="syncVal(this,'yOffsetVal');draw()">
+      <input type="text" class="val" id="yOffsetVal" value="0.100" onchange="syncSlider(this,'yOffset');draw()">
+    </div>
+    <div class="check-row">
+      <label><input type="checkbox" id="swapXY" onchange="draw()" checked> Swap X↔Y</label>
+      <label><input type="checkbox" id="flipU"  onchange="draw()"> Flip U (←→)</label>
+      <label><input type="checkbox" id="flipV"  onchange="draw()"> Flip V (↑↓)</label>
+    </div>
+    <div id="formula">—</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <h2>Player Dots (JSON)</h2>
+    <textarea id="coords" style="height:80px" placeholder='[{"subject":"abc","location":{"x":3270,"y":5338}},...]'></textarea>
+    <button class="btn secondary sm" onclick="parseCoords()" style="align-self:flex-start">Parse & Draw</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h2 style="border:none;padding:0">Reference Points</h2>
+      <button class="btn secondary sm" onclick="addRef()">+ Add</button>
+    </div>
+    <small style="color:#555;font-size:10px">Selecione um ponto → clique no mapa para definir onde ele está</small>
+    <div id="place-hint"></div>
+    <div id="refs-list"></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <h2>Export</h2>
+    <div style="display:flex;gap:6px">
+      <button class="btn" onclick="copyConfig()" style="flex:1">📋 Copy JS Code</button>
+      <button class="btn secondary" onclick="resetDefaults()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <div id="coords-bar">—</div>
+</div>
+
+<div id="toast">Copiado!</div>
+
+<script>const canvas    = document.getElementById('canvas');
+const ctx       = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvas-wrap');
+const W = 500, H = 500;
+canvas.width = W; canvas.height = H;
+
+let mapImg       = null;
+let points       = [];
+let refs         = [];      
+let placingIndex = null;     
+
+const REF_COLORS = ['#ffcc00','#ff6b6b','#7ec8a4','#5b9cf6','#c45bf6','#f6905b','#f65bb0','#5bf6f0'];
+
+function syncVal(slider, valId) {
+  const v = parseFloat(slider.value);
+  const dec = slider.step.includes('0.0000') ? 6 : 3;
+  document.getElementById(valId).value = v.toFixed(dec);
+}
+function syncSlider(input, sliderId) {
+  const v = parseFloat(input.value);
+  if (!isNaN(v)) document.getElementById(sliderId).value = v;
+}
+
+function getParams() {
+  return {
+    xScale:  parseFloat(document.getElementById('xScale').value),
+    yScale:  parseFloat(document.getElementById('yScale').value),
+    xOffset: parseFloat(document.getElementById('xOffset').value),
+    yOffset: parseFloat(document.getElementById('yOffset').value),
+    swapXY:  document.getElementById('swapXY').checked,
+    flipU:   document.getElementById('flipU').checked,
+    flipV:   document.getElementById('flipV').checked,
+  };
+}
+
+function toUV(rawX, rawY, p) {
+  let cx = rawX, cy = rawY;
+  if (p.swapXY) { cx = rawY; cy = rawX; }
+  let u = cx * p.xScale + p.xOffset;
+  let v = cy * p.yScale + p.yOffset;
+  if (p.flipU) u = 1.0 - u;
+  if (p.flipV) v = 1.0 - v;
+  return { u, v };
+}
+function toPixel(rawX, rawY, p) {
+  const { u, v } = toUV(rawX, rawY, p);
+  return {
+    x: Math.max(8, Math.min(W - 8, u * W)),
+    y: Math.max(8, Math.min(H - 8, v * H)),
+  };
+}
+
+function fromPixel(cx, cy, p) {
+  let u = cx / W;
+  let v = cy / H;
+  if (p.flipU) u = 1.0 - u;
+  if (p.flipV) v = 1.0 - v;
+
+  const A = (u - p.xOffset) / p.xScale;
+  const B = (v - p.yOffset) / p.yScale;
+
+  if (p.swapXY) { return { rawX: B, rawY: A }; }
+  else          { return { rawX: A, rawY: B }; }
+}
+
+function draw() {
+  const p = getParams();
+  updateFormula(p);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#1a1b22';
+  ctx.fillRect(0, 0, W, H);
+  if (mapImg) {
+    ctx.drawImage(mapImg, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#333';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Arraste o PNG do mapa aqui', W/2, H/2);
+    ctx.textAlign = 'left';
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath(); ctx.moveTo(i*W/4, 0); ctx.lineTo(i*W/4, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i*H/4); ctx.lineTo(W, i*H/4); ctx.stroke();
+  }
+
+  for (let i = 0; i < refs.length; i++) {
+    const r  = refs[i];
+    if (r.x == null || r.y == null) continue;
+    const px = toPixel(r.x, r.y, p);
+    const c  = r.color || '#ffcc00';
+    const isPlacing = (placingIndex === i);
+
+    ctx.strokeStyle = isPlacing ? '#fff' : c;
+    ctx.lineWidth   = isPlacing ? 2 : 1.5;
+    const arm = isPlacing ? 10 : 7;
+    ctx.beginPath(); ctx.moveTo(px.x - arm, px.y); ctx.lineTo(px.x + arm, px.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px.x, px.y - arm); ctx.lineTo(px.x, px.y + arm); ctx.stroke();
+
+    if (isPlacing) {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(px.x, px.y, 5, 0, Math.PI*2); ctx.stroke();
+    }
+
+    ctx.font      = 'bold 9px sans-serif';
+    ctx.fillStyle = c;
+    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
+    ctx.textAlign = 'left';
+    ctx.fillText(r.label, px.x + arm + 2, px.y - 3);
+    ctx.shadowBlur = 0;
+  }
+
+  const COLORS = ['#5b9cf6','#df5840','#7ec8a4','#f6c05b','#c45bf6','#f65bb0','#5bf6f0','#f6905b'];
+  for (let i = 0; i < points.length; i++) {
+    const pt = points[i];
+    const px = toPixel(pt.x, pt.y, p);
+    const c  = pt.color || COLORS[i % COLORS.length];
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 6;
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(px.x, px.y, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0;
+    if (pt.label) {
+      ctx.font = 'bold 9px sans-serif'; ctx.fillStyle = '#fff';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
+      const tw = ctx.measureText(pt.label).width;
+      ctx.textAlign = 'left';
+      ctx.fillText(pt.label, Math.max(2, Math.min(W-tw-2, px.x - tw/2)), Math.max(11, Math.min(H-2, px.y-10)));
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  if (placingIndex !== null && window._hoverPos) {
+    const hx = window._hoverPos.cx, hy = window._hoverPos.cy;
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(hx, 0); ctx.lineTo(hx, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function updateFormula(p) {
+  let ux, vx;
+  const fmtOffset = (v) => v === 0 ? '' : (v > 0 ? ` + ${v.toFixed(4)}` : ` - ${Math.abs(v).toFixed(4)}`);
+  if (p.swapXY) {
+    ux = `loc.y * ${p.xScale.toFixed(6)}${fmtOffset(p.xOffset)}`;
+    vx = `loc.x * ${p.yScale.toFixed(6)}${fmtOffset(p.yOffset)}`;
+  } else {
+    ux = `loc.x * ${p.xScale.toFixed(6)}${fmtOffset(p.xOffset)}`;
+    vx = `loc.y * ${p.yScale.toFixed(6)}${fmtOffset(p.yOffset)}`;
+  }
+  if (p.flipU) ux = `1.0 - (${ux})`;
+  if (p.flipV) vx = `1.0 - (${vx})`;
+  document.getElementById('formula').textContent = `const u = ${ux};\nconst v = ${vx};`;
+}
+
+function renderRefsList() {
+  const list = document.getElementById('refs-list');
+  list.innerHTML = '';
+  refs.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'ref-row' + (r.x != null ? ' has-coords' : '') + (placingIndex === i ? ' placing' : '');
+
+    const dot = document.createElement('div');
+    dot.className = 'ref-color';
+    dot.style.background = r.color || REF_COLORS[i % REF_COLORS.length];
+
+    const nameInp = document.createElement('input');
+    nameInp.type = 'text'; nameInp.className = 'ref-name-input';
+    nameInp.value = r.label;
+    nameInp.onchange = () => { refs[i].label = nameInp.value; draw(); };
+
+    const coordSpan = document.createElement('span');
+    coordSpan.className = 'ref-coords-display';
+    coordSpan.textContent = r.x != null ? `${Math.round(r.x)}, ${Math.round(r.y)}` : 'não definido';
+
+    const placeBtn = document.createElement('button');
+    placeBtn.className = 'ref-place-btn' + (placingIndex === i ? ' active' : '');
+    placeBtn.textContent = placingIndex === i ? '✓ Clique no mapa' : '📍 Place';
+    placeBtn.onclick = () => {
+      placingIndex = (placingIndex === i) ? null : i;
+      updatePlacingMode();
+      renderRefsList();
+      draw();
+    };
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ref-del-btn'; delBtn.textContent = '✕';
+    delBtn.onclick = () => {
+      refs.splice(i, 1);
+      if (placingIndex === i) { placingIndex = null; updatePlacingMode(); }
+      else if (placingIndex > i) placingIndex--;
+      renderRefsList(); draw();
+    };
+
+    row.append(dot, nameInp, coordSpan, placeBtn, delBtn);
+    list.appendChild(row);
+  });
+}
+
+function addRef() {
+  const i = refs.length;
+  refs.push({ label: `Ponto ${i+1}`, x: null, y: null, color: REF_COLORS[i % REF_COLORS.length] });
+  renderRefsList();
+}
+
+function updatePlacingMode() {
+  const isPlacing = placingIndex !== null;
+  canvasWrap.classList.toggle('placing-mode', isPlacing);
+  const hint = document.getElementById('place-hint');
+  if (isPlacing) {
+    hint.textContent = `📍 Clique no mapa para definir "${refs[placingIndex]?.label}"`;
+  } else {
+    hint.textContent = '';
+  }
+}
+
+canvas.addEventListener('click', e => {
+  if (placingIndex === null) return;
+  const r = canvas.getBoundingClientRect();
+  const cx = (e.clientX - r.left) * (W / r.width);
+  const cy = (e.clientY - r.top)  * (H / r.height);
+  const { rawX, rawY } = fromPixel(cx, cy, getParams());
+  refs[placingIndex].x = Math.round(rawX);
+  refs[placingIndex].y = Math.round(rawY);
+  placingIndex = null;
+  updatePlacingMode();
+  renderRefsList();
+  draw();
+});
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  const cx = Math.round((e.clientX - r.left) * (W / r.width));
+  const cy = Math.round((e.clientY - r.top)  * (H / r.height));
+  window._hoverPos = { cx, cy };
+
+  const { rawX, rawY } = fromPixel(cx, cy, getParams());
+  document.getElementById('coords-bar').textContent =
+    `canvas(${cx}, ${cy})  →  game(${Math.round(rawX)}, ${Math.round(rawY)})`;
+
+  if (placingIndex !== null) draw(); 
+});
+canvas.addEventListener('mouseleave', () => {
+  window._hoverPos = null;
+  document.getElementById('coords-bar').textContent = '—';
+  if (placingIndex !== null) draw();
+});
+
+function loadFile(file) {
+  if (!file?.type.startsWith('image/')) { setStatus('Inválido — use PNG/JPG.', 'err'); return; }
+  setStatus('Carregando...', '');
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => { mapImg = img; setStatus(`✓ ${file.name}`, 'ok'); draw(); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('over'); }
+function onDragLeave()  { document.getElementById('drop-zone').classList.remove('over'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('over'); loadFile(e.dataTransfer.files[0]); }
+function loadMapFromUrl() {
+  const url = document.getElementById('mapUrl').value.trim();
+  if (!url) return;
+  setStatus('Carregando...', '');
+  const tryLoad = (src, isProxy) => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload  = () => { mapImg = img; setStatus('URL carregada ✓', 'ok'); draw(); };
+    img.onerror = () => isProxy
+      ? setStatus('CORS bloqueado. Use o drag & drop.', 'err')
+      : tryLoad('https://corsproxy.io/?' + encodeURIComponent(url), true);
+    img.src = src;
+  };
+  tryLoad(url, false);
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.className = cls;
+}
+
+const PLAYER_COLORS = ['#5b9cf6','#df5840','#7ec8a4','#f6c05b','#c45bf6','#f65bb0','#5bf6f0','#f6905b'];
+function parseCoords() {
+  const raw = document.getElementById('coords').value.trim();
+  points = [];
+  if (!raw) { draw(); return; }
+  try {
+    const arr = JSON.parse(raw);
+    arr.forEach((item, i) => {
+      let x, y, label;
+      if (item.location) { x = item.location.x; y = item.location.y; label = item.subject?.slice(0,8) || `P${i+1}`; }
+      else if (Array.isArray(item)) { x = item[0]; y = item[1]; label = item[2] || `P${i+1}`; }
+      else { x = item.x; y = item.y; label = item.label || `P${i+1}`; }
+      points.push({ x, y, label, color: PLAYER_COLORS[i % PLAYER_COLORS.length] });
+    });
+  } catch {
+    raw.split('\n').forEach((line, i) => {
+      const parts = line.trim().split(',');
+      if (parts.length >= 2) {
+        const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+        if (!isNaN(x) && !isNaN(y)) points.push({ x, y, label: parts[2]?.trim() || `P${i+1}`, color: PLAYER_COLORS[i%PLAYER_COLORS.length] });
+      }
+    });
+  }
+  draw();
+}
+
+function copyConfig() {
+  const p = getParams();
+  const fmtOffset = (v) => v === 0 ? '' : (v > 0 ? ` + ${v.toFixed(4)}` : ` - ${Math.abs(v).toFixed(4)}`);
+  let ux, vx;
+  if (p.swapXY) {
+    ux = `loc.y * ${p.xScale.toFixed(6)}${fmtOffset(p.xOffset)}`;
+    vx = `loc.x * ${p.yScale.toFixed(6)}${fmtOffset(p.yOffset)}`;
+  } else {
+    ux = `loc.x * ${p.xScale.toFixed(6)}${fmtOffset(p.xOffset)}`;
+    vx = `loc.y * ${p.yScale.toFixed(6)}${fmtOffset(p.yOffset)}`;
+  }
+  if (p.flipU) ux = `1.0 - (${ux})`;
+  if (p.flipV) vx = `1.0 - (${vx})`;
+
+  const code =
+`// ── Minimap toPixel (calibrated) ──
+const toPixel = (loc) => {
+    if (!mapInfo) return { x: W/2, y: H/2 };
+    const u = ${ux};
+    const v = ${vx};
+    return {
+        x: Math.max(8, Math.min(W - 8, u * W)),
+        y: Math.max(8, Math.min(H - 8, v * H)),
+    };
+};`;
+
+  navigator.clipboard.writeText(code).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+
+function resetDefaults() {
+  [['xScale','0.000070'],['xScaleVal','0.000070'],['yScale','0.000070'],['yScaleVal','0.000070'],
+   ['xOffset','-0.070'],['xOffsetVal','-0.070'],['yOffset','0.100'],['yOffsetVal','0.100']].forEach(([id,v]) => {
+    const el = document.getElementById(id);
+    if (el.type === 'range' || el.type === 'text') el.value = v;
+  });
+  document.getElementById('swapXY').checked = true;
+  document.getElementById('flipU').checked  = false;
+  document.getElementById('flipV').checked  = false;
+  draw();
+}
+
+refs = [
+  { label: 'A Site',    x: 4800,  y: 11800, color: REF_COLORS[0] },
+  { label: 'B Site',    x: 2500,  y: 3000,  color: REF_COLORS[1] },
+  { label: 'Mid Top',   x: 2900,  y: 6700,  color: REF_COLORS[2] },
+  { label: 'Atk Spawn', x: 10800, y: 8300,  color: REF_COLORS[3] },
+  { label: 'Def Spawn', x: -500,  y: 6500,  color: REF_COLORS[4] },
+];
+renderRefsList();
+draw();</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Strategy Board</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .open-board-btn {
+            display:flex; align-items:center; justify-content:center; gap:12px;
+            width:100%; padding:22px 0; border-radius:var(--radius);
+            background:var(--accent); border:none; color:#fff;
+            font-size:1.1rem; font-weight:900; letter-spacing:0.1em;
+            text-transform:uppercase; cursor:pointer; transition:opacity .15s;
+            margin-bottom:32px; text-decoration:none;
+        }
+        .open-board-btn:hover { opacity:.88; }
+        .strategies-header {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:14px;
+        }
+        .strategies-header h2 {
+            font-size:0.72rem; font-weight:900; letter-spacing:0.1em;
+            text-transform:uppercase; color:var(--text-muted); margin:0;
+        }
+        .strategies-grid {
+            display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+            gap:12px;
+        }
+        .strat-card {
+            background:var(--bg2); border:1px solid var(--border);
+            border-radius:var(--radius); padding:16px 18px;
+            display:flex; flex-direction:column; gap:10px;
+            transition:border-color .15s;
+        }
+        .strat-card:hover { border-color:rgba(255,255,255,0.2); }
+        .strat-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+        .strat-card-name { font-size:0.88rem; font-weight:700; color:var(--text); }
+        .strat-card-del {
+            background:none; border:none; color:var(--text-muted); cursor:pointer;
+            font-size:0.75rem; padding:0; flex-shrink:0; transition:color .12s;
+        }
+        .strat-card-del:hover { color:var(--error); }
+        .strat-card-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .strat-badge {
+            font-size:0.6rem; font-weight:900; letter-spacing:0.08em;
+            padding:2px 7px; border-radius:3px; text-transform:uppercase;
+        }
+        .strat-badge.atk { background:rgba(223,88,64,0.2); color:var(--accent); }
+        .strat-badge.def { background:rgba(87,242,135,0.15); color:#57f287; }
+        .strat-map-name { font-size:0.72rem; color:var(--text-muted); }
+        .strat-date { font-size:0.65rem; color:var(--text-muted); margin-left:auto; }
+        .strat-card-thumb {
+            width:100%; height:90px; border-radius:5px; overflow:hidden;
+            background:var(--bg3); display:flex; align-items:center; justify-content:center;
+            position:relative;
+        }
+        .strat-card-thumb img { width:100%; height:100%; object-fit:cover; opacity:0.6; }
+        .strat-card-thumb .no-thumb { font-size:0.7rem; color:var(--text-muted); }
+        .strat-open-btn {
+            display:flex; align-items:center; justify-content:center;
+            padding:8px 0; border-radius:5px; border:1px solid var(--accent);
+            background:none; color:var(--accent); font-size:0.75rem; font-weight:700;
+            cursor:pointer; transition:all .12s; text-decoration:none; text-align:center;
+        }
+        .strat-open-btn:hover { background:var(--accent); color:#fff; }
+        .empty-state { padding:48px 0; text-align:center; color:var(--text-muted); font-size:0.85rem; }
+        .board-actions { display:flex; gap:12px; margin-bottom:32px; }
+        .open-board-btn { margin-bottom:0; flex:1; }
+        .join-board-btn {
+            display:flex; align-items:center; justify-content:center; gap:12px;
+            flex:1; padding:22px 0; border-radius:var(--radius);
+            background:transparent; border:2px solid var(--accent); color:var(--accent);
+            font-size:1.1rem; font-weight:900; letter-spacing:0.1em;
+            text-transform:uppercase; cursor:pointer; transition:all .15s;
+        }
+        .join-board-btn:hover { background:rgba(223,88,64,0.1); }
+        .join-modal-overlay {
+            display:none; position:fixed; inset:0; z-index:100;
+            background:rgba(0,0,0,0.7); align-items:center; justify-content:center;
+        }
+        .join-modal-overlay.open { display:flex; }
+        .join-modal {
+            background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+            padding:32px; width:360px; display:flex; flex-direction:column; gap:18px;
+        }
+        .join-modal h2 { font-size:1rem; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; margin:0; }
+        .join-modal p { font-size:0.8rem; color:var(--text-muted); margin:0; }
+        .join-code-input {
+            width:100%; padding:14px 16px; border-radius:8px;
+            background:var(--bg3); border:1px solid var(--border); color:var(--text);
+            font-size:1rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+            box-sizing:border-box;
+        }
+        .join-code-input:focus { outline:none; border-color:var(--accent); }
+        .join-modal-btns { display:flex; gap:10px; }
+        .join-modal-btns button { flex:1; padding:12px 0; border-radius:6px; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all .15s; border:none; }
+        .join-modal-btns .btn-cancel { background:var(--bg3); color:var(--text-muted); }
+        .join-modal-btns .btn-join { background:var(--accent); color:#fff; }
+        .join-modal-btns .btn-join:hover { opacity:.85; }
+        .join-error { font-size:0.75rem; color:var(--error); min-height:16px; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar"></nav>
+        <main class="main-content">
+            <div class="page-content">
+                <div class="page-header">
+                    <h1>Strategy Board</h1>
+                    <p>Create and review team strategies</p>
+                </div>
+
+                <div class="board-actions">
+                    <button class="open-board-btn" onclick="openBoard()">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                        Open Board
+                    </button>
+                    <button class="join-board-btn" onclick="document.getElementById('joinModal').classList.add('open')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22"><path d="M15 3h6v6M10 14L21 3M9 3H3v18h18v-6"/></svg>
+                        Join Board
+                    </button>
+                </div>
+
+                <div class="join-modal-overlay" id="joinModal">
+                    <div class="join-modal">
+                        <h2>Join a Board Session</h2>
+                        <p>Enter the room code shared by the session host.</p>
+                        <input class="join-code-input" id="joinCodeInput" placeholder="e.g. Corgi-394" maxlength="20"
+                            oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')joinBoard()">
+                        <div class="join-error" id="joinError"></div>
+                        <div class="join-modal-btns">
+                            <button class="btn-cancel" onclick="closeJoinModal()">Cancel</button>
+                            <button class="btn-join" onclick="joinBoard()">Join</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="strategies-header">
+                    <h2>Saved Strategies</h2>
+                </div>
+
+                <div id="strategiesGrid" class="strategies-grid">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script type="module">
+import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager', 'captain', 'player']);
+if (!user) throw new Error('unauth');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'strategy-board');
+
+let mapCache = {};
+
+function _proxyImg(url) {
+    if (!url) return '';
+    return '/api/vapi-proxy?url=' + encodeURIComponent(url);
+}
+
+async function loadMaps() {
+    try {
+        const TTL = 24 * 60 * 60 * 1000;
+        let data = null;
+        try {
+            const raw = localStorage.getItem('vapi_maps');
+            if (raw) { const p = JSON.parse(raw); if (Date.now() - p.ts < TTL) data = p.data; }
+        } catch {}
+        if (!data) {
+            const res = await fetch('https://valorant-api.com/v1/maps');
+            data = (await res.json()).data;
+            try { localStorage.setItem('vapi_maps', JSON.stringify({ ts: Date.now(), data })); } catch {}
+        }
+        data.forEach(m => { mapCache[m.uuid] = m; });
+    } catch {}
+}
+
+function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+async function loadStrategies() {
+    await loadMaps();
+    let list = [];
+    try { list = await api('/api/strategy'); } catch { list = []; }
+
+    const grid = document.getElementById('strategiesGrid');
+    if (!list.length) {
+        grid.innerHTML = '<div class="empty-state">No strategies saved yet.<br>Open the board and create your first one.</div>';
+        return;
+    }
+
+    grid.innerHTML = list.map(s => {
+        const mapInfo  = mapCache[s.map];
+        const mapName  = mapInfo?.displayName || 'Unknown Map';
+        const thumbSrc = mapInfo ? _proxyImg(mapInfo.listViewIcon || mapInfo.displayIcon) : '';
+        const thumbHtml = thumbSrc
+            ? `<img src="${thumbSrc}" alt="${mapName}" onerror="this.style.display='none'">`
+            : `<span class="no-thumb">${mapName}</span>`;
+
+        return `
+        <div class="strat-card" id="card-${s._id}">
+            <div class="strat-card-top">
+                <div class="strat-card-name">${s.name}</div>
+                <button class="strat-card-del" onclick="deleteStrategy('${s._id}')" title="Delete">✕</button>
+            </div>
+            <div class="strat-card-thumb">${thumbHtml}</div>
+            <div class="strat-card-meta">
+                <span class="strat-badge ${s.side}">${s.side.toUpperCase()}</span>
+                <span class="strat-map-name">${mapName}</span>
+                <span class="strat-date">${formatDate(s.createdAt)}</span>
+            </div>
+            <button class="strat-open-btn" onclick="openStratBoard('${s._id}')">Open in Board</button>
+        </div>`;
+    }).join('');
+}
+
+window.deleteStrategy = async function(id) {
+    if (!confirm('Delete this strategy?')) return;
+    try {
+        await api(`/api/strategy/${id}`, { method: 'DELETE' });
+        document.getElementById(`card-${id}`)?.remove();
+        const grid = document.getElementById('strategiesGrid');
+        if (!grid.children.length) grid.innerHTML = '<div class="empty-state">No strategies saved yet.</div>';
+        toast('Deleted', 'success');
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+};
+
+loadStrategies();
+
+window.openBoard = async function() {
+    try {
+        const { roomCode } = await api('/api/board-session', { method: 'POST' });
+        window.location.href = `/board/strategy-board.html?room=${roomCode}`;
+    } catch(e) { toast('Could not create session: ' + e.message, 'error'); }
+};
+
+window.openStratBoard = async function(stratId) {
+    try {
+        const { roomCode } = await api('/api/board-session', { method: 'POST' });
+        window.location.href = `/board/strategy-board.html?stratId=${stratId}&room=${roomCode}`;
+    } catch(e) { toast('Could not create session: ' + e.message, 'error'); }
+};
+
+window.closeJoinModal = function() {
+    document.getElementById('joinModal').classList.remove('open');
+    document.getElementById('joinCodeInput').value = '';
+    document.getElementById('joinError').textContent = '';
+};
+
+window.joinBoard = async function() {
+    const code = document.getElementById('joinCodeInput').value.trim();
+    if (!code) { document.getElementById('joinError').textContent = 'Enter a room code.'; return; }
+    try {
+        await api(`/api/board-session/${code}`);
+        window.location.href = `/board/strategy-board.html?room=${code}`;
+    } catch(e) {
+        document.getElementById('joinError').textContent = e.message === 'Session not found or expired.'
+            ? 'Session not found. Check the code and try again.'
+            : 'Error: ' + e.message;
+    }
+};
+
+document.getElementById('joinModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('joinModal')) closeJoinModal();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — My Gallery</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.upload-zone { background:var(--bg2); border:2px dashed var(--border); border-radius:var(--radius); padding:32px 24px; text-align:center; transition:border-color 0.2s, background 0.2s; cursor:pointer; margin-bottom:28px; }
+        .upload-zone.drag-over { border-color:var(--accent); background:rgba(223,88,64,0.05); }
+        .upload-zone-icon { font-size:2.2rem; margin-bottom:8px; }
+        .upload-zone-label { font-size:0.85rem; color:var(--text-muted); margin-bottom:14px; }
+        .upload-meta-row { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end; margin-top:16px; text-align:left; }
+        .upload-preview { max-height:160px; border-radius:var(--radius); border:1px solid var(--border); display:none; margin:12px auto 0; }
+
+        .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px; }
+        .gallery-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+        .gallery-thumb { position:relative; aspect-ratio:4/3; overflow:hidden; cursor:pointer; }
+        .gallery-thumb img { width:100%; height:100%; object-fit:cover; transition:transform 0.2s; display:block; }
+        .gallery-thumb:hover img { transform:scale(1.05); }
+        .gallery-thumb-overlay { position:absolute; inset:0; background:rgba(0,0,0,0); transition:background 0.2s; display:flex; align-items:center; justify-content:center; }
+        .gallery-thumb:hover .gallery-thumb-overlay { background:rgba(0,0,0,0.4); }
+        .gallery-thumb-icon { font-size:2rem; opacity:0; transition:opacity 0.2s; }
+        .gallery-thumb:hover .gallery-thumb-icon { opacity:1; }
+        .gallery-card-footer { padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .gallery-caption { font-size:0.78rem; color:var(--text-muted); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text; }
+        .gallery-caption.empty { font-style:italic; color:var(--border); }
+        .gallery-date { font-size:0.68rem; color:var(--border); flex-shrink:0; }
+        .gallery-card-actions { padding:0 12px 10px; display:flex; gap:6px; }
+
+        .lightbox { position:fixed; inset:0; background:rgba(0,0,0,0.93); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .lightbox-inner { position:relative; max-width:960px; width:100%; }
+        .lightbox-inner img { width:100%; max-height:82vh; object-fit:contain; border-radius:var(--radius); display:block; }
+        .lightbox-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+        .lightbox-caption { color:rgba(255,255,255,0.75); font-size:0.85rem; }
+        .lightbox-close { background:none; border:none; color:#fff; font-size:1.8rem; cursor:pointer; line-height:1; padding:0; }
+        .lightbox-nav { display:flex; gap:8px; margin-top:12px; justify-content:center; }
+        .lightbox-nav button { background:rgba(255,255,255,0.1); border:none; color:#fff; padding:6px 18px; border-radius:3px; cursor:pointer; font-size:0.8rem; }
+        .lightbox-nav button:hover { background:rgba(255,255,255,0.2); }
+
+        .caption-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .caption-modal { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; width:100%; max-width:380px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>My Gallery</h1>
+            <p>Upload photos to share with the team's content staff</p>
+        </div>
+
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleDrop(event)">
+            <div class="upload-zone-icon">📷</div>
+            <div class="upload-zone-label">Click or drag & drop a photo here</div>
+            <img id="uploadPreview" class="upload-preview" alt="preview">
+            <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
+            <div class="upload-meta-row" id="uploadMeta" style="display:none" onclick="event.stopPropagation()">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Caption (optional)</label>
+                    <input class="form-input" id="uploadCaption" type="text" placeholder="Describe the photo...">
+                </div>
+                <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()">Upload</button>
+            </div>
+        </div>
+
+        <div id="statsBar" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;"></div>
+        <div id="galleryGrid" class="gallery-grid">
+            <p style="color:var(--text-muted);">Loading...</p>
+        </div>
+        </div>
+    </main>
+</div>
+
+<div class="lightbox" id="lightbox" style="display:none;" onclick="if(event.target===this)closeLightbox()">
+    <div class="lightbox-inner">
+        <div class="lightbox-top">
+            <span class="lightbox-caption" id="lbCaption"></span>
+            <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        </div>
+        <img id="lbImg" src="" alt="">
+        <div class="lightbox-nav" id="lbNav"></div>
+    </div>
+</div>
+
+<div class="caption-modal-overlay" id="captionModal" style="display:none;" onclick="if(event.target===this)closeCaptionModal()">
+    <div class="caption-modal">
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:14px;">Edit Caption</div>
+        <input type="hidden" id="captionEditId">
+        <input class="form-input" id="captionEditInput" type="text" placeholder="Caption...">
+        <div style="display:flex;gap:8px;margin-top:14px;">
+            <button class="btn btn-secondary" onclick="closeCaptionModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveCaption()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth();
+let items = [];
+let lbIndex = 0;
+let pendingFile = null;
+
+window.doUpload        = doUpload;
+window.handleFile      = handleFile;
+window.handleDrop      = handleDrop;
+window.openLightbox    = openLightbox;
+window.closeLightbox   = closeLightbox;
+window.lbPrev          = () => { lbIndex = (lbIndex - 1 + items.length) % items.length; renderLightbox(); };
+window.lbNext          = () => { lbIndex = (lbIndex + 1) % items.length; renderLightbox(); };
+window.openCaptionModal = openCaptionModal;
+window.closeCaptionModal = closeCaptionModal;
+window.saveCaption     = saveCaption;
+window.deleteItem      = deleteItem;
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'gallery');
+    loadGallery();
+}
+
+async function loadGallery() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+
+        items = await api('/api/gallery');
+        render();
+    } catch (err) {
+        document.getElementById('galleryGrid').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function render() {
+    const stats = document.getElementById('statsBar');
+    stats.textContent = items.length ? `${items.length} photo${items.length !== 1 ? 's' : ''} submitted` : '';
+
+    const grid = document.getElementById('galleryGrid');
+    if (!items.length) {
+        grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;">No photos yet — upload your first one above!</p>';
+        return;
+    }
+    grid.innerHTML = items.map((m, i) => `
+        <div class="gallery-card">
+            <div class="gallery-thumb" onclick="openLightbox(${i})">
+                <img src="${m.url}" alt="${m.caption || ''}" loading="lazy">
+                <div class="gallery-thumb-overlay">
+                    <span class="gallery-thumb-icon">🔍</span>
+                </div>
+            </div>
+            <div class="gallery-card-footer">
+                <span class="gallery-caption ${m.caption ? '' : 'empty'}" title="${m.caption || 'No caption'} — click to edit"
+                      onclick="openCaptionModal('${m._id}', this.closest('.gallery-card').querySelector('.gallery-caption'), '${(m.caption||'').replace(/'/g,"\\'")}')">
+                    ${m.caption || 'Add caption...'}
+                </span>
+                <span class="gallery-date">${formatDate(m.createdAt)}</span>
+            </div>
+            <div class="gallery-card-actions">
+                <button class="btn btn-secondary btn-xs" style="color:var(--error);border-color:var(--error);" onclick="deleteItem('${m._id}')">Delete</button>
+            </div>
+        </div>`).join('');
+}
+
+function handleFile(file) {
+    if (!file) return;
+    pendingFile = file;
+    const preview = document.getElementById('uploadPreview');
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    document.getElementById('uploadMeta').style.display = 'grid';
+    document.getElementById('uploadCaption').focus();
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadZone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+}
+
+async function doUpload() {
+    if (!pendingFile) { toast('Select a photo first.', 'error'); return; }
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+    const fd = new FormData();
+    fd.append('file', pendingFile);
+    const caption = document.getElementById('uploadCaption').value.trim();
+    if (caption) fd.append('caption', caption);
+
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch('/api/gallery/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed.');
+        toast('Photo uploaded!', 'success');
+        pendingFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('uploadCaption').value = '';
+        document.getElementById('uploadPreview').style.display = 'none';
+        document.getElementById('uploadMeta').style.display = 'none';
+        loadGallery();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Upload'; }
+}
+
+function openLightbox(index) {
+    lbIndex = index;
+    document.getElementById('lightbox').style.display = 'flex';
+    renderLightbox();
+}
+
+function renderLightbox() {
+    const m = items[lbIndex];
+    document.getElementById('lbImg').src = m.url;
+    document.getElementById('lbCaption').textContent = m.caption || '';
+    document.getElementById('lbNav').innerHTML = items.length > 1 ? `
+        <button onclick="lbPrev()">← Prev</button>
+        <span style="color:#888;font-size:0.78rem;padding:6px 4px;">${lbIndex + 1} / ${items.length}</span>
+        <button onclick="lbNext()">Next →</button>` : '';
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+    document.getElementById('lbImg').src = '';
+}
+
+function openCaptionModal(id, _el, currentCaption) {
+    document.getElementById('captionEditId').value = id;
+    document.getElementById('captionEditInput').value = currentCaption;
+    document.getElementById('captionModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('captionEditInput').focus(), 50);
+}
+
+function closeCaptionModal() { document.getElementById('captionModal').style.display = 'none'; }
+
+async function saveCaption() {
+    const id      = document.getElementById('captionEditId').value;
+    const caption = document.getElementById('captionEditInput').value.trim();
+    try {
+        await api(`/api/gallery/${id}/caption`, { method: 'PATCH', body: JSON.stringify({ caption }) });
+        toast('Caption saved!', 'success');
+        closeCaptionModal();
+        loadGallery();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteItem(id) {
+    if (!confirm('Delete this photo permanently?')) return;
+    try {
+        await api(`/api/gallery/${id}`, { method: 'DELETE' });
+        toast('Deleted.', 'success');
+        loadGallery();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+document.addEventListener('keydown', e => {
+    if (document.getElementById('lightbox').style.display !== 'none') {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') window.lbPrev();
+        if (e.key === 'ArrowRight') window.lbNext();
+    }
+});</script>
+</body>
+</html>

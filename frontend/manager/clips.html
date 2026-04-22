@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Clips</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.clips-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+
+        .clip-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; cursor:pointer; transition:border-color 0.15s; }
+        .clip-card:hover { border-color:var(--accent); }
+        .clip-thumb { width:100%; aspect-ratio:16/9; object-fit:cover; background:#000; display:block; }
+        .clip-body  { padding:12px 14px; }
+        .clip-date  { font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
+        .clip-contacts { display:flex; gap:8px; flex-wrap:wrap; }
+        .clip-tag { font-size:0.75rem; background:var(--bg3); border:1px solid var(--border); border-radius:3px; padding:2px 8px; color:var(--text-muted); }
+        .clip-tag span { color:var(--text); font-weight:600; }
+        .clip-del { background:none; border:none; color:var(--text-muted); font-size:0.9rem; cursor:pointer; padding:0; line-height:1; }
+        .clip-del:hover { color:#e05; }
+
+        
+        .clip-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; }
+        .clip-modal-overlay.open { display:flex; }
+        .clip-modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); width:min(680px,95vw); overflow:hidden; }
+        .clip-modal-video { width:100%; aspect-ratio:16/9; }
+        .clip-modal-video iframe { width:100%; height:100%; border:none; }
+        .clip-modal-info { padding:16px 18px; }
+        .clip-modal-contacts { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+        .clip-modal-contact { font-size:0.82rem; background:var(--bg3); border:1px solid var(--border); border-radius:4px; padding:4px 12px; }
+        .clip-modal-contact strong { color:var(--accent); }
+        .clip-modal-date { font-size:0.72rem; color:var(--text-muted); }
+        .clip-modal-actions { display:flex; justify-content:flex-end; gap:8px; padding:0 18px 16px; }
+        .btn-modal-close { background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:6px 16px; cursor:pointer; font-size:0.82rem; }
+        .btn-modal-del { background:#c0392b; border:none; color:#fff; border-radius:var(--radius); padding:6px 16px; cursor:pointer; font-size:0.82rem; }
+
+        .empty-state { text-align:center; color:var(--text-muted); padding:60px 20px; font-size:0.9rem; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+            <div class="page-header">
+                <div>
+                    <h1>🎬 Clips — Fanbase</h1>
+                    <p>Clip submissions from the community</p>
+                </div>
+            </div>
+
+            <div id="clipsContainer">
+                <p class="empty-state">Loading...</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+
+<div class="clip-modal-overlay" id="clipModal">
+    <div class="clip-modal-box">
+        <div class="clip-modal-video" id="modalVideo"></div>
+        <div class="clip-modal-info">
+            <div class="clip-modal-contacts" id="modalContacts"></div>
+            <div class="clip-modal-date" id="modalDate"></div>
+        </div>
+        <div class="clip-modal-actions">
+            <button class="btn-modal-del" id="modalDelBtn">Delete Clip</button>
+            <button class="btn-modal-close" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error();
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'clips');
+
+let clips = [];
+let activeId = null;
+
+async function load() {
+    try {
+        clips = await api('/api/site/clips');
+        render();
+    } catch (e) {
+        document.getElementById('clipsContainer').innerHTML = '<p class="empty-state">Failed to load clips.</p>';
+    }
+}
+
+function render() {
+    const el = document.getElementById('clipsContainer');
+    if (!clips.length) { el.innerHTML = '<p class="empty-state">No clips submitted yet.</p>'; return; }
+    el.innerHTML = `<div class="clips-grid">${clips.map(c => clipCard(c)).join('')}</div>`;
+    el.querySelectorAll('.clip-card').forEach(card => {
+        card.addEventListener('click', e => {
+            if (e.target.classList.contains('clip-del')) return;
+            openModal(card.dataset.id);
+        });
+        card.querySelector('.clip-del').addEventListener('click', e => {
+            e.stopPropagation();
+            deleteClip(card.dataset.id);
+        });
+    });
+}
+
+function clipCard(c) {
+    const thumb = `https://img.youtube.com/vi/${c.videoId}/mqdefault.jpg`;
+    const date = new Date(c.submittedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    const contacts = [
+        c.discord ? `<span class="clip-tag"><span>Discord</span> ${esc(c.discord)}</span>` : '',
+        c.twitter ? `<span class="clip-tag"><span>Twitter</span> ${esc(c.twitter)}</span>` : '',
+    ].join('');
+    return `
+    <div class="clip-card" data-id="${c.id}">
+        <img class="clip-thumb" src="${thumb}" alt="thumbnail" loading="lazy">
+        <div class="clip-body">
+            <div class="clip-date"><span>${date}</span><button class="clip-del" title="Delete">🗑</button></div>
+            <div class="clip-contacts">${contacts}</div>
+        </div>
+    </div>`;
+}
+
+function openModal(id) {
+    const c = clips.find(x => x.id === id);
+    if (!c) return;
+    activeId = id;
+    document.getElementById('modalVideo').innerHTML = `<iframe src="https://www.youtube.com/embed/${c.videoId}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    document.getElementById('modalContacts').innerHTML = [
+        c.discord ? `<div class="clip-modal-contact"><strong>Discord</strong> ${esc(c.discord)}</div>` : '',
+        c.twitter ? `<div class="clip-modal-contact"><strong>Twitter</strong> ${esc(c.twitter)}</div>` : '',
+    ].join('');
+    document.getElementById('modalDate').textContent = `Submitted ${new Date(c.submittedAt).toLocaleString('en-GB')}`;
+    document.getElementById('clipModal').classList.add('open');
+}
+
+window.closeModal = function() {
+    document.getElementById('clipModal').classList.remove('open');
+    document.getElementById('modalVideo').innerHTML = '';
+    activeId = null;
+};
+
+async function deleteClip(id) {
+    if (!confirm('Delete this clip?')) return;
+    try {
+        await api(`/api/site/clips/${id}`, { method: 'DELETE' });
+        clips = clips.filter(c => c.id !== id);
+        closeModal();
+        render();
+        toast('Clip deleted.', 'success');
+    } catch (e) {
+        toast('Failed to delete clip.', 'error');
+    }
+}
+
+document.getElementById('modalDelBtn').addEventListener('click', () => { if (activeId) deleteClip(activeId); });
+document.getElementById('clipModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+load();</script>
+</body>
+</html>

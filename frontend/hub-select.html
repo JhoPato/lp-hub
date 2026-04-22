@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Select Team</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.select-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            background: radial-gradient(ellipse at 50% 0%, rgba(223,88,64,0.08) 0%, transparent 60%), var(--bg);
+        }
+        .select-header { text-align: center; margin-bottom: 40px; }
+        .select-header .logo {
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .select-header .logo span { color: var(--accent); }
+        .select-header .subtitle {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 6px;
+        }
+        .select-header .greeting {
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 680px;
+            margin-bottom: 24px;
+        }
+
+        .team-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px 20px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.18s, transform 0.15s, background 0.15s;
+            position: relative;
+        }
+        .team-card:hover {
+            border-color: var(--accent);
+            background: var(--bg3);
+            transform: translateY(-2px);
+        }
+        .team-card.loading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .team-card .active-dot {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .team-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: contain;
+            margin: 0 auto 12px;
+            display: block;
+            background: var(--bg3);
+        }
+        .team-logo-placeholder {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--bg3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 12px;
+        }
+        .team-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .team-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .team-role {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .logout-link {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .logout-link:hover { color: var(--error); }</style>
+</head>
+<body>
+<div class="select-page">
+    <div class="select-header">
+        <div class="logo">LOST PUPPIES <span>HUB</span></div>
+        <div class="subtitle">Select a hub to enter</div>
+        <div class="greeting" id="greeting"></div>
+    </div>
+
+    <div class="teams-grid" id="teamsGrid"></div>
+
+    <div id="alertMsg" class="alert" style="max-width:680px;width:100%;"></div>
+
+    <span class="logout-link" onclick="cancelAndLogout()">← Back to login</span>
+</div>
+
+<script>const data = JSON.parse(sessionStorage.getItem('lp_hub_team_select') || 'null');
+    if (!data || !data.tempToken || !Array.isArray(data.teams)) {
+        window.location.href = '/login.html';
+    }
+
+    document.getElementById('greeting').textContent = `Welcome back, ${data.user?.username || ''}!`;
+
+    const grid = document.getElementById('teamsGrid');
+
+    data.teams.forEach(team => {
+        const card = document.createElement('div');
+        card.className = 'team-card';
+        card.dataset.teamId = team.id;
+
+        const logoHtml = team.logoUrl
+            ? `<img src="${team.logoUrl}" class="team-logo" alt="${team.name}" onerror="this.parentNode.querySelector('.team-logo-placeholder')?.style.setProperty('display','flex'); this.style.display='none';">`
+            : '';
+        const placeholderHtml = `<div class="team-logo-placeholder" ${team.logoUrl ? 'style="display:none"' : ''}>${(team.name || 'T')[0].toUpperCase()}</div>`;
+
+        const tag    = team.tag    ? `${team.tag} · ` : '';
+        const region = team.region || '';
+
+        card.innerHTML = `
+            ${logoHtml}
+            ${placeholderHtml}
+            <div class="team-name">${escHtml(team.name)}</div>
+            <div class="team-meta">${escHtml(tag + region)}</div>
+            <div class="team-role">${escHtml(team.role || 'player')}</div>
+        `;
+
+        card.addEventListener('click', () => selectTeam(team.id, card));
+        grid.appendChild(card);
+    });
+
+    async function selectTeam(teamId, card) {
+        const alertEl = document.getElementById('alertMsg');
+        alertEl.className = 'alert';
+        alertEl.textContent = '';
+
+        document.querySelectorAll('.team-card').forEach(c => c.classList.add('loading'));
+
+        try {
+            const res = await fetch('/api/auth/select-team', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${data.tempToken}`,
+                },
+                body: JSON.stringify({ teamId }),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error);
+
+            localStorage.setItem('lp_hub_token', d.token);
+            localStorage.setItem('lp_hub_user',  JSON.stringify(d.user));
+            localStorage.setItem('lp_hub_teams', JSON.stringify(data.teams));
+
+            sessionStorage.removeItem('lp_hub_team_select');
+
+            const role = d.user.role;
+            if (role === 'owner')   window.location.href = '/owner/dashboard.html';
+            else if (role === 'manager') window.location.href = '/manager/dashboard.html';
+            else                         window.location.href = '/player/dashboard.html';
+        } catch (err) {
+            document.querySelectorAll('.team-card').forEach(c => c.classList.remove('loading'));
+            alertEl.textContent = err.message;
+            alertEl.className = 'alert alert-error show';
+        }
+    }
+
+    function cancelAndLogout() {
+        sessionStorage.removeItem('lp_hub_team_select');
+        window.location.href = '/login.html';
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }</script>
+</body>
+</html>

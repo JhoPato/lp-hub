@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — News Drafts</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.news-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+        .news-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; }
+        .news-card-img { width:100%; height:140px; object-fit:cover; background:var(--bg3); display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:2rem; }
+        .news-card-body { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:6px; }
+        .news-card-title { font-weight:700; font-size:0.92rem; line-height:1.3; }
+        .news-card-meta  { font-size:0.72rem; color:var(--text-muted); }
+        .news-card-actions { display:flex; gap:8px; padding:10px 16px; border-top:1px solid var(--border); }
+        .status-badge { display:inline-block; font-size:0.65rem; font-weight:800; letter-spacing:0.06em; padding:2px 8px; border-radius:3px; text-transform:uppercase; }
+        .status-draft      { background:rgba(156,163,175,0.15); color:#9ca3af; border:1px solid rgba(156,163,175,0.3); }
+        .status-pending_review { background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+        .status-published  { background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); }
+        .status-rejected   { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
+        .reject-note { font-size:0.75rem; color:#ef4444; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:4px; padding:6px 10px; margin-top:4px; }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:20px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+        .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+        .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-muted); padding:8px 16px; font-size:0.82rem; font-weight:600; cursor:pointer; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>News</h1>
+                <p>Create drafts — Owner will review and publish</p>
+            </div>
+            <button class="btn btn-primary" onclick="openEditor()">+ New Draft</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setTab('my')" id="tab-my">My Drafts</button>
+            <button class="tab-btn" onclick="setTab('published')" id="tab-published">Published</button>
+        </div>
+
+        <div id="newsList"><p style="color:var(--text-muted);">Loading…</p></div>
+        </div>
+    </main>
+</div>
+
+
+<div class="modal-overlay" id="editorModal" style="display:none;" onclick="if(event.target===this)closeEditor()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="editorTitle">New Draft</div>
+        <input type="hidden" id="editingId">
+        <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input type="text" class="form-input" id="fTitle" placeholder="News headline…" maxlength="300">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Content</label>
+            <textarea class="form-input" id="fContent" rows="5" placeholder="Write the news content…"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group">
+                <label class="form-label">Image URL (optional)</label>
+                <input type="text" class="form-input" id="fImage" placeholder="https://…">
+            </div>
+            <div class="form-group">
+                <label class="form-label">YouTube Video ID (optional)</label>
+                <input type="text" class="form-input" id="fVideoId" placeholder="dQw4w9WgXcQ">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeEditor()">Cancel</button>
+            <button class="btn btn-secondary" id="btnSaveDraft" onclick="saveDraft()">Save Draft</button>
+            <button class="btn btn-primary" id="btnSubmit" onclick="submitForReview()">Submit for Review</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast, formatDate } from '/js/utils.js';
+
+const user = requireAuth(['social', 'owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role === 'owner' ? 'owner' : 'social', 'news');
+
+let currentTab = 'my';
+let allDrafts  = [];
+let liveNews   = [];
+
+async function load() {
+    try {
+        allDrafts = await api('/api/site/news/drafts');
+        render();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+async function loadLive() {
+    try {
+        liveNews = await api('/api/site/news');
+        renderLive();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+window.setTab = (tab) => {
+    currentTab = tab;
+    document.getElementById('tab-my').classList.toggle('active', tab === 'my');
+    document.getElementById('tab-published').classList.toggle('active', tab === 'published');
+    if (tab === 'my') render(); else loadLive();
+};
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+    const el = document.getElementById('newsList');
+    if (!allDrafts.length) { el.innerHTML = '<p style="color:var(--text-muted);">No drafts yet. Click "+ New Draft" to create one.</p>'; return; }
+    el.innerHTML = `<div class="news-grid">${allDrafts.map(d => {
+        const canEdit = ['draft','rejected'].includes(d.status);
+        const canSubmit = d.status === 'draft';
+        return `<div class="news-card">
+            ${d.image ? `<img class="news-card-img" src="${esc(d.image)}" alt="">` : `<div class="news-card-img">📰</div>`}
+            <div class="news-card-body">
+                <div class="news-card-title">${esc(d.title)}</div>
+                <div><span class="status-badge status-${d.status}">${d.status.replace('_',' ')}</span></div>
+                <div class="news-card-meta">Created ${formatDate(d.createdAt)}</div>
+                ${d.reviewNote ? `<div class="reject-note">❌ ${esc(d.reviewNote)}</div>` : ''}
+            </div>
+            <div class="news-card-actions">
+                ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="openEditor('${d._id}')">Edit</button>` : ''}
+                ${canSubmit ? `<button class="btn btn-primary btn-sm" onclick="quickSubmit('${d._id}')">Submit</button>` : ''}
+                ${canEdit ? `<button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="deleteDraft('${d._id}')">Delete</button>` : ''}
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function renderLive() {
+    const el = document.getElementById('newsList');
+    if (!liveNews.length) { el.innerHTML = '<p style="color:var(--text-muted);">No published news yet.</p>'; return; }
+    el.innerHTML = `<div class="news-grid">${liveNews.map(n => `
+        <div class="news-card">
+            ${n.image ? `<img class="news-card-img" src="${esc(n.image)}" alt="">` : `<div class="news-card-img">📰</div>`}
+            <div class="news-card-body">
+                <div class="news-card-title">${esc(n.title)}</div>
+                <div><span class="status-badge status-published">published</span></div>
+                <div class="news-card-meta">${formatDate(n.date)}</div>
+            </div>
+        </div>`).join('')}</div>`;
+}
+
+window.openEditor = async (id) => {
+    document.getElementById('editingId').value = id || '';
+    document.getElementById('editorTitle').textContent = id ? 'Edit Draft' : 'New Draft';
+    if (id) {
+        const d = allDrafts.find(x => x._id === id);
+        if (d) {
+            document.getElementById('fTitle').value   = d.title   || '';
+            document.getElementById('fContent').value = d.content || '';
+            document.getElementById('fImage').value   = d.image   || '';
+            document.getElementById('fVideoId').value = d.video_id || '';
+        }
+        document.getElementById('btnSubmit').textContent = 'Submit for Review';
+    } else {
+        document.getElementById('fTitle').value = document.getElementById('fContent').value =
+        document.getElementById('fImage').value = document.getElementById('fVideoId').value = '';
+        document.getElementById('btnSubmit').textContent = 'Save & Submit';
+    }
+    document.getElementById('editorModal').style.display = 'flex';
+};
+window.closeEditor = () => { document.getElementById('editorModal').style.display = 'none'; };
+
+function getFormData() {
+    return {
+        title:    document.getElementById('fTitle').value.trim(),
+        content:  document.getElementById('fContent').value.trim(),
+        image:    document.getElementById('fImage').value.trim(),
+        video_id: document.getElementById('fVideoId').value.trim(),
+    };
+}
+
+window.saveDraft = async () => {
+    const data = getFormData();
+    if (!data.title) { toast('Title is required.', 'error'); return; }
+    const id = document.getElementById('editingId').value;
+    try {
+        if (id) {
+            const updated = await api(`/api/site/news/draft/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+            allDrafts = allDrafts.map(d => d._id === id ? updated : d);
+        } else {
+            const created = await api('/api/site/news/draft', { method: 'POST', body: JSON.stringify(data) });
+            allDrafts.unshift(created);
+        }
+        closeEditor(); render(); toast('Draft saved.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.submitForReview = async () => {
+    const data = getFormData();
+    if (!data.title) { toast('Title is required.', 'error'); return; }
+    const id = document.getElementById('editingId').value;
+    try {
+        let draftId = id;
+        if (!id) {
+            const created = await api('/api/site/news/draft', { method: 'POST', body: JSON.stringify(data) });
+            draftId = created._id;
+            allDrafts.unshift(created);
+        } else {
+            const updated = await api(`/api/site/news/draft/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+            allDrafts = allDrafts.map(d => d._id === id ? updated : d);
+        }
+        const submitted = await api(`/api/site/news/submit/${draftId}`, { method: 'POST' });
+        allDrafts = allDrafts.map(d => d._id === draftId ? submitted : d);
+        closeEditor(); render(); toast('Submitted for review!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.quickSubmit = async (id) => {
+    try {
+        const submitted = await api(`/api/site/news/submit/${id}`, { method: 'POST' });
+        allDrafts = allDrafts.map(d => d._id === id ? submitted : d);
+        render(); toast('Submitted for review!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteDraft = async (id) => {
+    if (!confirm('Delete this draft?')) return;
+    try {
+        await api(`/api/site/news/draft/${id}`, { method: 'DELETE' });
+        allDrafts = allDrafts.filter(d => d._id !== id);
+        render(); toast('Draft deleted.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+load();</script>
+<script src="/js/discord-notify.js"></script>
+</body>
+</html>

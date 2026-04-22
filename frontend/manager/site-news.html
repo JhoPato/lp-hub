@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Site News (Owner)</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.news-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+        .news-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; }
+        .news-card-img { width:100%; height:130px; object-fit:cover; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:2rem; color:var(--text-muted); }
+        .news-card-body { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:5px; }
+        .news-card-title { font-weight:700; font-size:0.9rem; line-height:1.3; }
+        .news-card-meta  { font-size:0.72rem; color:var(--text-muted); }
+        .news-card-actions { display:flex; gap:8px; padding:10px 16px; border-top:1px solid var(--border); flex-wrap:wrap; }
+        .status-badge { display:inline-block; font-size:0.65rem; font-weight:800; letter-spacing:0.06em; padding:2px 8px; border-radius:3px; text-transform:uppercase; }
+        .status-draft          { background:rgba(156,163,175,0.15); color:#9ca3af; border:1px solid rgba(156,163,175,0.3); }
+        .status-pending_review { background:rgba(251,191,36,0.2); color:#fbbf24; border:1px solid rgba(251,191,36,0.4); }
+        .status-published      { background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); }
+        .status-rejected       { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
+        .pending-highlight { border-color:rgba(251,191,36,0.5) !important; }
+
+        .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+        .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-muted); padding:8px 16px; font-size:0.82rem; font-weight:600; cursor:pointer; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .pending-count { display:inline-block; background:var(--accent); color:#fff; font-size:0.6rem; font-weight:900; padding:1px 5px; border-radius:10px; margin-left:5px; vertical-align:middle; }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:16px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+        .draft-preview { background:var(--bg3); border-radius:var(--radius); padding:14px; margin-bottom:16px; font-size:0.84rem; line-height:1.5; }
+        .draft-by { font-size:0.72rem; color:var(--text-muted); margin-bottom:8px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>News Manager</h1>
+                <p>Review drafts, publish to the public site, manage live news</p>
+            </div>
+        </div>
+
+        <div class="tabs" style="justify-content:space-between;align-items:center;">
+            <div style="display:flex;">
+                <button class="tab-btn active" onclick="setTab('review')" id="tab-review">
+                    Pending Review <span class="pending-count" id="pendingBadge" style="display:none;"></span>
+                </button>
+                <button class="tab-btn" onclick="setTab('drafts')" id="tab-drafts">All Drafts</button>
+                <button class="tab-btn" onclick="setTab('live')" id="tab-live">Live</button>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openCreate()" style="margin-bottom:8px;">+ New Post</button>
+        </div>
+
+        <div id="newsList"><p style="color:var(--text-muted);">Loading…</p></div>
+        </div>
+    </main>
+</div>
+
+
+<div class="modal-overlay" id="reviewModal" style="display:none;" onclick="if(event.target===this)closeReview()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title">Review Draft</div>
+        <div class="draft-by" id="draftBy"></div>
+        <div class="draft-preview" id="draftPreview"></div>
+        <div class="form-group" id="rejectGroup" style="display:none;">
+            <label class="form-label">Rejection note (optional)</label>
+            <textarea class="form-input" id="rejectNote" rows="2" placeholder="Tell the author what to fix…"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeReview()">Cancel</button>
+            <button class="btn btn-secondary" style="color:var(--error);border-color:var(--error);" onclick="toggleReject()" id="rejectToggleBtn">Reject</button>
+            <button class="btn btn-primary" id="publishBtn" onclick="publishDraft()">Publish to Site</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="editModal" style="display:none;" onclick="if(event.target===this)closeCreate()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="editModalTitle">New Post</div>
+        <input type="hidden" id="editId">
+        <input type="hidden" id="editPublishedId">
+        <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input type="text" class="form-input" id="eTitle" maxlength="300">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Content</label>
+            <textarea class="form-input" id="eContent" rows="5"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group">
+                <label class="form-label">Image URL</label>
+                <input type="text" class="form-input" id="eImage" placeholder="https://…">
+            </div>
+            <div class="form-group">
+                <label class="form-label">YouTube Video ID</label>
+                <input type="text" class="form-input" id="eVideoId" placeholder="dQw4w9WgXcQ">
+            </div>
+        </div>
+        <div class="form-group" id="eDateGroup" style="display:none;margin-top:12px;">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="eDate">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeCreate()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEdit()">Publish</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast, formatDate } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'site-news');
+
+let drafts   = [];
+let liveNews = [];
+let currentTab = 'review';
+let reviewingId = null;
+let rejectOpen  = false;
+
+async function loadDrafts() {
+    drafts = await api('/api/site/news/drafts');
+    const pending = drafts.filter(d => d.status === 'pending_review');
+    const badge   = document.getElementById('pendingBadge');
+    badge.textContent = pending.length;
+    badge.style.display = pending.length ? 'inline-block' : 'none';
+    render();
+}
+async function loadLive() {
+    liveNews = await api('/api/site/news');
+    renderLive();
+}
+
+window.setTab = (tab) => {
+    currentTab = tab;
+    ['review','drafts','live'].forEach(t => document.getElementById(`tab-${t}`).classList.toggle('active', t === tab));
+    if (tab === 'live') loadLive(); else render();
+};
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+    const el = document.getElementById('newsList');
+    let list = drafts;
+    if (currentTab === 'review') list = drafts.filter(d => d.status === 'pending_review');
+    if (!list.length) {
+        el.innerHTML = `<p style="color:var(--text-muted);">${currentTab === 'review' ? 'No drafts pending review.' : 'No drafts.'}</p>`;
+        return;
+    }
+    el.innerHTML = `<div class="news-grid">${list.map(d => `
+        <div class="news-card ${d.status==='pending_review'?'pending-highlight':''}">
+            ${d.image ? `<img class="news-card-img" src="${esc(d.image)}" alt="">` : `<div class="news-card-img">📰</div>`}
+            <div class="news-card-body">
+                <div class="news-card-title">${esc(d.title)}</div>
+                <div><span class="status-badge status-${d.status}">${d.status.replace('_',' ')}</span></div>
+                <div class="news-card-meta">By ${esc(d.createdByName)} · ${formatDate(d.createdAt)}</div>
+            </div>
+            <div class="news-card-actions">
+                ${d.status==='pending_review'?`<button class="btn btn-primary btn-sm" onclick="openReview('${d._id}')">Review</button>`:''}
+                ${['draft','rejected'].includes(d.status)?`<button class="btn btn-secondary btn-sm" onclick="openEditDraft('${d._id}')">Edit</button>`:''}
+                ${d.status!=='published'?`<button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="deleteDraft('${d._id}')">Delete</button>`:''}
+            </div>
+        </div>`).join('')}</div>`;
+}
+
+function renderLive() {
+    const el = document.getElementById('newsList');
+    if (!liveNews.length) { el.innerHTML='<p style="color:var(--text-muted);">No live news.</p>'; return; }
+    el.innerHTML = `<div class="news-grid">${liveNews.map(n => `
+        <div class="news-card">
+            ${n.image?`<img class="news-card-img" src="${esc(n.image)}" alt="">`:`<div class="news-card-img">📰</div>`}
+            <div class="news-card-body">
+                <div class="news-card-title">${esc(n.title)}</div>
+                <div><span class="status-badge status-published">live</span></div>
+                <div class="news-card-meta">${n.date || '—'}</div>
+            </div>
+            <div class="news-card-actions">
+                <button class="btn btn-secondary btn-sm" onclick="openEditLive('${n.id}')">Edit</button>
+                <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="deleteLive('${n.id}')">Delete</button>
+            </div>
+        </div>`).join('')}</div>`;
+}
+
+
+window.openReview = (id) => {
+    const d = drafts.find(x => x._id === id);
+    if (!d) return;
+    reviewingId = id;
+    rejectOpen  = false;
+    document.getElementById('draftBy').textContent = `Submitted by ${d.createdByName}`;
+    document.getElementById('draftPreview').innerHTML = `<strong>${esc(d.title)}</strong><br><br>${esc(d.content)}`;
+    document.getElementById('rejectGroup').style.display = 'none';
+    document.getElementById('rejectNote').value = '';
+    document.getElementById('rejectToggleBtn').textContent = 'Reject';
+    document.getElementById('reviewModal').style.display = 'flex';
+};
+window.closeReview = () => { document.getElementById('reviewModal').style.display = 'none'; reviewingId = null; };
+
+window.toggleReject = () => {
+    rejectOpen = !rejectOpen;
+    document.getElementById('rejectGroup').style.display = rejectOpen ? 'block' : 'none';
+    document.getElementById('rejectToggleBtn').textContent = rejectOpen ? 'Cancel Reject' : 'Reject';
+};
+
+window.publishDraft = async () => {
+    if (!reviewingId) return;
+    if (rejectOpen) {
+        const note = document.getElementById('rejectNote').value.trim();
+        try {
+            const d = await api(`/api/site/news/reject/${reviewingId}`, { method: 'POST', body: JSON.stringify({ note }) });
+            drafts = drafts.map(x => x._id === reviewingId ? d : x);
+            closeReview(); render(); toast('Draft rejected.', 'success');
+        } catch (err) { toast(err.message, 'error'); }
+    } else {
+        try {
+            const d = await api(`/api/site/news/publish/${reviewingId}`, { method: 'POST' });
+            drafts = drafts.map(x => x._id === reviewingId ? d : x);
+            closeReview(); render(); toast('Published to site!', 'success');
+        } catch (err) { toast(err.message, 'error'); }
+    }
+};
+
+
+window.openEditLive = (id) => {
+    const n = liveNews.find(x => x.id === id);
+    if (!n) return;
+    document.getElementById('editId').value = '';
+    document.getElementById('editPublishedId').value = id;
+    document.getElementById('editModalTitle').textContent = 'Edit Live Post';
+    document.getElementById('eTitle').value   = n.title    || '';
+    document.getElementById('eContent').value = n.content  || '';
+    document.getElementById('eImage').value   = n.image    || '';
+    document.getElementById('eVideoId').value = n.video_id || '';
+    document.getElementById('eDate').value    = toInputDate(n.date);
+    document.getElementById('eDateGroup').style.display = 'block';
+    document.getElementById('editModal').style.display = 'flex';
+};
+
+window.openEditDraft = (id) => {
+    const d = drafts.find(x => x._id === id);
+    if (!d) return;
+    document.getElementById('editId').value = id;
+    document.getElementById('editPublishedId').value = '';
+    document.getElementById('editModalTitle').textContent = 'Edit Draft';
+    document.getElementById('eTitle').value   = d.title;
+    document.getElementById('eContent').value = d.content;
+    document.getElementById('eImage').value   = d.image;
+    document.getElementById('eVideoId').value = d.video_id;
+    document.getElementById('eDateGroup').style.display = 'none';
+    document.getElementById('editModal').style.display = 'flex';
+};
+
+window.openCreate = () => {
+    document.getElementById('editId').value = '';
+    document.getElementById('editPublishedId').value = '';
+    document.getElementById('editModalTitle').textContent = 'New Post';
+    document.getElementById('eTitle').value = document.getElementById('eContent').value =
+    document.getElementById('eImage').value = document.getElementById('eVideoId').value = '';
+    document.getElementById('eDateGroup').style.display = 'none';
+    document.getElementById('editModal').style.display = 'flex';
+};
+window.closeCreate = () => { document.getElementById('editModal').style.display = 'none'; };
+
+function toInputDate(d) {
+    if (!d) return '';
+    const parts = d.split('/');
+    if (parts.length !== 3) return '';
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+function toApiDate(d) {
+    if (!d) return '';
+    const parts = d.split('-');
+    if (parts.length !== 3) return '';
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+window.saveEdit = async () => {
+    const publishedId = document.getElementById('editPublishedId').value;
+    const dateVal     = document.getElementById('eDate').value;
+    const data = {
+        title:    document.getElementById('eTitle').value.trim(),
+        content:  document.getElementById('eContent').value.trim(),
+        image:    document.getElementById('eImage').value.trim(),
+        video_id: document.getElementById('eVideoId').value.trim(),
+        ...(publishedId && dateVal ? { date: toApiDate(dateVal) } : {}),
+    };
+    if (!data.title) { toast('Title is required.', 'error'); return; }
+
+    const editId = document.getElementById('editId').value;
+    try {
+        if (publishedId) {
+            await api(`/api/site/news/live/${publishedId}`, { method: 'PUT', body: JSON.stringify(data) });
+            toast('Live post updated!', 'success');
+            closeCreate(); await loadLive();
+        } else if (editId) {
+            const updated = await api(`/api/site/news/draft/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+            drafts = drafts.map(d => d._id === editId ? updated : d);
+            toast('Draft updated.', 'success');
+            closeCreate(); render();
+        } else {
+            const created = await api('/api/site/news/draft', { method: 'POST', body: JSON.stringify(data) });
+            const published = await api(`/api/site/news/publish/${created._id}`, { method: 'POST' });
+            drafts.unshift(published);
+            toast('Published to site!', 'success');
+            closeCreate(); render();
+        }
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteDraft = async (id) => {
+    if (!confirm('Delete this draft?')) return;
+    try {
+        await api(`/api/site/news/draft/${id}`, { method: 'DELETE' });
+        drafts = drafts.filter(d => d._id !== id);
+        render(); toast('Deleted.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteLive = async (publishedId) => {
+    if (!confirm('Delete this live post from the public site?')) return;
+    try {
+        await api(`/api/site/news/live/${publishedId}`, { method: 'DELETE' });
+        liveNews = liveNews.filter(n => n.id !== publishedId);
+        renderLive(); toast('Deleted from site.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+loadDrafts();</script>
+</body>
+</html>

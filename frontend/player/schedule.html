@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Schedule</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.event-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:10px; display:flex; gap:16px; align-items:flex-start; }
+        .event-date-block { text-align:center; background:var(--bg3); border-radius:var(--radius); padding:8px 12px; min-width:52px; flex-shrink:0; }
+        .event-day   { font-size:1.4rem; font-weight:900; color:var(--accent); line-height:1; }
+        .event-month { font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; }
+        .event-info  { flex:1; }
+        .event-title { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+        .event-meta  { font-size:0.78rem; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+        .month-header { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); padding:12px 0 8px; border-bottom:1px solid var(--border); margin-bottom:10px; margin-top:20px; }
+        .schedule-filters { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+        .filter-btn { padding:6px 14px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; }
+        .filter-btn.active { border-color:var(--accent); color:var(--accent); }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:20px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Schedule</h1>
+            <p>Upcoming matches, training sessions and tournaments</p>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+            <div class="schedule-filters" style="margin:0;">
+                <button class="filter-btn active" data-range="30">Next 30 Days</button>
+                <button class="filter-btn" data-range="7">Next 7 Days</button>
+                <button class="filter-btn" data-range="90">Next 3 Months</button>
+            </div>
+            <button class="btn btn-secondary" onclick="openSubscribeModal()" style="font-size:0.78rem;">📅 Subscribe</button>
+        </div>
+        <div id="scheduleList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="subscribeModal" style="display:none;" onclick="if(event.target===this)closeSubscribeModal()">
+    <div class="modal-box" style="max-width:480px;" onclick="event.stopPropagation()">
+        <div class="modal-title">📅 Subscribe to Calendar</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">
+            Use this URL to subscribe to your team's schedule in any calendar app. Events update automatically when the schedule changes.
+        </p>
+
+        <div class="form-group">
+            <label class="form-label" style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:6px;">Calendar Feed URL (.ics)</label>
+            <div style="display:flex;gap:8px;">
+                <input style="flex:1;font-size:0.78rem;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;color:var(--text);" id="icsUrlBox" type="text" readonly>
+                <button class="btn btn-secondary" onclick="copyIcsUrl()" style="white-space:nowrap;">Copy</button>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openInGoogle()" style="flex:1;">Open in Google Calendar</button>
+            <a id="icsDownloadBtn" href="#" class="btn btn-secondary" style="flex:1;text-align:center;">⬇ Download .ics</a>
+        </div>
+
+        <details style="margin-top:20px;">
+            <summary style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;">How to subscribe in Apple / Outlook →</summary>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:10px;line-height:1.6;">
+                <strong style="color:var(--text);">Apple Calendar:</strong> File → New Calendar Subscription → paste URL<br>
+                <strong style="color:var(--text);">Outlook:</strong> Add Calendar → From Internet → paste URL<br>
+                <strong style="color:var(--text);">Google Calendar:</strong> Other calendars (+) → From URL → paste URL
+            </div>
+        </details>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeSubscribeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDateTime, toast } from '/js/utils.js';
+
+const user = requireAuth();
+let currentRange = 30;
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'schedule');
+    load();
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRange = Number(btn.dataset.range);
+            load();
+        });
+    });
+}
+
+const typeIcon  = { tournament:'🏆', match:'⚔️', stream:'🔴', training:'🎮', warmup:'🔥', other:'📅' };
+const typeColor = { tournament:'var(--accent)', match:'#ffd700', stream:'#ff4444', training:'var(--success)', warmup:'#ff8c00', other:'var(--text-muted)' };
+
+async function load() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+
+        const from = new Date().toISOString();
+        const to   = new Date(Date.now() + currentRange * 86400000).toISOString();
+        const events = await api(`/api/schedule?from=${from}&to=${to}`);
+        const el = document.getElementById('scheduleList');
+
+        if (!events.length) { el.innerHTML = '<p style="color:var(--text-muted);">No events scheduled.</p>'; return; }
+
+        const grouped = {};
+        events.forEach(e => {
+            const key = new Date(e.startDate).toLocaleString('en-GB', { month: 'long', year: 'numeric' });
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(e);
+        });
+
+        el.innerHTML = Object.entries(grouped).map(([month, evts]) => `
+            <div class="month-header">${month}</div>
+            ${evts.map(e => {
+                const d = new Date(e.startDate);
+                return `<div class="event-card">
+                    <div class="event-date-block">
+                        <div class="event-day">${d.getDate()}</div>
+                        <div class="event-month">${d.toLocaleString('en-GB',{month:'short'})}</div>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title" style="color:${typeColor[e.type]||'inherit'};">
+                            ${typeIcon[e.type]||'📅'} ${e.title}
+                        </div>
+                        ${e.description ? `<div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px;">${e.description}</div>` : ''}
+                        <div class="event-meta">
+                            <span>${formatDateTime(e.startDate)}</span>
+                            ${e.opponent ? `<span>vs ${e.opponent}</span>` : ''}
+                            ${e.streamUrl ? `<a href="${e.streamUrl}" target="_blank" style="color:var(--accent);">🔴 Watch stream</a>` : ''}
+                            ${e.isRecurring ? `<span style="color:var(--text-muted);">🔁 ${e.recurrenceRule?.charAt(0).toUpperCase() + e.recurrenceRule?.slice(1)}</span>` : ''}
+                            <span style="cursor:pointer;color:var(--text-muted);" title="Add to Google Calendar" onclick="addToGoogle(${JSON.stringify(e).replace(/"/g,'&quot;')})">📆 Add to calendar</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}`).join('');
+    } catch (err) {
+        document.getElementById('scheduleList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+window.addToGoogle = function(e) {
+    if (typeof e === 'string') { try { e = JSON.parse(e); } catch { return; } }
+    const fmt = d => new Date(d).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    const start   = fmt(e.startDate);
+    const end     = e.endDate ? fmt(e.endDate) : fmt(new Date(new Date(e.startDate).getTime() + 3600000));
+    const details = [e.description, e.opponent ? `vs ${e.opponent}` : '', e.streamUrl ? `Stream: ${e.streamUrl}` : ''].filter(Boolean).join('\n');
+    const url = `https://calendar.google.com/calendar/r/eventedit?` +
+        `text=${encodeURIComponent(e.title)}&` +
+        `dates=${start}/${end}&` +
+        `details=${encodeURIComponent(details)}`;
+    window.open(url, '_blank');
+};
+
+let _icsUrl = '';
+window.openSubscribeModal = async function() {
+    document.getElementById('subscribeModal').style.display = 'flex';
+    document.getElementById('icsUrlBox').value = 'Loading...';
+    try {
+        const data = await api('/api/schedule/ics-token');
+        _icsUrl = data.icsUrl;
+        document.getElementById('icsUrlBox').value = _icsUrl;
+        const dlBtn = document.getElementById('icsDownloadBtn');
+        dlBtn.href = _icsUrl;
+        dlBtn.download = 'schedule.ics';
+    } catch (err) {
+        document.getElementById('icsUrlBox').value = 'Error: ' + err.message;
+    }
+};
+window.closeSubscribeModal = function() {
+    document.getElementById('subscribeModal').style.display = 'none';
+};
+window.copyIcsUrl = function() {
+    navigator.clipboard.writeText(_icsUrl).then(() => toast('URL copied!', 'success'));
+};
+window.openInGoogle = function() {
+    if (_icsUrl) window.open(`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(_icsUrl)}`, '_blank');
+};</script>
+</body>
+</html>

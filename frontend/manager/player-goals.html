@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Individual</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:28px; }
+        .tab-btn { padding:10px 20px; background:none; border:none; border-bottom:2px solid transparent;
+            color:var(--text-muted); font-size:0.82rem; font-weight:600; text-transform:uppercase;
+            letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-pane { display:none; } .tab-pane.active { display:block; }
+
+        /* ── Player cards ── */
+        .perf-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+        .perf-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+        .perf-card-header { padding:14px 18px 12px; border-bottom:1px solid var(--border);
+            display:flex; align-items:center; gap:12px; }
+        .perf-avatar { width:38px; height:38px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:0.85rem; font-weight:900; color:#fff; flex-shrink:0; }
+        .perf-name  { font-size:0.95rem; font-weight:800; line-height:1.2; }
+        .perf-tag   { font-size:0.72rem; color:var(--text-muted); font-weight:400; }
+        .perf-meta  { font-size:0.68rem; color:var(--text-muted); margin-top:2px; }
+        .perf-acs   { margin-left:auto; text-align:right; }
+        .perf-acs-num   { font-size:1.6rem; font-weight:900; line-height:1; }
+        .perf-acs-label { font-size:0.58rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
+
+        .perf-groups { padding:4px 18px 10px; }
+        .perf-group-title { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em;
+            color:var(--text-muted); opacity:0.55; padding:10px 0 5px; }
+        .perf-stat { display:flex; justify-content:space-between; align-items:center;
+            padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .perf-stat:last-child { border-bottom:none; }
+        .perf-stat-label { font-size:0.71rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; }
+        .perf-stat-val   { font-size:0.83rem; font-weight:700; }
+        .stat-with-bar { display:flex; align-items:center; gap:8px; }
+        .mini-bar-track { width:70px; height:4px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+        .mini-bar-fill  { height:100%; border-radius:2px; transition:width .6s ease; }
+
+        .mk-pill { display:inline-block; padding:2px 6px; border-radius:3px; font-size:0.68rem; font-weight:700; margin-right:3px; }
+        .mk2 { background:rgba(255,255,255,0.06); }
+        .mk3 { background:rgba(240,165,0,0.15); color:#f0a500; }
+        .mk4 { background:rgba(87,242,135,0.12); color:var(--success); }
+        .mk5 { background:rgba(229,57,53,0.15); color:var(--error); }
+
+        .trend-dot { display:inline-flex; align-items:center; justify-content:center;
+            width:20px; height:20px; border-radius:3px; font-size:0.56rem; font-weight:900; }
+        .trend-dot.W { background:rgba(87,242,135,0.2); color:var(--success); }
+        .trend-dot.L { background:rgba(255,68,68,0.15); color:var(--error); }
+        .trend-dot.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+
+        .perf-footer { padding:10px 18px 14px; border-top:1px solid var(--border); }
+        .perf-footer-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:6px; }
+        .perf-form-row { display:flex; flex-wrap:wrap; gap:3px; }
+
+        /* ── Sub-tabs ── */
+        .subtabs { display:flex; gap:6px; margin-bottom:22px; }
+        .subtab-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--border);
+            background:none; color:var(--text-muted); font-size:0.74rem; font-weight:600;
+            text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:all .13s; }
+        .subtab-btn.active { background:rgba(223,88,64,0.12); border-color:var(--accent); color:var(--accent); }
+        .subtab-pane { display:none; } .subtab-pane.active { display:block; }
+
+        /* ── Coming soon placeholder ── */
+        .coming-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+            padding:48px 32px; text-align:center; max-width:480px; margin:0 auto; }
+        .coming-icon { font-size:2.5rem; margin-bottom:16px; opacity:0.5; }
+        .coming-title { font-size:1rem; font-weight:700; margin-bottom:8px; }
+        .coming-desc  { font-size:0.83rem; color:var(--text-muted); line-height:1.7; margin-bottom:20px; }
+        .steps { text-align:left; background:var(--bg3); border-radius:8px; padding:16px 20px;
+            font-size:0.78rem; color:var(--text-muted); line-height:2; margin-bottom:20px; }
+        .steps strong { color:var(--text); }
+
+        /* ── Goals shared ── */
+        .form-row { margin-bottom:14px; }
+        .form-row label { display:block; font-size:0.72rem; color:var(--text-muted); margin-bottom:5px;
+            text-transform:uppercase; letter-spacing:0.06em; }
+        .form-row select, .form-row input[type="number"] {
+            width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:6px;
+            padding:8px 10px; color:var(--text); font-size:0.85rem; box-sizing:border-box; }
+        .form-row select:focus, .form-row input:focus { outline:none; border-color:var(--accent); }
+
+        .empty-state { display:flex; flex-direction:column; align-items:center; padding:52px 20px;
+            text-align:center; color:var(--text-muted); gap:10px; }
+        .empty-state svg { opacity:0.2; }
+        .empty-state p { font-size:0.83rem; max-width:280px; line-height:1.6; }
+
+        /* ── Manager goal table ── */
+        .goal-table { width:100%; border-collapse:collapse; font-size:0.83rem; }
+        .goal-table th { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em;
+            color:var(--text-muted); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .goal-table td { padding:12px 12px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .goal-table tr:hover td { background:rgba(255,255,255,0.02); }
+        .goal-table tr.no-goal td { opacity:0.5; }
+        .goal-num { font-size:1rem; font-weight:800; }
+        .goal-unit { font-size:0.68rem; color:var(--text-muted); margin-left:2px; }
+        .goal-actions { display:flex; gap:6px; }
+
+        /* ── Player pills (selector) ── */
+        .player-pill { display:inline-flex; align-items:center; gap:7px; padding:5px 12px 5px 6px;
+            border-radius:20px; border:1px solid var(--border); background:var(--bg2);
+            color:var(--text-muted); font-size:0.78rem; font-weight:600; cursor:pointer;
+            transition:all .13s; white-space:nowrap; }
+        .player-pill:hover { border-color:var(--accent); color:var(--text); }
+        .player-pill.active { border-color:var(--accent); background:rgba(223,88,64,0.12); color:var(--text); }
+        .pill-avatar { width:24px; height:24px; border-radius:50%; display:inline-flex;
+            align-items:center; justify-content:center; font-size:0.6rem; font-weight:900; color:#fff; flex-shrink:0; }
+        .pill-noriot { font-size:0.6rem; color:var(--error); opacity:0.7; }
+
+        /* ── Goal modal ── */
+        .goal-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6);
+            backdrop-filter:blur(4px); z-index:500; display:none; align-items:center; justify-content:center; }
+        .goal-modal-overlay.open { display:flex; }
+        .goal-modal { background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+            padding:28px; width:440px; max-width:95vw; }
+        .goal-modal h3 { font-size:1rem; font-weight:800; margin:0 0 20px; }
+        .goal-modal-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        /* custom player picker inside modal */
+        .modal-player-grid { display:flex; flex-wrap:wrap; gap:6px; padding:10px;
+            background:var(--bg3); border:1px solid var(--border); border-radius:8px; min-height:48px; }
+        .modal-player-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 5px;
+            border-radius:16px; border:1px solid var(--border); background:var(--bg2);
+            color:var(--text-muted); font-size:0.75rem; font-weight:600; cursor:pointer; transition:all .12s; }
+        .modal-player-pill:hover { border-color:var(--accent); color:var(--text); }
+        .modal-player-pill.active { border-color:var(--accent); background:rgba(223,88,64,0.14); color:var(--text); }
+        .modal-pill-avatar { width:20px; height:20px; border-radius:50%; display:inline-flex;
+            align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; color:#fff; flex-shrink:0; }
+        .modal-all-pill { border-style:dashed; }
+        .num-input-wrap { display:flex; align-items:center; gap:6px; }
+        .num-btn { width:30px; height:30px; border-radius:6px; border:1px solid var(--border);
+            background:var(--bg3); color:var(--text); font-size:1rem; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:all .12s; flex-shrink:0; }
+        .num-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .num-val { width:44px; text-align:center; background:var(--bg3); border:1px solid var(--border);
+            border-radius:6px; padding:6px 0; font-size:0.9rem; font-weight:700; color:var(--text); }
+        .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+
+        /* ── Player goal view ── */
+        .player-goal-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+        .player-goal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+            padding:18px 16px; text-align:center; }
+        .player-goal-box-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.1em;
+            color:var(--text-muted); margin-bottom:10px; }
+        .player-goal-box-val { font-size:2rem; font-weight:900; line-height:1; margin-bottom:4px; }
+        .player-goal-box-sub { font-size:0.72rem; color:var(--text-muted); }
+        .adj-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
+        .adj-btn { width:26px; height:26px; border-radius:50%; border:1px solid var(--border);
+            background:var(--bg3); color:var(--text); font-size:1rem; line-height:1; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:all .12s; }
+        .adj-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .adj-limit { font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:4px; }
+        .progress-section h3 { font-size:0.78rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:0.08em; color:var(--text-muted); margin:0 0 14px; }
+        .prog-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+        .prog-label { font-size:0.8rem; font-weight:600; width:90px; flex-shrink:0; }
+        .prog-track { flex:1; height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; }
+        .prog-fill  { height:100%; border-radius:4px; background:var(--accent); transition:width .6s ease; }
+        .prog-count { font-size:0.78rem; font-weight:700; width:40px; text-align:right; flex-shrink:0; }
+        .goal-meta  { font-size:0.75rem; color:var(--text-muted); margin-bottom:20px; }
+
+        /* ── Ranked stats ── */
+        .ranked-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:24px; }
+        .ranked-stat-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 12px; text-align:center; }
+        .ranked-stat-val   { font-size:1.6rem; font-weight:900; line-height:1; }
+        .ranked-stat-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-top:5px; }
+        .match-row { display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; }
+        .match-result { font-size:0.7rem; font-weight:900; width:18px; text-align:center; }
+        .match-result.W { color:var(--success); }
+        .match-result.L { color:var(--error); }
+        .match-map   { font-size:0.78rem; font-weight:700; flex:1; min-width:0; }
+        .match-score { font-size:0.75rem; color:var(--text-muted); width:38px; text-align:center; }
+        .match-agent { font-size:0.72rem; color:var(--text-muted); width:64px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .match-acs   { font-size:0.82rem; font-weight:800; width:36px; text-align:right; }
+        .match-kda   { font-size:0.72rem; color:var(--text-muted); width:60px; text-align:right; }
+        .match-hs    { font-size:0.72rem; width:38px; text-align:right; }
+        .match-date  { font-size:0.65rem; color:var(--text-muted); width:52px; text-align:right; flex-shrink:0; }
+        /* ── Training chart ── */
+        .training-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:24px; }
+        .day-chart { display:flex; gap:6px; align-items:flex-end; height:80px; margin-bottom:16px; }
+        .day-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .day-bar-stack { display:flex; flex-direction:column; justify-content:flex-end; width:100%; flex:1; gap:1px; }
+        .day-bar-dm  { background:var(--accent); border-radius:2px 2px 0 0; min-height:0; transition:height .4s; }
+        .day-bar-tdm { background:#9f7aea; border-radius:2px 2px 0 0; min-height:0; transition:height .4s; }
+        .day-label { font-size:0.6rem; color:var(--text-muted); }
+        .day-count { font-size:0.65rem; font-weight:700; }
+    </style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+            <div class="page-header">
+                <div>
+                    <h1>Individual</h1>
+                    <p style="color:var(--text-muted);">Player performance by source</p>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="individual" onclick="showTab('individual',this)">Individual Performance</button>
+                <button class="tab-btn"        data-tab="goals"      onclick="showTab('goals',this)">Goals</button>
+            </div>
+
+            <!-- ── INDIVIDUAL PERFORMANCE ── -->
+            <div id="tab-individual" class="tab-pane active">
+                <!-- Player selector (manager/captain only) -->
+                <div id="playerSelectorWrap" style="display:none;margin-bottom:20px;">
+                    <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">Viewing player</div>
+                    <div id="playerSelector" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                </div>
+
+                <div class="subtabs" style="align-items:center;">
+                    <button class="subtab-btn active" data-subtab="praccs"   onclick="showSubtab('praccs',this)">Praccs</button>
+                    <button class="subtab-btn"        data-subtab="ranked"   onclick="showSubtab('ranked',this)">Ranked</button>
+                    <button class="subtab-btn"        data-subtab="training" onclick="showSubtab('training',this)">Training</button>
+                </div>
+
+                <div id="subtab-praccs" class="subtab-pane active">
+                    <div id="praccsContent"><p style="color:var(--text-muted);">Loading...</p></div>
+                </div>
+
+                <div id="subtab-ranked" class="subtab-pane">
+                    <div id="rankedContent"><p style="color:var(--text-muted);">Loading…</p></div>
+                </div>
+
+                <div id="subtab-training" class="subtab-pane">
+                    <div id="trainingContent"><p style="color:var(--text-muted);">Loading…</p></div>
+                </div>
+            </div>
+
+            <!-- ── GOALS ── -->
+            <div id="tab-goals" class="tab-pane">
+                <div id="goalsContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- ── Manager Goal Modal ── -->
+<div class="goal-modal-overlay" id="goalModal">
+    <div class="goal-modal">
+        <h3 id="modalTitle">Set Goal</h3>
+        <input type="hidden" id="modalGoalId">
+        <input type="hidden" id="modalPlayer" value="all">
+        <div class="form-row">
+            <label>Player</label>
+            <div class="modal-player-grid" id="modalPlayerGrid"></div>
+        </div>
+        <div class="goal-modal-row">
+            <div class="form-row" style="margin-bottom:0;">
+                <label>Ranked / day</label>
+                <div class="num-input-wrap">
+                    <button class="num-btn" onclick="adjModal('ranked',-1)">−</button>
+                    <input class="num-val" id="modalRanked" type="number" min="0" max="20" value="2">
+                    <button class="num-btn" onclick="adjModal('ranked',+1)">+</button>
+                </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+                <label>Deathmatch / day</label>
+                <div class="num-input-wrap">
+                    <button class="num-btn" onclick="adjModal('dm',-1)">−</button>
+                    <input class="num-val" id="modalDM" type="number" min="0" max="20" value="3">
+                    <button class="num-btn" onclick="adjModal('dm',+1)">+</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row" style="margin-top:12px;">
+            <label>Warmup (min / day) <span style="opacity:0.5;">— optional</span></label>
+            <div class="num-input-wrap">
+                <button class="num-btn" onclick="adjModal('warmup',-5)">−</button>
+                <input class="num-val" id="modalWarmup" type="number" min="0" max="120" value="30" style="width:54px;">
+                <button class="num-btn" onclick="adjModal('warmup',+5)">+</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeGoalModal()">Cancel</button>
+            <button class="btn btn-primary" id="modalSaveBtn" onclick="saveGoal()">Save Goal</button>
+        </div>
+    </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- ── Confirm Modal ── -->
+<div class="goal-modal-overlay" id="confirmModal">
+    <div class="goal-modal" style="width:360px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:12px;">🗑</div>
+        <h3 id="confirmTitle" style="margin-bottom:8px;">Delete Goal?</h3>
+        <p id="confirmMsg" style="font-size:0.83rem;color:var(--text-muted);margin-bottom:24px;line-height:1.6;"></p>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+            <button class="btn btn-primary" id="confirmOkBtn"
+                style="background:var(--error);border-color:var(--error);"
+                onclick="confirmOk()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { api, requireAuth } from '/js/api.js';
+import { buildSidebar } from '/js/utils.js';
+
+const user = requireAuth(['manager','captain','player']);
+if (!user) throw new Error('unauth');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'player-goals');
+api('/api/auth/me').then(me => {
+    const tn = document.getElementById('sidebarTeamName');
+    if (tn) tn.textContent = me.teamId?.name || '';
+}).catch(()=>{});
+
+window.showTab = function(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    if (btn) btn.classList.add('active');
+};
+
+window.showSubtab = function(name, btn) {
+    document.querySelectorAll('.subtab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('subtab-'+name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    // Load data for the new tab if a player is already selected (or for non-manager)
+    if (name === 'ranked')   loadRanked();
+    if (name === 'training') loadTraining();
+};
+
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _timeAgo(ts) {
+    const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+    if (s < 60)   return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+}
+function colorKD(v)   { return v>=1?'var(--success)':v>=0.8?'#f0a500':'var(--error)'; }
+function colorACS(v)  { return v>=200?'var(--success)':v>=150?'#f0a500':'var(--error)'; }
+function colorKAST(v) { return v>=70?'var(--success)':v>=55?'#f0a500':'var(--error)'; }
+function colorHS(v)   { return v>=25?'var(--success)':v>=15?'#f0a500':'var(--error)'; }
+function miniBar(ratio, color) {
+    return `<div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.min(100,Math.round(ratio*100))}%;background:${color};"></div></div>`;
+}
+
+// ── PRACCS tab ─────────────────────────────────────────────────────────────
+async function loadPraccs() {
+    try {
+        const data = await api('/api/pracc/matches/stats');
+        const { total, playerStats } = data;
+        if (!total || !playerStats?.length) {
+            document.getElementById('praccsContent').innerHTML =
+                '<p style="color:var(--text-muted);">No ScrimSense matches imported yet. <a href="/manager/pracc-upload.html" style="color:var(--accent);">Import your first match →</a></p>';
+            return;
+        }
+        renderPraccCards(playerStats);
+    } catch(e) {
+        document.getElementById('praccsContent').innerHTML = '<p style="color:var(--error);">Failed to load pracc data.</p>';
+    }
+}
+
+function renderPraccCards(playerStats) {
+    const avg = {
+        acs:  playerStats.reduce((s,p)=>s+(p.acs||0),0)/playerStats.length,
+        kd:   playerStats.reduce((s,p)=>s+(p.kd||0),0)/playerStats.length,
+        kast: playerStats.reduce((s,p)=>s+(p.kastPercent||0),0)/playerStats.length,
+        dmg:  playerStats.reduce((s,p)=>s+(p.damagePerRound||0),0)/playerStats.length,
+    };
+
+    const cards = playerStats.map(p => {
+        const winRate = p.matchResults?.length
+            ? Math.round(p.matchResults.filter(r=>r.result==='W').length/p.matchCount*100) : 0;
+        const initials = (p.gameName||'?').slice(0,2).toUpperCase();
+        const avatarBg = `hsl(${(p.gameName||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360},55%,42%)`;
+        const fkRatio  = (p.firstKills+p.firstDeaths)>0 ? p.firstKills/(p.firstKills+p.firstDeaths) : 0.5;
+
+        const mkStr = [
+            p.mk2?`<span class="mk-pill mk2">2K×${p.mk2}</span>`:'',
+            p.mk3?`<span class="mk-pill mk3">3K×${p.mk3}</span>`:'',
+            p.mk4?`<span class="mk-pill mk4">4K×${p.mk4}</span>`:'',
+            p.mk5?`<span class="mk-pill mk5">ACE×${p.mk5}</span>`:'',
+        ].filter(Boolean).join('')||'<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
+
+        const form = (p.matchResults||[]).slice(-8).map(r=>
+            `<div class="trend-dot ${r.result}" title="${escHtml(r.mapName||'')} ${r.scoreUs??''}–${r.scoreThem??''}">${r.result}</div>`
+        ).join('');
+
+        return `<div class="perf-card">
+            <div class="perf-card-header">
+                <div class="perf-avatar" style="background:${avatarBg};">${initials}</div>
+                <div>
+                    <div class="perf-name">${escHtml(p.gameName)} <span class="perf-tag">#${escHtml(p.tagLine)}</span></div>
+                    <div class="perf-meta">${p.matchCount} match${p.matchCount!==1?'es':''}</div>
+                </div>
+                <div class="perf-acs">
+                    <div class="perf-acs-num" style="color:${colorACS(p.acs)};">${p.acs}</div>
+                    <div class="perf-acs-label">ACS</div>
+                </div>
+            </div>
+            <div class="perf-groups">
+                <div class="perf-group-title">Fragging</div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">K/D</span>
+                    <div class="stat-with-bar">
+                        ${miniBar(p.kd/(Math.max(avg.kd,1)*1.6), colorKD(p.kd))}
+                        <span class="perf-stat-val" style="color:${colorKD(p.kd)};min-width:32px;text-align:right;">${p.kd}</span>
+                    </div>
+                </div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">DMG/R</span>
+                    <div class="stat-with-bar">
+                        ${miniBar(p.damagePerRound/Math.max(avg.dmg*1.6,160), 'var(--accent)')}
+                        <span class="perf-stat-val" style="min-width:36px;text-align:right;">${p.damagePerRound}</span>
+                    </div>
+                </div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">FK / FD</span>
+                    <span class="perf-stat-val" style="color:${fkRatio>=0.5?'var(--success)':'var(--error)'};">${p.firstKills} / ${p.firstDeaths}</span>
+                </div>
+                <div class="perf-group-title">Consistency</div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">KAST</span>
+                    <div class="stat-with-bar">
+                        ${miniBar(p.kastPercent/100, colorKAST(p.kastPercent))}
+                        <span class="perf-stat-val" style="color:${colorKAST(p.kastPercent)};min-width:36px;text-align:right;">${p.kastPercent}%</span>
+                    </div>
+                </div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">Win Rate</span>
+                    <span class="perf-stat-val" style="color:${winRate>=50?'var(--success)':'var(--error)'};">${winRate}%</span>
+                </div>
+                <div class="perf-group-title">Mechanics</div>
+                <div class="perf-stat">
+                    <span class="perf-stat-label">HS%</span>
+                    <div class="stat-with-bar">
+                        ${miniBar(p.headshotPercent/55, colorHS(p.headshotPercent))}
+                        <span class="perf-stat-val" style="color:${colorHS(p.headshotPercent)};min-width:36px;text-align:right;">${p.headshotPercent}%</span>
+                    </div>
+                </div>
+                <div class="perf-stat" style="padding-bottom:4px;">
+                    <span class="perf-stat-label">Multi-kills</span>
+                    <div style="text-align:right;">${mkStr}</div>
+                </div>
+            </div>
+            ${form?`<div class="perf-footer">
+                <div class="perf-footer-label">Recent Form</div>
+                <div class="perf-form-row">${form}</div>
+            </div>`:''}
+        </div>`;
+    }).join('');
+
+    document.getElementById('praccsContent').innerHTML = `<div class="perf-grid">${cards}</div>`;
+}
+
+// ── Player selector (manager/captain) ───────────────────────────────────────
+let _teamPlayers = [];
+let _selectedUserId = '';
+
+async function initPlayerSelector() {
+    if (!isManager) return;
+    try {
+        const raw = await api('/api/team/players');
+        // endpoint returns array directly; exclude managers from player views
+        _teamPlayers = (Array.isArray(raw) ? raw : raw.players || [])
+            .filter(p => p.isActive && !['manager','owner'].includes(p.role));
+        if (!_teamPlayers.length) return;
+
+        const wrap = document.getElementById('playerSelectorWrap');
+        renderPlayerPills(_teamPlayers);
+        wrap.style.display = 'block';
+
+        // Auto-select first player with a Riot ID and pre-load both tabs into cache
+        const first = _teamPlayers.find(p => p.riotGameName);
+        if (first) {
+            selectPlayer(first._id);
+            // Pre-load both tabs in background so switching tabs is instant
+            loadRanked();
+            loadTraining();
+        }
+    } catch { /* selector stays hidden */ }
+}
+
+function renderPlayerPills(players) {
+    const wrap = document.getElementById('playerSelector');
+    wrap.innerHTML = players.map(p => {
+        const initials = (p.username||'?').slice(0,2).toUpperCase();
+        const bg = `hsl(${(p.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360},50%,38%)`;
+        const hasRiot = !!p.riotGameName;
+        return `<button class="player-pill" id="pill-${p._id}" data-id="${p._id}"
+            onclick="selectPlayer('${p._id}')"
+            title="${escHtml(p.username)}${hasRiot?' · '+escHtml(p.riotGameName)+'#'+escHtml(p.riotTagLine):' (no Riot ID)'}">
+            <span class="pill-avatar" style="background:${bg};">${initials}</span>
+            <span class="pill-name">${escHtml(p.username)}</span>
+            ${!hasRiot ? '<span class="pill-noriot">no ID</span>' : ''}
+        </button>`;
+    }).join('');
+}
+
+window.selectPlayer = function(id) {
+    _selectedUserId = id;
+    document.querySelectorAll('.player-pill').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+    // Invalidate any in-flight fetches and reset timers for the new player
+    _fetchSeq.ranked++;
+    _fetchSeq.training++;
+    const active = document.querySelector('.subtab-btn.active')?.dataset?.subtab;
+    if (active === 'ranked')   loadRanked();
+    if (active === 'training') loadTraining();
+};
+
+
+// ── Fetch generation counter ─────────────────────────────────────────────────
+// Incremented on player switch — discards stale in-flight responses.
+const _fetchSeq = { ranked: 0, training: 0 };
+
+// ── localStorage cache (TTL = 8h, keyed per player+type) ─────────────────────
+const _CACHE_TTL = 8 * 60 * 60 * 1000;
+const _CACHE_VER = 'v4';
+function _cacheKey(type, userId) {
+    return `lp_pg_${_CACHE_VER}_${type}_${userId || 'self'}`;
+}
+function _cacheGet(type, userId) {
+    try {
+        const raw = localStorage.getItem(_cacheKey(type, userId));
+        if (!raw) return null;
+        const { data, ts } = JSON.parse(raw);
+        if (Date.now() - ts > _CACHE_TTL) { localStorage.removeItem(_cacheKey(type, userId)); return null; }
+        return data;
+    } catch { return null; }
+}
+function _cacheSet(type, userId, data) {
+    try { localStorage.setItem(_cacheKey(type, userId), JSON.stringify({ data, ts: Date.now() })); } catch {}
+}
+// Clean up old cache versions
+try {
+    Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('lp_pg_') && !k.startsWith(`lp_pg_${_CACHE_VER}_`)) localStorage.removeItem(k);
+        if (k.startsWith('lp_stats_')) localStorage.removeItem(k); // legacy keys
+    });
+} catch {}
+
+// ── RANKED tab ─────────────────────────────────────────────────────────────
+function _renderRanked(el, data) {
+    if (!data.count) {
+        el.innerHTML = '<p style="color:var(--text-muted);">No ranked matches found yet. Play a ranked game and check back!</p>';
+        return;
+    }
+    const { count, wins, losses, winRate, matches, riot, lastSyncAt } = data;
+    const subhead   = riot ? `${riot.gameName}#${riot.tagLine}` : '';
+    const syncLabel = lastSyncAt
+        ? `<span style="font-size:0.65rem;color:var(--text-muted);"> · synced ${_timeAgo(lastSyncAt)}</span>`
+        : '';
+    const rows = (matches || []).map(m => {
+        const fmt = `${new Date(m.date).getUTCMonth()+1}/${new Date(m.date).getUTCDate()}`;
+        const acctTag = m.account === 2
+            ? `<span style="font-size:0.58rem;font-weight:700;padding:1px 4px;border-radius:3px;background:#f0a50022;color:#f0a500;border:1px solid #f0a50055;margin-left:3px;vertical-align:middle;">A2</span>`
+            : '';
+        return `<div class="match-row">
+            <div class="match-result ${m.won?'W':'L'}">${m.won?'W':'L'}</div>
+            <div class="match-date" style="flex:1;">${fmt}${acctTag}</div>
+        </div>`;
+    }).join('');
+    el.innerHTML = `
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:14px;">Last ${count} ranked games · ${subhead}${syncLabel}</div>
+        <div class="ranked-summary">
+            <div class="ranked-stat-box"><div class="ranked-stat-val" style="color:var(--success);">${wins}</div><div class="ranked-stat-label">Wins</div></div>
+            <div class="ranked-stat-box"><div class="ranked-stat-val" style="color:var(--error);">${losses}</div><div class="ranked-stat-label">Losses</div></div>
+            <div class="ranked-stat-box"><div class="ranked-stat-val">${count}</div><div class="ranked-stat-label">Total</div></div>
+            <div class="ranked-stat-box"><div class="ranked-stat-val" style="color:${winRate>=50?'var(--success)':'var(--error)'};">${winRate}%</div><div class="ranked-stat-label">Win Rate</div></div>
+        </div>
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px;">Match History</div>
+        ${rows}`;
+}
+
+async function loadRanked() {
+    const el = document.getElementById('rankedContent');
+    if (isManager && !_selectedUserId) {
+        el.innerHTML = '<p style="color:var(--text-muted);">Select a player above to view their ranked stats.</p>';
+        return;
+    }
+    const mySeq    = ++_fetchSeq.ranked;
+    const myUserId = _selectedUserId;
+
+    // Show cached data immediately if available, otherwise show Loading
+    const cached = _cacheGet('ranked', myUserId);
+    if (cached) _renderRanked(el, cached);
+    else el.innerHTML = '<p style="color:var(--text-muted);">Loading…</p>';
+
+    try {
+        const qs   = isManager ? `?size=10&userId=${myUserId}` : '?size=10';
+        const data = await api(`/api/henrik/player/ranked${qs}`);
+        if (_fetchSeq.ranked !== mySeq) return;
+        _cacheSet('ranked', myUserId, data);
+        _renderRanked(el, data);
+    } catch (err) {
+        if (_fetchSeq.ranked !== mySeq) return;
+        if (cached) return; // already showing cached data — don't overwrite with error
+        if (err.noRiotId || err.message?.includes('noRiotId') || err.status === 400) {
+            el.innerHTML = noRiotIdCard('/manager/profile.html', isManager ? (_teamPlayers.find(p=>p._id===myUserId)?.username||null) : null);
+        } else {
+            el.innerHTML = `<p style="color:var(--error);">Failed to load ranked stats: ${escHtml(err.message)}</p>`;
+        }
+    }
+}
+
+// ── TRAINING tab ────────────────────────────────────────────────────────────
+function _renderTraining(el, data) {
+    const { days, days1, days2, totals, riot, riot2, riot2Error, lastSyncAt } = data;
+    const dual      = !!(riot2 && days1 && days2);
+    const riot2Warn = riot2Error ? `<div style="font-size:0.72rem;color:#f0a500;margin-bottom:10px;">⚠ Account 2 unavailable: ${escHtml(riot2Error)}</div>` : '';
+    const C = dual ? { dm1:'#4a9eff', tdm1:'#7c6af5', dm2:'#f0a500', tdm2:'#e0783a' } : { dm1:'var(--accent)', tdm1:'#9f7aea' };
+    const maxVal = dual ? Math.max(1,...days1.map(d=>d.dm+d.tdm),...days2.map(d=>d.dm+d.tdm)) : Math.max(1,...days.map(d=>d.dm+d.tdm));
+    const h   = (val) => Math.round(val / maxVal * 60);
+    const dot = (color) => `<span style="display:inline-block;width:8px;height:8px;background:${color};border-radius:2px;margin-right:4px;flex-shrink:0;"></span>`;
+    const bars = (dual ? days1 : days).map((d, i) => {
+        const d2  = dual ? days2[i] : null;
+        const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d.date+'T00:00:00Z').getUTCDay()];
+        const total     = dual ? (d.dm+d.tdm+d2.dm+d2.tdm) : (d.dm+d.tdm);
+        const d1Active  = d.dm+d.tdm > 0;
+        const d2Active  = dual && d2 && (d2.dm+d2.tdm > 0);
+        const stack1 = `<div class="day-bar-stack" style="flex:1;">
+            ${d.tdm ? `<div style="height:${h(d.tdm)}px;background:${C.tdm1};border-radius:3px 3px 0 0;min-height:2px;" title="${riot.region.toUpperCase()} TDM: ${d.tdm}"></div>` : ''}
+            ${d.dm  ? `<div style="height:${h(d.dm)}px;background:${C.dm1};border-radius:${d.tdm?'0':'3px 3px'} 0 0;min-height:2px;" title="${riot.region.toUpperCase()} DM: ${d.dm}"></div>` : ''}
+        </div>`;
+        const stack2 = (dual && d2Active) ? `<div class="day-bar-stack" style="flex:1;">
+            ${d2.tdm ? `<div style="height:${h(d2.tdm)}px;background:${C.tdm2};border-radius:3px 3px 0 0;min-height:2px;" title="${riot2.region.toUpperCase()} TDM: ${d2.tdm}"></div>` : ''}
+            ${d2.dm  ? `<div style="height:${h(d2.dm)}px;background:${C.dm2};border-radius:${d2.tdm?'0':'3px 3px'} 0 0;min-height:2px;" title="${riot2.region.toUpperCase()} DM: ${d2.dm}"></div>` : ''}
+        </div>` : '';
+        const barsInner = d1Active ? stack1+stack2 : d2Active ? stack2 : '';
+        return `<div class="day-bar-wrap">
+            <div class="day-count">${total||''}</div>
+            <div style="display:flex;gap:2px;align-items:flex-end;height:60px;width:100%;">${barsInner}</div>
+            <div class="day-label">${dow}</div>
+        </div>`;
+    }).join('');
+    const subhead   = dual ? `${riot.gameName}#${riot.tagLine} · ${riot2.gameName}#${riot2.tagLine}` : (riot ? `${riot.gameName}#${riot.tagLine}` : '');
+    const syncLabel = lastSyncAt ? ` · synced ${_timeAgo(lastSyncAt)}` : '';
+    const legend  = dual ? `
+        <div style="display:flex;gap:12px;font-size:0.68rem;color:var(--text-muted);flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;">${dot(C.dm1)}<b style="color:${C.dm1};margin-right:3px;">${riot.region.toUpperCase()}</b> DM</span>
+            <span style="display:flex;align-items:center;">${dot(C.tdm1)}<b style="color:${C.tdm1};margin-right:3px;">${riot.region.toUpperCase()}</b> TDM</span>
+            <span style="display:flex;align-items:center;">${dot(C.dm2)}<b style="color:${C.dm2};margin-right:3px;">${riot2.region.toUpperCase()}</b> DM</span>
+            <span style="display:flex;align-items:center;">${dot(C.tdm2)}<b style="color:${C.tdm2};margin-right:3px;">${riot2.region.toUpperCase()}</b> TDM</span>
+        </div>` : `
+        <div style="display:flex;gap:14px;font-size:0.68rem;color:var(--text-muted);">
+            <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:4px;"></span>Deathmatch</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:#9f7aea;border-radius:2px;margin-right:4px;"></span>Team DM</span>
+        </div>`;
+    el.innerHTML = riot2Warn + `
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:14px;">Last 7 days · ${subhead}<span style="font-size:0.65rem;"> ${syncLabel}</span></div>
+        <div class="training-summary">
+            <div class="ranked-stat-box"><div class="ranked-stat-val" style="color:var(--accent);">${totals.dm}</div><div class="ranked-stat-label">Deathmatch</div></div>
+            <div class="ranked-stat-box"><div class="ranked-stat-val" style="color:#9f7aea;">${totals.tdm}</div><div class="ranked-stat-label">Team DM</div></div>
+            <div class="ranked-stat-box"><div class="ranked-stat-val">${totals.dm+totals.tdm}</div><div class="ranked-stat-label">Total</div></div>
+        </div>
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:10px;">Last 7 Days</div>
+        <div class="day-chart">${bars}</div>
+        ${legend}`;
+}
+
+async function loadTraining() {
+    const el = document.getElementById('trainingContent');
+    if (isManager && !_selectedUserId) {
+        el.innerHTML = '<p style="color:var(--text-muted);">Select a player above to view their training stats.</p>';
+        return;
+    }
+    const mySeq    = ++_fetchSeq.training;
+    const myUserId = _selectedUserId;
+
+    // Show cached data immediately if available, otherwise show Loading
+    const cached = _cacheGet('training', myUserId);
+    if (cached) _renderTraining(el, cached);
+    else el.innerHTML = '<p style="color:var(--text-muted);">Loading…</p>';
+
+    try {
+        const qs   = isManager ? `?userId=${myUserId}` : '';
+        const data = await api(`/api/henrik/player/training${qs}`);
+        if (_fetchSeq.training !== mySeq) return;
+        _cacheSet('training', myUserId, data);
+        _renderTraining(el, data);
+    } catch (err) {
+        if (_fetchSeq.training !== mySeq) return;
+        if (cached) return; // already showing cached data — don't overwrite with error
+        if (err.noRiotId || err.message?.includes('noRiotId') || err.status === 400) {
+            el.innerHTML = noRiotIdCard('/manager/profile.html', isManager ? (_teamPlayers.find(p=>p._id===myUserId)?.username||null) : null);
+        } else {
+            el.innerHTML = `<p style="color:var(--error);">Failed to load training stats: ${escHtml(err.message)}</p>`;
+        }
+    }
+}
+
+function noRiotIdCard(profilePath, playerName) {
+    const who = playerName ? `<strong>${escHtml(playerName)}</strong> doesn't have` : 'You don\'t have';
+    return `<div class="coming-card">
+        <div class="coming-icon">🎮</div>
+        <div class="coming-title">Riot ID not connected</div>
+        <div class="coming-desc">${who} a Valorant account linked yet.</div>
+        ${!playerName ? `<a href="${profilePath}" class="btn btn-primary" style="text-decoration:none;">Go to My Profile →</a>` : ''}
+    </div>`;
+}
+
+// ── Goals: Manager view ────────────────────────────────────────────────────
+const isManager = ['manager','captain'].includes(user.role);
+
+// Modal helpers
+window.adjModal = function(field, delta) {
+    const id = field==='ranked'?'modalRanked':field==='dm'?'modalDM':'modalWarmup';
+    const el = document.getElementById(id);
+    const min = field==='warmup'?0:0, max = field==='warmup'?120:20;
+    el.value = Math.max(min, Math.min(max, parseInt(el.value||0) + delta));
+};
+
+// ── Goal modal state ────────────────────────────────────────────────────────
+let _modalMode      = 'single'; // 'single' (row button) | 'multi' (+ Set Goal)
+let _modalLockedPid = null;     // single mode: which player
+let _modalSelPids   = new Set();// multi mode: which players are selected
+
+// Row button: edit/set goal for a specific player only
+window.openGoalForPlayer = function(playerId) {
+    _modalMode      = 'single';
+    _modalLockedPid = String(playerId);
+    const goal  = _goalsByPlayer[playerId] || null;
+    const player = _allPlayers.find(p => String(p._id) === String(playerId));
+    const pname  = player?.username || 'Player';
+
+    document.getElementById('modalGoalId').value   = goal?._id || '';
+    document.getElementById('modalRanked').value   = goal?.minRanked ?? 2;
+    document.getElementById('modalDM').value       = goal?.minDM ?? 3;
+    document.getElementById('modalWarmup').value   = goal?.warmupMinutes ?? 30;
+    document.getElementById('modalTitle').textContent = goal ? `Edit Goal · ${pname}` : `Set Goal · ${pname}`;
+    document.getElementById('modalSaveBtn').textContent = 'Save Goal';
+
+    // Show locked player pill (non-interactive)
+    const bg = `hsl(${pname.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360},50%,38%)`;
+    document.getElementById('modalPlayerGrid').innerHTML =
+        `<div class="modal-player-pill active" style="cursor:default;pointer-events:none;">
+            <span class="modal-pill-avatar" style="background:${bg};">${pname.slice(0,2).toUpperCase()}</span>
+            ${escHtml(pname)}
+        </div>`;
+
+    document.getElementById('goalModal').classList.add('open');
+};
+
+// Red "+ Set Goal" button: multi-select — choose one or more players
+window.openNewGoal = function() {
+    _modalMode      = 'multi';
+    _modalLockedPid = null;
+    _modalSelPids   = new Set(['all']); // default: All Players
+
+    document.getElementById('modalGoalId').value  = '';
+    document.getElementById('modalRanked').value  = 2;
+    document.getElementById('modalDM').value      = 3;
+    document.getElementById('modalWarmup').value  = 30;
+    document.getElementById('modalTitle').textContent  = 'Set Goal';
+    document.getElementById('modalSaveBtn').textContent = 'Save Goal';
+
+    _renderMultiPills();
+    document.getElementById('goalModal').classList.add('open');
+};
+
+function _renderMultiPills() {
+    const allPills = [
+        { _id: 'all', username: 'All Players', isAll: true },
+        ..._allPlayers,
+    ];
+    document.getElementById('modalPlayerGrid').innerHTML = allPills.map(p => {
+        const id  = String(p._id);
+        const initials = p.isAll ? '★' : (p.username||'?').slice(0,2).toUpperCase();
+        const bg  = p.isAll ? 'var(--accent)' : `hsl(${(p.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360},50%,38%)`;
+        const act = _modalSelPids.has(id) ? ' active' : '';
+        return `<button type="button" class="modal-player-pill${p.isAll?' modal-all-pill':''}${act}"
+            data-pid="${id}" onclick="toggleModalPlayer(this.dataset.pid)">
+            <span class="modal-pill-avatar" style="background:${bg};">${initials}</span>
+            ${escHtml(p.username)}
+        </button>`;
+    }).join('');
+}
+
+window.toggleModalPlayer = function(pid) {
+    const id = String(pid);
+    if (_modalSelPids.has(id)) {
+        if (_modalSelPids.size === 1) return; // keep at least one
+        _modalSelPids.delete(id);
+    } else {
+        if (id === 'all') {
+            _modalSelPids = new Set(['all']); // "All Players" clears individual
+        } else {
+            _modalSelPids.delete('all');      // individual clears "All Players"
+            _modalSelPids.add(id);
+        }
+    }
+    // Update button label
+    const count = _modalSelPids.size;
+    const hasAll = _modalSelPids.has('all');
+    document.getElementById('modalSaveBtn').textContent =
+        hasAll ? 'Save for All Players' : `Save for ${count} player${count!==1?'s':''}`;
+    // Refresh visuals
+    document.querySelectorAll('.modal-player-pill').forEach(b =>
+        b.classList.toggle('active', _modalSelPids.has(String(b.dataset.pid)))
+    );
+};
+
+window.closeGoalModal = function() {
+    document.getElementById('goalModal').classList.remove('open');
+};
+
+window.saveGoal = async function() {
+    const goalId = document.getElementById('modalGoalId').value;
+    const vals   = {
+        minRanked:     parseInt(document.getElementById('modalRanked').value)  || 0,
+        minDM:         parseInt(document.getElementById('modalDM').value)      || 0,
+        warmupMinutes: parseInt(document.getElementById('modalWarmup').value)  || 0,
+    };
+    try {
+        if (_modalMode === 'single') {
+            // Single player — create or update
+            const body = JSON.stringify({ ...vals, playerId: _modalLockedPid });
+            if (goalId) await api(`/api/goals/${goalId}`, { method: 'PUT',  body });
+            else        await api('/api/goals',            { method: 'POST', body });
+        } else {
+            // Multi — one request per selected player (upsert handled server-side)
+            const pids = [..._modalSelPids];
+            if (!pids.length) { alert('Select at least one player.'); return; }
+            await Promise.all(pids.map(pid => {
+                const existing = _goalsByPlayer[pid];
+                const body = JSON.stringify({ ...vals, playerId: pid });
+                if (existing) return api(`/api/goals/${existing._id}`, { method: 'PUT',  body });
+                else          return api('/api/goals',                  { method: 'POST', body });
+            }));
+        }
+        closeGoalModal();
+        loadGoals();
+    } catch(e) { alert(e.message || 'Failed to save goal.'); }
+};
+
+let _confirmCallback = null;
+
+window.deleteGoal = function(id) {
+    const player = _allPlayers.find(p => {
+        const g = _goalsByPlayer[String(p._id)];
+        return g && g._id === id;
+    });
+    const name = player?.username || 'this player';
+    document.getElementById('confirmMsg').textContent =
+        `This will permanently remove the daily goal for ${name}.`;
+    _confirmCallback = async () => {
+        try { await api(`/api/goals/${id}`, { method: 'DELETE' }); loadGoals(); }
+        catch(e) { alert(e.message || 'Failed.'); }
+    };
+    document.getElementById('confirmModal').classList.add('open');
+};
+
+window.confirmOk = async function() {
+    const cb = _confirmCallback;  // save before closeConfirm nulls it
+    closeConfirm();
+    if (cb) await cb();
+};
+
+window.closeConfirm = function() {
+    document.getElementById('confirmModal').classList.remove('open');
+    _confirmCallback = null;
+};
+
+// ── Player self-adjust (±5 limit) ───────────────────────────────────────────
+let _playerGoal = null;
+window.adjustOwn = async function(field, delta) {
+    if (!_playerGoal) return;
+    const adjKey  = field === 'ranked' ? 'playerRankedAdjust' : 'playerDMAdjust';
+    const current = _playerGoal[adjKey] || 0;
+    const next    = Math.max(-5, Math.min(5, current + delta));
+    try {
+        await api(`/api/goals/${_playerGoal._id}/adjust`, {
+            method: 'PATCH',
+            body: JSON.stringify({ field, adjust: next }),
+        });
+        _playerGoal[adjKey] = next;
+        renderPlayerGoal(_playerGoal);
+    } catch(e) { alert(e.message || 'Failed.'); }
+};
+
+// ── Load & render goals ────────────────────────────────────────────────────
+let _allPlayers = [];
+
+async function loadGoals() {
+    try {
+        const [goalsData, rawPlayers] = await Promise.all([
+            api('/api/goals').catch(()=>({goals:[]})),
+            isManager ? api('/api/team/players').catch(()=>[]) : Promise.resolve([]),
+        ]);
+        // /api/team/players returns array directly
+        const allRaw = Array.isArray(rawPlayers) ? rawPlayers : (rawPlayers.players || []);
+        // exclude managers/owners from goals view
+        _allPlayers = allRaw.filter(p => !['manager','owner'].includes(p.role));
+        const goals = goalsData.goals || [];
+        isManager ? renderManagerGoals(goals, _allPlayers) : renderPlayerGoals(goals);
+    } catch {
+        document.getElementById('goalsContent').innerHTML =
+            '<p style="color:var(--text-muted);padding:20px 0;">Could not load goals.</p>';
+    }
+}
+
+// Store goals by playerId for quick lookup in button handlers
+const _goalsByPlayer = {};
+
+function renderManagerGoals(goals, players) {
+    Object.keys(_goalsByPlayer).forEach(k => delete _goalsByPlayer[k]);
+    goals.forEach(g => { _goalsByPlayer[g.playerId] = g; });
+
+    const rows = players.map(p => {
+        const g = _goalsByPlayer[p._id] || _goalsByPlayer['all'];
+        const ranked  = g ? (g.minRanked??'—') : '—';
+        const dm      = g ? (g.minDM??'—') : '—';
+        const warmup  = g ? (g.warmupMinutes ? g.warmupMinutes+'min' : '—') : '—';
+        return `<tr class="${g?'':'no-goal'}">
+            <td><strong>${escHtml(p.username)}</strong></td>
+            <td><span class="goal-num">${ranked}</span>${ranked!=='—'?`<span class="goal-unit">/day</span>`:''}</td>
+            <td><span class="goal-num">${dm}</span>${dm!=='—'?`<span class="goal-unit">/day</span>`:''}</td>
+            <td>${warmup}</td>
+            <td>
+                <div class="goal-actions">
+                    <button class="btn btn-ghost" style="font-size:0.72rem;padding:4px 10px;"
+                        data-playerid="${p._id}" onclick="openGoalForPlayer(this.dataset.playerid)">
+                        ${g?'Edit':'Set Goal'}
+                    </button>
+                    ${g?`<button class="btn btn-ghost" style="font-size:0.72rem;padding:4px 10px;color:var(--error);"
+                        data-goalid="${g._id}" onclick="deleteGoal(this.dataset.goalid)">✕</button>`:''}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('goalsContent').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <h2 style="font-size:1rem;font-weight:700;margin:0;">Daily Goals</h2>
+            <button class="btn btn-primary" style="font-size:0.78rem;"
+                onclick="openNewGoal()">+ Set Goal</button>
+        </div>
+        <table class="goal-table">
+            <thead><tr>
+                <th>Player</th>
+                <th>Ranked</th>
+                <th>Deathmatch</th>
+                <th>Warmup</th>
+                <th></th>
+            </tr></thead>
+            <tbody>${rows || '<tr><td colspan="5" style="color:var(--text-muted);padding:20px 0;">No players found.</td></tr>'}</tbody>
+        </table>`;
+}
+
+function renderPlayerGoals(goals) {
+    _playerGoal = goals.find(g => g.playerId === user.id || g.playerId === 'all') || null;
+    if (!_playerGoal) {
+        document.getElementById('goalsContent').innerHTML = `
+            <div class="empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+                </svg>
+                <p>No goals set yet.<br>Your manager will set your daily training targets.</p>
+            </div>`; return;
+    }
+    renderPlayerGoal(_playerGoal);
+    // Load real progress after rendering (async, non-blocking)
+    const ranked = Math.max(0, (_playerGoal.minRanked||0) + (_playerGoal.playerRankedAdjust||0));
+    const dm     = Math.max(0, (_playerGoal.minDM||0)     + (_playerGoal.playerDMAdjust||0));
+    loadPlayerProgress(ranked, dm);
+}
+
+function renderPlayerGoal(g) {
+    const rAdj   = g.playerRankedAdjust || 0;
+    const dAdj   = g.playerDMAdjust || 0;
+    const ranked = Math.max(0, (g.minRanked||0) + rAdj);
+    const dm     = Math.max(0, (g.minDM||0) + dAdj);
+    const warmup = g.warmupMinutes || 0;
+
+    document.getElementById('goalsContent').innerHTML = `
+        <p class="goal-meta">Daily goals set by your manager · adjust within ±5</p>
+        <div class="player-goal-grid">
+            <div class="player-goal-box">
+                <div class="player-goal-box-label">Ranked / day</div>
+                <div class="player-goal-box-val" style="color:var(--accent);">${ranked}</div>
+                <div class="player-goal-box-sub">Base: ${g.minRanked||0}</div>
+                <div class="adj-row">
+                    <button class="adj-btn" onclick="adjustOwn('ranked',-1)">−</button>
+                    <span style="font-size:0.72rem;color:${rAdj>0?'var(--success)':rAdj<0?'var(--error)':'var(--text-muted)'};">
+                        ${rAdj>0?'+':''}${rAdj}
+                    </span>
+                    <button class="adj-btn" onclick="adjustOwn('ranked',+1)">+</button>
+                </div>
+                <div class="adj-limit">limit ±5</div>
+            </div>
+            <div class="player-goal-box">
+                <div class="player-goal-box-label">Deathmatch / day</div>
+                <div class="player-goal-box-val" style="color:var(--success);">${dm}</div>
+                <div class="player-goal-box-sub">Base: ${g.minDM||0}</div>
+                <div class="adj-row">
+                    <button class="adj-btn" onclick="adjustOwn('dm',-1)">−</button>
+                    <span style="font-size:0.72rem;color:${dAdj>0?'var(--success)':dAdj<0?'var(--error)':'var(--text-muted)'};">
+                        ${dAdj>0?'+':''}${dAdj}
+                    </span>
+                    <button class="adj-btn" onclick="adjustOwn('dm',+1)">+</button>
+                </div>
+                <div class="adj-limit">limit ±5</div>
+            </div>
+            ${warmup ? `<div class="player-goal-box">
+                <div class="player-goal-box-label">Warmup / day</div>
+                <div class="player-goal-box-val">${warmup}</div>
+                <div class="player-goal-box-sub">min · fixed</div>
+            </div>` : ''}
+        </div>
+        <div class="progress-section" id="goalProgressSection">
+            <h3>Today's Progress</h3>
+            <div class="prog-row">
+                <div class="prog-label">Ranked</div>
+                <div class="prog-track"><div class="prog-fill" id="progFillRanked" style="width:0%;background:var(--accent);"></div></div>
+                <div class="prog-count" id="progCountRanked" style="color:var(--text-muted);">…/${ranked}</div>
+            </div>
+            <div class="prog-row">
+                <div class="prog-label">Deathmatch</div>
+                <div class="prog-track"><div class="prog-fill" id="progFillDM" style="width:0%;background:var(--success);"></div></div>
+                <div class="prog-count" id="progCountDM" style="color:var(--text-muted);">…/${dm}</div>
+            </div>
+            <div id="riotConnectHint" style="display:none;margin-top:8px;">
+                <a href="/player/profile.html" class="btn btn-ghost" style="font-size:0.75rem;">Connect Riot ID →</a>
+            </div>
+        </div>`;
+}
+
+// ── Load today's progress for player goal view ──────────────────────────────
+async function loadPlayerProgress(ranked, dm) {
+    try {
+        const qs   = isManager && _selectedUserId ? `?userId=${_selectedUserId}` : '';
+        const data = await api(`/api/henrik/player/today${qs}`);
+        if (!data.hasRiotId) {
+            // Show connect hint, reset bars to 0
+            document.getElementById('progCountRanked').textContent = `0/${ranked}`;
+            document.getElementById('progCountDM').textContent     = `0/${dm}`;
+            document.getElementById('riotConnectHint').style.display = 'block';
+            return;
+        }
+        // Update bars with real data
+        const rDone = data.ranked || 0;
+        const dDone = data.dm     || 0;
+        const rPct  = ranked > 0 ? Math.min(100, Math.round(rDone / ranked * 100)) : 100;
+        const dPct  = dm     > 0 ? Math.min(100, Math.round(dDone / dm     * 100)) : 100;
+
+        document.getElementById('progFillRanked').style.width = rPct + '%';
+        document.getElementById('progFillDM').style.width     = dPct + '%';
+        document.getElementById('progCountRanked').textContent = `${rDone}/${ranked}`;
+        document.getElementById('progCountDM').textContent     = `${dDone}/${dm}`;
+
+        // Color the count green if goal met
+        document.getElementById('progCountRanked').style.color = rDone >= ranked ? 'var(--success)' : 'var(--text-muted)';
+        document.getElementById('progCountDM').style.color     = dDone >= dm     ? 'var(--success)' : 'var(--text-muted)';
+    } catch {
+        // API error — just clear the "…" placeholders
+        document.getElementById('progCountRanked').textContent = `0/${ranked}`;
+        document.getElementById('progCountDM').textContent     = `0/${dm}`;
+    }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadPraccs();
+loadGoals();
+// For managers, populate player selector first, then load only the active tab
+if (isManager) {
+    initPlayerSelector().then(() => {
+        const active = document.querySelector('.subtab-btn.active')?.dataset?.subtab;
+        if (active === 'ranked')        loadRanked();
+        else if (active === 'training') loadTraining();
+        // 'praccs' or other tabs: Henrik data loads when user clicks the tab
+    });
+} else {
+    const active = document.querySelector('.subtab-btn.active')?.dataset?.subtab;
+    if (active === 'ranked')        loadRanked();
+    else if (active === 'training') loadTraining();
+}
+</script>
+</body>
+</html>

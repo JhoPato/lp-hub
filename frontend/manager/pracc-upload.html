@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Import Match</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: var(--bg2);
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(229,57,53,0.05);
+        }
+        .drop-zone input[type=file] { display: none; }
+        .drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .drop-label { font-size: 0.9rem; color: var(--text-muted); }
+        .drop-label span { color: var(--accent); cursor: pointer; }
+
+        .preview-box {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .preview-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .result-badge {
+            padding: 4px 12px; border-radius: 3px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.06em;
+        }
+        .result-badge.W { background: rgba(87,242,135,0.15); color: var(--success); }
+        .result-badge.L { background: rgba(255,68,68,0.12); color: var(--error); }
+        .result-badge.D { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+        .score-big { font-size: 1.5rem; font-weight: 900; }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .team-col { }
+        .team-label {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px;
+        }
+        .team-label.our { color: var(--accent); }
+        .player-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px;
+            background: var(--bg3); border-radius: 4px;
+            margin-bottom: 4px; font-size: 0.82rem;
+        }
+        .player-row .pname { flex: 1; font-weight: 600; }
+        .player-row .pkda  { font-size: 0.75rem; color: var(--text-muted); }
+
+        .form-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 160px; }
+        .form-group label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 6px; }
+
+        .match-list-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+        .match-list-table th { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        .match-list-table td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        .match-list-table tr:hover td { background: var(--bg2); }
+        .result-chip { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.72rem; font-weight: 700; }
+        .result-chip.W { background:rgba(87,242,135,0.15); color:var(--success); }
+        .result-chip.L { background:rgba(255,68,68,0.12); color:var(--error); }
+        .result-chip.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .btn-danger-xs { background:transparent; border:1px solid var(--error); color:var(--error); padding:3px 10px; border-radius:3px; font-size:0.72rem; cursor:pointer; }
+        .btn-edit-xs { background:transparent; border:1px solid var(--border); color:var(--text-muted); padding:3px 10px; border-radius:3px; font-size:0.72rem; cursor:pointer; }
+        .btn-edit-xs:hover { border-color: var(--accent); color: var(--accent); }
+        .no-map { color: var(--text-muted); font-style: italic; font-size: 0.78rem; }
+
+        .edit-inline { display: flex; gap: 6px; align-items: center; }
+        .edit-inline input { background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 3px 8px; color: var(--text); font-size: 0.82rem; width: 140px; }
+        .edit-inline button { padding: 3px 10px; border-radius: 3px; font-size: 0.72rem; cursor: pointer; border: 1px solid var(--accent); background: transparent; color: var(--accent); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Import ScrimSense Match</h1>
+            <p>Upload a match JSON exported from ScrimSense to import full stats automatically.</p>
+        </div>
+
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".json,application/json">
+            <div class="drop-icon">📂</div>
+            <div class="drop-label">Drop a ScrimSense <strong>.json</strong> file here, or <span>browse</span></div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;">Max 5 MB · Custom game exports only</div>
+        </div>
+
+        <div id="previewSection" style="display:none;">
+            <div class="preview-box">
+                <div class="preview-header">
+                    <span id="previewResult" class="result-badge">—</span>
+                    <span id="previewScore" class="score-big">—</span>
+                    <span style="color:var(--text-muted);font-size:0.82rem;flex:1;" id="previewMeta"></span>
+                </div>
+
+                <div class="players-grid">
+                    <div class="team-col">
+                        <div class="team-label our">Our Team</div>
+                        <div id="ourPlayers"></div>
+                    </div>
+                    <div class="team-col">
+                        <div class="team-label">Opponents</div>
+                        <div id="theirPlayers"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Opponent Name</label>
+                        <input class="form-input" id="opponentInput" type="text" placeholder="e.g. Team Liquid" maxlength="80">
+                    </div>
+                    <div class="form-group">
+                        <label>Map Name <span style="color:var(--text-muted);font-weight:400;">(optional, fill later)</span></label>
+                        <input class="form-input" id="mapNameInput" type="text" placeholder="e.g. Ascent" maxlength="40">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:14px;">
+                <button class="btn btn-primary" id="importBtn" onclick="submitImport()">⬆ Import Match</button>
+                <button class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+            </div>
+        </div>
+
+        <div style="margin-top:36px;">
+            <div class="card-header" style="margin-bottom:14px;">
+                <span class="card-title">Imported Matches</span>
+            </div>
+            <div id="matchList"><p style="color:var(--text-muted);font-size:0.85rem;">Loading...</p></div>
+        </div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager', 'captain']);
+if (!user) throw new Error();
+
+document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'pracc-upload');
+api('/api/auth/me').then(me => {
+    const tn = document.getElementById('sidebarTeamName');
+    if (tn) tn.textContent = me.teamId?.name || '';
+}).catch(() => {});
+
+loadMatchList();
+
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+let   parsedFile = null;
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+});
+fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+    if (!file.name.endsWith('.json')) { toast('Only .json files accepted.', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const raw = JSON.parse(e.target.result);
+            if (!raw.matchInfo?.matchId || !raw.players) {
+                toast('File does not look like a ScrimSense export.', 'error');
+                return;
+            }
+            parsedFile = { file, raw };
+            showPreview(raw);
+        } catch {
+            toast('Could not parse JSON file.', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function showPreview(raw) {
+    const ourColor   = raw.scrimTrackerMetadata?.yourTeamIdOverride || 'Blue';
+    const theirColor = ourColor === 'Blue' ? 'Red' : 'Blue';
+    const ourTeam    = raw.teams.find(t => t.teamId === ourColor)   || {};
+    const theirTeam  = raw.teams.find(t => t.teamId === theirColor) || {};
+    const scoreUs    = ourTeam.roundsWon   ?? 0;
+    const scoreThem  = theirTeam.roundsWon ?? 0;
+    const result     = scoreUs > scoreThem ? 'W' : scoreUs < scoreThem ? 'L' : 'D';
+
+    const resultEl = document.getElementById('previewResult');
+    resultEl.textContent = result === 'W' ? 'WIN' : result === 'L' ? 'LOSS' : 'DRAW';
+    resultEl.className   = `result-badge ${result}`;
+    document.getElementById('previewScore').textContent = `${scoreUs} — ${scoreThem}`;
+
+    const dur = Math.round(raw.matchInfo.gameLengthMillis / 60000);
+    const dt  = new Date(raw.matchInfo.gameStartMillis).toLocaleDateString();
+    document.getElementById('previewMeta').textContent = `${dt} · ${dur} min · ${raw.roundResults?.length ?? 0} rounds`;
+
+    const ourPlayers   = raw.players.filter(p => p.teamId === ourColor);
+    const theirPlayers = raw.players.filter(p => p.teamId === theirColor);
+
+    const renderPlayers = (list) => list.sort((a, b) => b.stats.kills - a.stats.kills).map(p =>
+        `<div class="player-row">
+            <span class="pname">${escHtml(p.gameName)}</span>
+            <span class="pkda">${p.stats.kills}/${p.stats.deaths}/${p.stats.assists}</span>
+        </div>`
+    ).join('');
+
+    document.getElementById('ourPlayers').innerHTML   = renderPlayers(ourPlayers);
+    document.getElementById('theirPlayers').innerHTML = renderPlayers(theirPlayers);
+
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('dropZone').style.display = 'none';
+}
+
+window.submitImport = async function() {
+    if (!parsedFile) return;
+    const btn = document.getElementById('importBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Importing...';
+
+    const fd = new FormData();
+    fd.append('matchJson', parsedFile.file);
+
+    const opponent = document.getElementById('opponentInput').value.trim();
+    const mapName  = document.getElementById('mapNameInput').value.trim();
+
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res   = await fetch('/api/pracc/matches/import', {
+            method:  'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body:    fd,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Import failed.');
+
+        if (opponent || mapName) {
+            await api(`/api/pracc/matches/${data.match._id}`, {
+                method: 'PUT',
+                body:   JSON.stringify({ opponent, mapName }),
+            });
+        }
+
+        toast('Match imported successfully!', 'success');
+        resetForm();
+        loadMatchList();
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '⬆ Import Match';
+    }
+};
+
+window.resetForm = function() {
+    parsedFile = null;
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('dropZone').style.display       = 'block';
+    document.getElementById('fileInput').value              = '';
+    document.getElementById('opponentInput').value          = '';
+    document.getElementById('mapNameInput').value           = '';
+};
+
+async function loadMatchList() {
+    try {
+        const { matches, total } = await api('/api/pracc/matches?limit=50');
+        const wrap = document.getElementById('matchList');
+        if (!matches.length) {
+            wrap.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No matches imported yet.</p>';
+            return;
+        }
+
+        wrap.innerHTML = `
+        <p style="color:var(--text-muted);font-size:0.78rem;margin-bottom:10px;">${total} match(es) imported</p>
+        <table class="match-list-table">
+            <thead><tr>
+                <th>Date</th><th>Result</th><th>Score</th><th>Map</th>
+                <th>Opponent</th><th>Duration</th><th></th>
+            </tr></thead>
+            <tbody>
+            ${matches.map(m => {
+                const dt  = new Date(m.date).toLocaleDateString();
+                const dur = Math.round((m.gameLengthMillis || 0) / 60000);
+                return `<tr id="mrow-${m._id}">
+                    <td>${dt}</td>
+                    <td><span class="result-chip ${m.result}">${m.result}</span></td>
+                    <td style="font-weight:700;">${m.scoreUs}–${m.scoreThem}</td>
+                    <td id="map-cell-${m._id}">
+                        ${m.mapName
+                            ? `<span>${escHtml(m.mapName)}</span>`
+                            : `<span class="no-map">Unknown</span>`}
+                        <button class="btn-edit-xs" style="margin-left:6px;" onclick="editMap('${m._id}','${escHtml(m.mapName||'')}')">✏</button>
+                    </td>
+                    <td id="opp-cell-${m._id}">
+                        ${m.opponent
+                            ? `<span>${escHtml(m.opponent)}</span>`
+                            : `<span class="no-map">—</span>`}
+                        <button class="btn-edit-xs" style="margin-left:6px;" onclick="editOpponent('${m._id}','${escHtml(m.opponent||'')}')">✏</button>
+                    </td>
+                    <td>${dur ? dur + ' min' : '—'}</td>
+                    <td>
+                        <button class="btn-danger-xs" onclick="deleteMatch('${m._id}')">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>`;
+    } catch (err) {
+        document.getElementById('matchList').innerHTML = '<p style="color:var(--error);">Failed to load matches.</p>';
+    }
+}
+
+window.editMap = function(id, current) {
+    const cell = document.getElementById(`map-cell-${id}`);
+    cell.innerHTML = `<div class="edit-inline">
+        <input id="map-inp-${id}" value="${current}" placeholder="Map name">
+        <button onclick="saveField('${id}','map','map-inp-${id}')">Save</button>
+        <button onclick="loadMatchList()" style="border-color:var(--border);color:var(--text-muted);">✕</button>
+    </div>`;
+};
+
+window.editOpponent = function(id, current) {
+    const cell = document.getElementById(`opp-cell-${id}`);
+    cell.innerHTML = `<div class="edit-inline">
+        <input id="opp-inp-${id}" value="${current}" placeholder="Opponent name">
+        <button onclick="saveField('${id}','opponent','opp-inp-${id}')">Save</button>
+        <button onclick="loadMatchList()" style="border-color:var(--border);color:var(--text-muted);">✕</button>
+    </div>`;
+};
+
+window.saveField = async function(id, field, inputId) {
+    const val = document.getElementById(inputId)?.value.trim();
+    try {
+        await api(`/api/pracc/matches/${id}`, {
+            method: 'PUT',
+            body:   JSON.stringify(field === 'map' ? { mapName: val } : { opponent: val }),
+        });
+        toast('Saved.', 'success');
+        loadMatchList();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.deleteMatch = async function(id) {
+    if (!confirm('Delete this match? This cannot be undone.')) return;
+    try {
+        await api(`/api/pracc/matches/${id}`, { method: 'DELETE' });
+        toast('Match deleted.', 'success');
+        loadMatchList();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}</script>
+</body>
+</html>

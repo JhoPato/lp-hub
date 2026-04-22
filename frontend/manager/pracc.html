@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc History</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.import-panel { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:24px; overflow:hidden; }
+        .import-toggle { width:100%; background:none; border:none; color:var(--text); padding:14px 20px; display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.88rem; font-weight:700; letter-spacing:0.04em; }
+        .import-toggle:hover { background:rgba(255,255,255,0.03); }
+        .import-toggle .chevron { margin-left:auto; transition:transform 0.2s; font-size:0.7rem; color:var(--text-muted); }
+        .import-toggle.open .chevron { transform:rotate(180deg); }
+        .import-body { display:none; padding:0 20px 20px; border-top:1px solid var(--border); }
+        .import-body.open { display:block; }
+
+        .drop-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:36px 20px; text-align:center; cursor:pointer; transition:all 0.2s; margin-top:16px; }
+        .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent); background:rgba(223,88,64,0.06); }
+        .drop-zone .dz-icon { font-size:2rem; margin-bottom:8px; }
+        .drop-zone p { color:var(--text-muted); font-size:0.82rem; margin:0; }
+        .drop-zone strong { color:var(--text); }
+        #fileInput { display:none; }
+
+        .import-preview { display:none; margin-top:16px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+        .import-preview.visible { display:block; }
+        .preview-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+        .preview-badge { padding:4px 10px; border-radius:3px; font-size:0.72rem; font-weight:900; }
+        .preview-badge.W { background:rgba(87,242,135,0.15); color:var(--success); }
+        .preview-badge.L { background:rgba(255,68,68,0.15); color:var(--error); }
+        .preview-badge.D { background:rgba(255,255,255,0.08); color:var(--text-muted); }
+        .preview-score { font-size:1.1rem; font-weight:900; }
+        .preview-map { font-size:0.78rem; color:var(--text-muted); }
+        .preview-teams-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+        .preview-team { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+        .preview-team h5 { font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px; }
+        .preview-player-row { display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; padding:2px 0; border-bottom:1px solid var(--border); }
+        .preview-player-row:last-child { border:none; }
+        .preview-player-row span:last-child { color:var(--text-muted); font-size:0.7rem; }
+        .import-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+        .import-fields .form-group { margin:0; }
+        .import-actions { display:flex; gap:8px; margin-top:14px; justify-content:flex-end; }
+
+        .carousel-wrap { position:relative; margin-bottom:20px; }
+        .carousel-track-outer { overflow:hidden; }
+        .carousel-track { display:flex; gap:8px; transition:transform 0.25s; }
+        .map-pill { flex-shrink:0; padding:6px 14px; font-size:0.73rem; font-weight:700; letter-spacing:0.05em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; white-space:nowrap; }
+        .map-pill.active { border-color:var(--accent); color:var(--accent); background:rgba(223,88,64,0.08); }
+        .carousel-btn { position:absolute; top:50%; transform:translateY(-50%); background:var(--bg2); border:1px solid var(--border); color:var(--text); width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; justify-content:center; z-index:2; }
+        .carousel-btn.prev { left:-13px; }
+        .carousel-btn.next { right:-13px; }
+        .carousel-btn:disabled { opacity:0.3; cursor:default; }
+
+        .pracc-filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+        .filter-btn { padding:6px 14px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; }
+        .filter-btn.active { border-color:var(--accent); color:var(--accent); }
+        .filter-btn.win.active    { border-color:var(--success); color:var(--success); background:rgba(87,242,135,0.08); }
+        .filter-btn.loss.active   { border-color:var(--error); color:var(--error); background:rgba(255,68,68,0.08); }
+        .filter-btn.draw.active   { border-color:var(--text-muted); color:var(--text); background:rgba(255,255,255,0.06); }
+
+        .match-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:border-color 0.2s, background 0.2s; text-decoration:none; color:inherit; }
+        .match-card:hover { border-color:var(--accent); background:rgba(223,88,64,0.04); }
+        .match-result { width:48px; height:48px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:900; flex-shrink:0; }
+        .match-result.W { background:rgba(87,242,135,0.12); color:var(--success); }
+        .match-result.L { background:rgba(255,68,68,0.12); color:var(--error); }
+        .match-result.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .match-score { font-size:1.15rem; font-weight:900; flex-shrink:0; min-width:56px; text-align:center; }
+        .match-info { flex:1; min-width:0; }
+        .match-opponent { font-weight:700; font-size:0.9rem; }
+        .match-sub { font-size:0.73rem; color:var(--text-muted); margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; }
+        .match-sub .map-chip { background:var(--bg3); border:1px solid var(--border); padding:1px 7px; border-radius:2px; font-size:0.68rem; }
+        .match-actions { display:flex; gap:6px; flex-shrink:0; }
+
+        .pagination { display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+
+        .map-detected { display:flex; align-items:center; gap:10px; margin-top:12px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; }
+        .map-detected-thumb { width:72px; height:42px; border-radius:4px; object-fit:cover; flex-shrink:0; display:none; }
+        .map-detected-thumb.loaded { display:block; }
+        .map-detected-info { flex:1; }
+        .map-detected-label { font-size:0.6rem; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); }
+        .map-detected-name { font-size:0.88rem; font-weight:700; margin-top:2px; }
+        .map-detected-auto { font-size:0.65rem; color:var(--text-muted); margin-top:1px; }
+
+        .empty-state { text-align:center; padding:48px 20px; color:var(--text-muted); }
+        .empty-state .ei { font-size:2.5rem; margin-bottom:10px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+
+        <div class="page-header">
+            <h1>Pracc History</h1>
+            <p>Upload and review practice matches</p>
+        </div>
+
+        <div class="import-panel">
+            <button class="import-toggle" id="importToggle">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg> Import Match (ScrimSense JSON)
+                <span class="chevron">▼</span>
+            </button>
+            <div class="import-body" id="importBody">
+                <div class="drop-zone" id="dropZone">
+                    <div class="dz-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="32" height="32" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg></div>
+                    <p><strong>Drop ScrimSense JSON here</strong></p>
+                    <p>or click to browse · max 5 MB</p>
+                    <input type="file" id="fileInput" accept=".json">
+                </div>
+
+                <div class="import-preview" id="importPreview">
+                    <div class="preview-header">
+                        <span class="preview-badge" id="pvBadge"></span>
+                        <span class="preview-score" id="pvScore"></span>
+                        <span class="preview-map" id="pvMeta"></span>
+                    </div>
+                    <div class="preview-teams-grid" id="pvTeams"></div>
+                    <div class="import-fields" style="grid-template-columns:1fr;">
+                        <div class="form-group" style="margin:0;">
+                            <label class="form-label">Opponent Name</label>
+                            <input type="text" class="form-input" id="pvOpponent" placeholder="Team name...">
+                        </div>
+                    </div>
+                    <div id="mapDetectedWrap" style="display:none;">
+                        <div class="map-detected">
+                            <img class="map-detected-thumb" id="mapDetectedThumb" alt="">
+                            <div class="map-detected-info">
+                                <div class="map-detected-label">Map</div>
+                                <div class="map-detected-name" id="mapDetectedName">—</div>
+                                <div class="map-detected-auto">Auto-detected from JSON</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="import-actions">
+                        <button class="btn btn-secondary" id="pvClear">✕ Clear</button>
+                        <button class="btn btn-primary" id="pvSubmit">Import Match →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="carousel-wrap" id="carouselWrap" style="display:none;">
+            <button class="carousel-btn prev" id="carPrev">‹</button>
+            <div class="carousel-track-outer">
+                <div class="carousel-track" id="carouselTrack"></div>
+            </div>
+            <button class="carousel-btn next" id="carNext">›</button>
+        </div>
+
+        <div class="pracc-filters">
+            <button class="filter-btn active" data-result="">All</button>
+            <button class="filter-btn win"  data-result="W">Wins</button>
+            <button class="filter-btn loss" data-result="L">Losses</button>
+            <button class="filter-btn draw" data-result="D">Draws</button>
+        </div>
+
+        <div id="matchList"><p style="color:var(--text-muted);">Loading...</p></div>
+        <div class="pagination" id="pagination"></div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager','captain']);
+if (!user) throw new Error('redirect');
+
+document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'pracc');
+initTeamName();
+
+let currentResult = '';
+let currentMap    = '';
+let currentPage   = 1;
+let allMaps       = [];
+let pendingFile   = null;
+let _valMaps      = null; 
+
+function _proxyImg(url) {
+    if (!url) return '';
+    return '/api/vapi-proxy?url=' + encodeURIComponent(url);
+}
+
+async function loadValMaps() {
+    if (_valMaps) return _valMaps;
+    try {
+        const TTL = 24 * 60 * 60 * 1000;
+        let data = null;
+        try {
+            const raw = localStorage.getItem('vapi_maps');
+            if (raw) { const p = JSON.parse(raw); if (Date.now() - p.ts < TTL) data = p.data; }
+        } catch {}
+        if (!data) {
+            const r = await fetch('https://valorant-api.com/v1/maps');
+            data = (await r.json()).data;
+            try { localStorage.setItem('vapi_maps', JSON.stringify({ ts: Date.now(), data })); } catch {}
+        }
+        _valMaps = (data || []).filter(m => m.mapUrl && m.displayName !== 'The Range');
+    } catch { _valMaps = []; }
+    return _valMaps;
+}
+
+const importToggle = document.getElementById('importToggle');
+const importBody   = document.getElementById('importBody');
+importToggle.addEventListener('click', () => {
+    const open = importBody.classList.toggle('open');
+    importToggle.classList.toggle('open', open);
+});
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+    if (!file.name.endsWith('.json')) { toast('Please select a .json file', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5 MB)', 'error'); return; }
+    pendingFile = file;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const json = JSON.parse(e.target.result);
+            renderPreview(json);
+        } catch { toast('Invalid JSON file', 'error'); }
+    };
+    reader.readAsText(file);
+}
+
+function renderPreview(json) {
+    try {
+        const mi = json.matchInfo || {};
+        const meta = json.scrimTrackerMetadata || {};
+        const ourTeamId = meta.yourTeamIdOverride;
+
+        const teams = json.teams || [];
+        const ourTeam  = teams.find(t => t.teamId === ourTeamId) || teams[0] || {};
+        const theirTeam = teams.find(t => t.teamId !== ourTeamId) || teams[1] || {};
+
+        const players = json.players || [];
+        const ourPlayers   = players.filter(p => p.teamId === ourTeam.teamId);
+        const theirPlayers = players.filter(p => p.teamId === theirTeam.teamId);
+
+        const rounds = json.roundResults || [];
+        let scoreUs = 0, scoreThem = 0;
+        for (const r of rounds) {
+            if (r.winningTeam === ourTeam.teamId) scoreUs++;
+            else scoreThem++;
+        }
+
+        const result = scoreUs > scoreThem ? 'W' : scoreUs < scoreThem ? 'L' : 'D';
+        const rawMapId = mi.mapId || '';
+
+        const badge = document.getElementById('pvBadge');
+        badge.textContent = result === 'W' ? 'WIN' : result === 'L' ? 'LOSS' : 'DRAW';
+        badge.className = `preview-badge ${result}`;
+        document.getElementById('pvScore').textContent = `${scoreUs} – ${scoreThem}`;
+        document.getElementById('pvMeta').textContent = rawMapId.split('/').pop() || 'Unknown Map';
+
+        document.getElementById('pvOpponent').value = theirTeam.teamId ? theirTeam.teamId.slice(0,20) : '';
+
+        resolveMapDisplay(rawMapId);
+
+        const renderTeam = (label, plist) => {
+            const rows = plist.slice(0,5).map(p => {
+                const s = p.stats || {};
+                const k = s.kills||0, d = s.deaths||0, a = s.assists||0;
+                return `<div class="preview-player-row">
+                    <span>${p.gameName || p.subject?.slice(0,10) || '?'}</span>
+                    <span>${k}/${d}/${a}</span>
+                </div>`;
+            }).join('');
+            return `<div class="preview-team"><h5>${label}</h5>${rows}</div>`;
+        };
+
+        document.getElementById('pvTeams').innerHTML =
+            renderTeam('Our Team', ourPlayers) +
+            renderTeam('Enemy', theirPlayers);
+
+        document.getElementById('importPreview').classList.add('visible');
+    } catch (err) {
+        toast('Could not parse ScrimSense JSON: ' + err.message, 'error');
+    }
+}
+
+async function resolveMapDisplay(rawMapId) {
+    const wrap = document.getElementById('mapDetectedWrap');
+    const nameEl  = document.getElementById('mapDetectedName');
+    const thumbEl = document.getElementById('mapDetectedThumb');
+    wrap.style.display = 'none';
+    if (!rawMapId) return;
+
+    const maps = await loadValMaps();
+    const found = maps.find(m => m.mapUrl === rawMapId);
+
+    nameEl.textContent = found ? found.displayName : rawMapId.split('/').pop();
+    if (found?.listViewIcon) {
+        thumbEl.src = _proxyImg(found.listViewIcon);
+        thumbEl.onload = () => thumbEl.classList.add('loaded');
+    }
+    wrap.style.display = '';
+}
+
+document.getElementById('pvClear').addEventListener('click', () => {
+    pendingFile = null;
+    fileInput.value = '';
+    document.getElementById('importPreview').classList.remove('visible');
+    dropZone.style.display = '';
+});
+
+document.getElementById('pvSubmit').addEventListener('click', async () => {
+    if (!pendingFile) return;
+
+    const opponent = document.getElementById('pvOpponent').value.trim();
+
+    const formData = new FormData();
+    formData.append('matchJson', pendingFile);
+    if (opponent) formData.append('opponent', opponent);
+
+    const btn = document.getElementById('pvSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Importing…';
+
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch('/api/pracc/matches/import', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Import failed');
+
+        toast('Match imported!', 'success');
+        pendingFile = null;
+        fileInput.value = '';
+        document.getElementById('importPreview').classList.remove('visible');
+        importBody.classList.remove('open');
+        importToggle.classList.remove('open');
+        currentPage = 1;
+        load();
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Import Match →';
+    }
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentResult = btn.dataset.result;
+        currentPage = 1;
+        load();
+    });
+});
+
+let carOffset = 0;
+const PILL_W  = 110;
+
+function buildCarousel(maps) {
+    allMaps = maps;
+    const wrap  = document.getElementById('carouselWrap');
+    const track = document.getElementById('carouselTrack');
+
+    if (!maps.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+
+    const pills = [{ key:'', label:'All Maps' }, ...maps.map(m => ({ key:m, label:m }))];
+    track.innerHTML = pills.map(p =>
+        `<button class="map-pill${p.key === currentMap ? ' active' : ''}" data-map="${p.key}">${p.label}</button>`
+    ).join('');
+
+    track.querySelectorAll('.map-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            currentMap  = pill.dataset.map;
+            currentPage = 1;
+            track.querySelectorAll('.map-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            load();
+        });
+    });
+
+    updateCarouselBtns();
+}
+
+document.getElementById('carPrev').addEventListener('click', () => {
+    carOffset = Math.max(0, carOffset - PILL_W * 2);
+    document.getElementById('carouselTrack').style.transform = `translateX(-${carOffset}px)`;
+    updateCarouselBtns();
+});
+document.getElementById('carNext').addEventListener('click', () => {
+    const maxOff = Math.max(0, (allMaps.length + 1) * PILL_W - document.getElementById('carouselTrack').parentElement.offsetWidth);
+    carOffset = Math.min(maxOff, carOffset + PILL_W * 2);
+    document.getElementById('carouselTrack').style.transform = `translateX(-${carOffset}px)`;
+    updateCarouselBtns();
+});
+function updateCarouselBtns() {
+    const maxOff = Math.max(0, (allMaps.length + 1) * PILL_W - (document.getElementById('carouselTrack').parentElement?.offsetWidth || 999));
+    document.getElementById('carPrev').disabled = carOffset <= 0;
+    document.getElementById('carNext').disabled = carOffset >= maxOff;
+}
+
+async function load() {
+    const el = document.getElementById('matchList');
+    el.innerHTML = '<p style="color:var(--text-muted);">Loading…</p>';
+    try {
+        let url = `/api/pracc/matches?page=${currentPage}&limit=20`;
+        if (currentResult) url += `&result=${currentResult}`;
+        if (currentMap)    url += `&map=${encodeURIComponent(currentMap)}`;
+
+        const { matches, total, pages, maps } = await api(url);
+
+        if (maps) buildCarousel(maps);
+
+        if (!matches || !matches.length) {
+            el.innerHTML = `<div class="empty-state"><div class="ei"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="40" height="40" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 10.5A4.5 4.5 0 016.75 6h10.5a4.5 4.5 0 014.5 4.5v3a4.5 4.5 0 01-4.5 4.5H6.75a4.5 4.5 0 01-4.5-4.5v-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 12h1.5m-.75-.75v1.5m6.75-.75h.008v.008H15v-.008zm1.5 0h.008v.008h-.008v-.008z"/></svg></div><p>No matches yet — import your first ScrimSense JSON above.</p></div>`;
+            renderPagination(0, 0);
+            return;
+        }
+
+        el.innerHTML = matches.map(m => {
+            const resClass = m.result || 'D';
+            const scoreStr = `${m.scoreUs ?? '?'} – ${m.scoreThem ?? '?'}`;
+            const mapChip  = m.mapName ? `<span class="map-chip">${m.mapName}</span>` : '';
+            const dt       = m.date ? formatDate(m.date) : '';
+            const vod      = m.vodUrl ? '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13" style="vertical-align:middle;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>' : '';
+            return `<div class="match-card" onclick="location.href='/manager/pracc-match.html?id=${m._id}'">
+                <div class="match-result ${resClass}">${resClass}</div>
+                <div class="match-score">${scoreStr}</div>
+                <div class="match-info">
+                    <div class="match-opponent">vs ${m.opponent || 'Unknown'}</div>
+                    <div class="match-sub">${mapChip}<span>${dt}</span>${vod ? `<span>${vod} VOD</span>` : ''}</div>
+                </div>
+                <div class="match-actions" onclick="event.stopPropagation()">
+                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="location.href='/manager/pracc-match.html?id=${m._id}'">View</button>
+                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--error);border-color:var(--error);" onclick="delMatch('${m._id}',event)">Delete</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        renderPagination(pages, currentPage);
+    } catch (err) {
+        el.innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderPagination(pages, page) {
+    const el = document.getElementById('pagination');
+    if (!pages || pages <= 1) { el.innerHTML = ''; return; }
+    let html = '';
+    if (page > 1)     html += `<button class="filter-btn" onclick="goPage(${page-1})">← Prev</button>`;
+    html += `<span style="font-size:0.78rem;color:var(--text-muted);padding:6px 8px;">Page ${page} / ${pages}</span>`;
+    if (page < pages) html += `<button class="filter-btn" onclick="goPage(${page+1})">Next →</button>`;
+    el.innerHTML = html;
+}
+
+window.goPage = p => { currentPage = p; load(); window.scrollTo(0,0); };
+
+window.delMatch = async (id, ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    if (!confirm('Delete this match and all its data?')) return;
+    try {
+        await api(`/api/pracc/matches/${id}`, { method:'DELETE' });
+        toast('Match deleted.', 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+load();</script>
+</body>
+</html>

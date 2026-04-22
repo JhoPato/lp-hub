@@ -1,0 +1,41 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+!*.env.example
+
+# Dependencies
+node_modules/
+desktop/node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+desktop/dist/
+desktop/dist-electron/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local app data / generated bundles
+_pub/
+_pub.zip
+habs-data/
+
+# Tooling caches
+.cache/
+desktop/.vite/
+
+# Local assistant/tool state
+.claude/

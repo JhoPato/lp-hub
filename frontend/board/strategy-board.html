@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy Board — LP Hub</title>
+<link rel="stylesheet" href="/css/hub.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+<link rel="stylesheet" href="./board.css">
+<script>
+document.onselectstart = function(e) {
+    const t = e.target;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return true;
+    return false;
+};
+document.addEventListener('selectstart', function(e) {
+    const t = e.target;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+    e.preventDefault();
+}, true);
+</script>
+</head>
+<body>
+<div class="board-shell">
+    <div class="board-main">
+
+        <div class="board-topbar">
+            <div class="hud-pill">
+                <select id="mapSelect" style="display:none;"></select>
+                <button class="map-picker-btn" id="mapPickerBtn" onclick="toggleMapPicker(event)">
+                    <span id="mapPickerLabel">Map</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="sep"></div>
+                <input class="board-name" id="stratName" type="text" placeholder="Strategy name..." maxlength="80">
+                <div class="sep"></div>
+                <button class="topbar-btn new" onclick="newBoard()">NEW</button>
+                <button class="topbar-btn save" onclick="saveStrategy()">SAVE</button>
+                <button class="topbar-btn new" onclick="exportBoard()">EXPORT</button>
+            </div>
+            <div class="hud-pill">
+                <button class="side-btn atk active" id="btnAtk" onclick="setSide('atk')">ATK</button>
+                <button class="side-btn def" id="btnDef" onclick="setSide('def')">DEF</button>
+                <button class="side-btn" onclick="openSettings()" title="Key Bindings" style="padding:5px 8px;display:flex;align-items:center;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                </button>
+                <div class="sep"></div>
+                <button class="topbar-btn new" onclick="window.location.href='/manager/strategies.html'" style="color:var(--accent);">← Leave</button>
+                <div id="presenceBar" style="display:none;align-items:center;gap:8px;">
+                    <div class="sep"></div>
+                    <span id="roomCodeLabel" style="font-size:0.72rem;font-weight:900;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;cursor:pointer;" title="Click to copy" onclick="navigator.clipboard.writeText(this.dataset.code);this.textContent='Copied!';setTimeout(()=>this.textContent=this.dataset.code,1200)"></span>
+                    <div id="presenceAvatars" style="display:flex;align-items:center;gap:4px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-body">
+            <div class="map-picker-dropdown" id="mapPickerDropdown"></div>
+
+            <div class="board-toolbar">
+                <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="Select (S)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4l7.5 18 3.5-7.5L22 11z"/></svg>
+                </button>
+
+                <button class="tool-btn" id="tool-line" onclick="setTool('line')" title="Line (L)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 19L19 5"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-pencil" onclick="setTool('pencil')" title="Pencil (Q)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 014 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke-linejoin="round"/><path d="M15 5l4 4" stroke-linecap="round"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-circle" onclick="setTool('circle')" title="Circle (C)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-rect" onclick="setTool('rect')" title="Rectangle (R)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="8,4 4,4 4,8"/><polyline points="16,4 20,4 20,8"/><polyline points="4,16 4,20 8,20"/><polyline points="20,16 20,20 16,20"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-text" onclick="setTool('text')" title="Text (T)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-move" onclick="setTool('move')" title="Movement Timer (M)">
+                    <img src="/assets/svg/MovementTimer-icon..svg" width="18" height="18" style="filter:brightness(0) invert(1);opacity:0.75;">
+                </button>
+                <button class="tool-btn" id="tool-multi" onclick="setTool('multi')" title="Markers (V)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="5" r="1.8" fill="currentColor"/><circle cx="12" cy="5" r="1.8" fill="currentColor"/><circle cx="19" cy="5" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="19" r="1.8" fill="currentColor"/><circle cx="12" cy="19" r="1.8" fill="currentColor"/><circle cx="19" cy="19" r="1.8" fill="currentColor"/></svg>
+                </button>
+                <div class="tool-sep"></div>
+                <div class="color-dot active" style="background:#df5840;" onclick="setColor('#df5840')" data-color="#df5840"></div>
+                <div class="color-dot" style="background:#22c55e;" onclick="setColor(this.dataset.color)" data-color="#22c55e" data-index="1" title="Double-click to customize"></div>
+                <div class="color-dot" style="background:#f0a500;" onclick="setColor(this.dataset.color)" data-color="#f0a500" data-index="2" title="Double-click to customize"></div>
+                <div class="color-dot" style="background:#4a9eff;" onclick="setColor(this.dataset.color)" data-color="#4a9eff" data-index="3" title="Double-click to customize"></div>
+                <div class="color-dot" style="background:#a855f7;" onclick="setColor(this.dataset.color)" data-color="#a855f7" data-index="4" title="Double-click to customize"></div>
+                <div class="color-dot" style="background:#ffffff;" onclick="setColor(this.dataset.color)" data-color="#ffffff" data-index="5" title="Double-click to customize"></div>
+                <div class="tool-sep"></div>
+                <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 10h11a7 7 0 010 14H8"/><path d="M3 10l4-4M3 10l4 4"/></svg>
+                </button>
+                <button class="tool-btn" id="tool-erase" onclick="toggleErase()" title="Eraser — click elements to delete">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 20H7L3 16l10-10 7 7-3.5 3.5"/><path d="M6.5 17.5l4-4"/></svg>
+                </button>
+                <button class="tool-btn" onclick="clearBoard()" title="Clear all (E)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+            </div>
+
+            <div class="board-canvas-wrap" id="canvasWrap">
+                <div id="mapBlurBg"></div>
+                <div id="mapBlueTint"></div>
+                <div id="konva-wrap"></div>
+
+                <div id="trashZone">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                </div>
+
+                <div id="textInput" style="display:none;position:absolute;z-index:50;">
+                    <input id="textInputEl" style="background:rgba(0,0,0,0.88);border:1px solid var(--accent);color:#fff;padding:4px 8px;font-size:15px;font-weight:700;border-radius:5px;outline:none;min-width:120px;" placeholder="Type...">
+                </div>
+
+                <div id="agentAbilityFloat">
+                    <div id="agentPortraitWrap">
+                        <img id="agentFloatPortrait" src="" alt="">
+                    </div>
+                    <div class="float-sep-v"></div>
+                    <div id="abilityBar" class="ability-bar"></div>
+                </div>
+            </div>
+
+<div id="clearBoardModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:#1a1c21;border:1px solid var(--border);border-radius:10px;padding:28px 32px;max-width:380px;width:90%;">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;">Clear the board?</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:24px;">This will erase all drawings from the canvas. This action cannot be undone.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="topbar-btn new" onclick="document.getElementById('clearBoardModal').style.display='none';">CANCEL</button>
+            <button class="topbar-btn save" onclick="confirmClearBoard()">CLEAR</button>
+        </div>
+    </div>
+</div>
+
+<div id="mapChangeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;">
+    <input type="hidden" id="mapChangePending">
+    <div style="background:#1a1c21;border:1px solid var(--border);border-radius:10px;padding:28px 32px;max-width:380px;width:90%;">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;">Change map?</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:24px;">This will clear all content from the canvas. This action cannot be undone.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="topbar-btn new" onclick="document.getElementById('mapChangeModal').style.display='none';">CANCEL</button>
+            <button class="topbar-btn save" onclick="confirmMapChange()">CHANGE</button>
+        </div>
+    </div>
+</div>
+
+            <div id="toolOptionsPanel" class="tool-options-panel"></div>
+            <div id="fillPill" class="fill-pill">
+                <div class="fill-pill-knob"></div>
+                <div class="fill-pill-lbl">Fill</div>
+            </div>
+            <div id="belowPill" class="below-pill">
+                <div class="below-pill-knob"></div>
+                <div class="below-pill-lbl">Map</div>
+            </div>
+            <div id="arrowPill" class="arrow-pill">
+                <div class="arrow-pill-knob"></div>
+                <div class="arrow-pill-lbl">Arr</div>
+            </div>
+
+            <div class="agent-sidebar" id="agentSidebar">
+                <div style="font-size:0.5rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);text-align:center;margin-bottom:4px;flex-shrink:0;">AGT</div>
+                <div class="agent-sidebar-scroll" id="agentSidebarScroll">
+                    <div class="agent-grid" id="agentGrid"></div>
+                </div>
+                <div class="agent-filter-toggle">
+                    <div class="agent-filter-indicator" id="agentFilterIndicator"></div>
+                    <button class="agent-filter-btn active" id="agentFilterAll" onclick="setAgentFilter('all')">ALL</button>
+                    <button class="agent-filter-btn" id="agentFilterMap" onclick="setAgentFilter('map')">MAP</button>
+                </div>
+            </div>
+
+            <div class="board-panel" id="boardPanel">
+                <!-- ── Tab bar ──────────────────────────────────── -->
+                <div class="panel-tabs">
+                    <button class="panel-tab" id="tab-layers" onclick="switchPanelTab('layers')" title="Layers">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        <span>Layers</span>
+                    </button>
+                    <button class="panel-tab active" id="tab-moments" onclick="switchPanelTab('moments')" title="Moments">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Moments</span>
+                    </button>
+                    <button class="panel-tab" id="tab-ai" onclick="switchPanelTab('ai')" title="AI Assistant">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 1C12 1 15.5 9 22 10.5C15.5 12 12 20 12 20C12 20 8.5 12 2 10.5C8.5 9 12 1 12 1Z" fill="currentColor"/>
+                        </svg>
+                        <span>AI</span>
+                    </button>
+                </div>
+
+                <!-- ── Layers tab (placeholder) ─────────────────── -->
+                <div class="panel-tab-content" id="tabcontent-layers" style="display:none;">
+                    <div class="panel-placeholder">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        <div class="panel-placeholder-title">Layers</div>
+                        <div class="panel-placeholder-sub">Coming soon</div>
+                    </div>
+                </div>
+
+                <!-- ── Moments tab ──────────────────────────────── -->
+                <div class="panel-tab-content" id="tabcontent-moments">
+                    <div class="import-moment-wrap">
+                        <div class="panel-title" style="margin-bottom:5px;">Import Moment</div>
+                        <textarea id="momentInput" placeholder='Paste moment JSON here...'></textarea>
+                        <div class="import-moment-btns">
+                            <button onclick="pasteMoment()">⎘ Paste</button>
+                            <button class="apply" onclick="applyMoment()">Apply</button>
+                        </div>
+                    </div>
+                    <div id="boardMomentsSection" style="display:flex; flex-direction:column; flex:1; overflow:hidden; min-height:0;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px 6px; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,0.07);">
+                            <div class="panel-title" style="margin:0;">Board Moments</div>
+                            <button id="createMomentBtn" onclick="createBoardMoment()" style="font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid var(--accent);background:none;color:var(--accent);cursor:pointer;transition:all .12s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--accent)'">+ New</button>
+                        </div>
+                        <div class="moments-list" id="boardMomentsList">
+                            <div class="panel-empty">No moments yet.<br>Draw something and click <b>+ New</b>.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── AI tab ───────────────────────────────────── -->
+                <div class="panel-tab-content" id="tabcontent-ai" style="display:none; flex-direction:column;">
+                    <div class="ai-tab-header">
+                        <span class="ai-tab-title">AI Coach</span>
+                        <button class="ai-expand-btn" id="aiExpandBtn" onclick="aiToggleExpand()" title="Expand chat">
+                            <svg id="aiExpandIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                                <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="ai-chat-messages" id="aiMessages"></div>
+                    <div class="ai-doc-bar" id="aiDocBar">
+                        <span class="ai-doc-label" id="aiDocLabel">No document</span>
+                        <button class="ai-doc-btn" id="aiDocBtn" onclick="document.getElementById('aiDocFile').click()" title="Attach a .txt or .md document as context">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Attach doc
+                        </button>
+                        <button class="ai-doc-clear" id="aiDocClear" onclick="aiClearDoc()" style="display:none;" title="Remove document">✕</button>
+                        <input type="file" id="aiDocFile" accept=".txt,.md" style="display:none;" onchange="aiLoadDoc(this)">
+                    </div>
+                    <div class="ai-input-row">
+                        <textarea class="ai-input" id="aiInput" placeholder="Ask about the current board..." rows="1" onkeydown="aiInputKeydown(event)" oninput="aiInputResize(this)"></textarea>
+                        <button class="ai-send-btn" id="aiSendBtn" onclick="aiSend()" title="Send (Enter)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="./js/main.js"></script>
+
+<div id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+    <div id="settingsModal">
+        <div class="settings-title">
+            Settings
+            <button class="settings-close" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="settings-cols">
+            <div class="settings-left-col">
+                <div class="settings-section">Key Bindings</div>
+                <div class="settings-section" style="margin-top:14px;">Tools</div>
+                <div id="keybind-section-tools"></div>
+                <div class="settings-section" style="margin-top:14px;">Abilities</div>
+                <div id="keybind-section-abilities"></div>
+                <div class="settings-section" style="margin-top:14px;">Agent Navigation</div>
+                <div id="keybind-section-agents"></div>
+            </div>
+            <div class="settings-right-col">
+                <div class="settings-section" style="margin-bottom:14px;">Placement Mode</div>
+                <div class="mode-toggle">
+                    <div class="mode-toggle-indicator" id="modeIndicator"></div>
+                    <button class="mode-toggle-btn" data-mode="click" onclick="setPlaceMode('click')">Select and Place</button>
+                    <button class="mode-toggle-btn" data-mode="drag" onclick="setPlaceMode('drag')">Drag and Drop</button>
+                </div>
+                <div class="mode-video-wrap">
+                    <video id="placeModeVideo" autoplay loop muted playsinline></video>
+                </div>
+                <div style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="settings-section" style="margin:0;">Agent Size</span>
+                            <span id="sliderAgentVal" style="font-size:0.6rem; font-weight:900; color:var(--accent); min-width:36px; text-align:right;">100%</span>
+                        </div>
+                        <input id="sliderAgentScale" type="range" min="0.5" max="2" step="0.05" value="1" oninput="onScaleSlider('agent', this.value)" class="settings-slider">
+                    </div>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="settings-section" style="margin:0;">Abilities Size</span>
+                            <span id="sliderAbilityVal" style="font-size:0.6rem; font-weight:900; color:var(--accent); min-width:36px; text-align:right;">100%</span>
+                        </div>
+                        <input id="sliderAbilityScale" type="range" min="0.5" max="2" step="0.05" value="1" oninput="onScaleSlider('ability', this.value)" class="settings-slider">
+                    </div>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span class="settings-section" style="margin:0;">Background Opacity</span>
+                            <span id="sliderBgOpacityVal" style="font-size:0.6rem; font-weight:900; color:var(--accent); min-width:36px; text-align:right;">100%</span>
+                        </div>
+                        <input id="sliderBgOpacity" type="range" min="0" max="1" step="0.05" value="1" oninput="onScaleSlider('bgOpacity', this.value)" class="settings-slider">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-footer">
+            <button class="settings-btn reset" onclick="resetKeybinds()">Reset defaults</button>
+            <button class="settings-btn save" onclick="saveKeybinds()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="saveBeforeCloseModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:32px;width:340px;display:flex;flex-direction:column;gap:18px;">
+        <div style="font-size:1rem;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;">Save before leaving?</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);">Your current board state will be lost if you leave without saving.</div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="_resolveClose('discard')" style="flex:1;padding:11px 0;border-radius:6px;border:none;background:var(--bg3);color:var(--text-muted);font-size:0.82rem;font-weight:700;cursor:pointer;">Leave without saving</button>
+            <button onclick="_resolveClose('save')" style="flex:1;padding:11px 0;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:0.82rem;font-weight:700;cursor:pointer;">Save &amp; Leave</button>
+        </div>
+    </div>
+</div>
+<div id="cpPicker">
+    <div id="cpSV"><div id="cpSVDot"></div></div>
+    <input type="range" id="cpHue" min="0" max="359" value="0">
+    <div class="cp-row">
+        <div id="cpPreview"></div>
+        <input type="text" id="cpHex" maxlength="7" spellcheck="false">
+        <button id="cpReset">Reset</button>
+    </div>
+    <div class="cp-btns">
+        <button id="cpCancel">Cancel</button>
+        <button id="cpApply">Apply</button>
+    </div>
+</div>
+</body>
+</html>

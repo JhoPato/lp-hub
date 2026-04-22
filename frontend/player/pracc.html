@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc History</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.carousel-wrap { position:relative; margin-bottom:20px; }
+        .carousel-track-outer { overflow:hidden; }
+        .carousel-track { display:flex; gap:8px; transition:transform 0.25s; }
+        .map-pill { flex-shrink:0; padding:6px 14px; font-size:0.73rem; font-weight:700; letter-spacing:0.05em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; white-space:nowrap; }
+        .map-pill.active { border-color:var(--accent); color:var(--accent); background:rgba(223,88,64,0.08); }
+        .carousel-btn { position:absolute; top:50%; transform:translateY(-50%); background:var(--bg2); border:1px solid var(--border); color:var(--text); width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:0.75rem; display:flex; align-items:center; justify-content:center; z-index:2; }
+        .carousel-btn.prev { left:-13px; }
+        .carousel-btn.next { right:-13px; }
+        .carousel-btn:disabled { opacity:0.3; cursor:default; }
+
+        .pracc-filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+        .filter-btn { padding:6px 14px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; }
+        .filter-btn.active { border-color:var(--accent); color:var(--accent); }
+        .filter-btn.win.active  { border-color:var(--success); color:var(--success); background:rgba(87,242,135,0.08); }
+        .filter-btn.loss.active { border-color:var(--error); color:var(--error); background:rgba(255,68,68,0.08); }
+        .filter-btn.draw.active { border-color:var(--text-muted); color:var(--text); background:rgba(255,255,255,0.06); }
+
+        .match-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:border-color 0.2s, background 0.2s; text-decoration:none; color:inherit; }
+        .match-card:hover { border-color:var(--accent); background:rgba(223,88,64,0.04); }
+        .match-result { width:48px; height:48px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:900; flex-shrink:0; }
+        .match-result.W { background:rgba(87,242,135,0.12); color:var(--success); }
+        .match-result.L { background:rgba(255,68,68,0.12); color:var(--error); }
+        .match-result.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .match-score { font-size:1.15rem; font-weight:900; flex-shrink:0; min-width:56px; text-align:center; }
+        .match-info { flex:1; min-width:0; }
+        .match-opponent { font-weight:700; font-size:0.9rem; }
+        .match-sub { font-size:0.73rem; color:var(--text-muted); margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; }
+        .match-sub .map-chip { background:var(--bg3); border:1px solid var(--border); padding:1px 7px; border-radius:2px; font-size:0.68rem; }
+
+        .pagination { display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+        .empty-state { text-align:center; padding:48px 20px; color:var(--text-muted); }
+        .empty-state .ei { font-size:2.5rem; margin-bottom:10px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+
+        <div class="page-header">
+            <h1>Pracc History</h1>
+            <p>Practice match records</p>
+        </div>
+
+        <div class="carousel-wrap" id="carouselWrap" style="display:none;">
+            <button class="carousel-btn prev" id="carPrev">‹</button>
+            <div class="carousel-track-outer">
+                <div class="carousel-track" id="carouselTrack"></div>
+            </div>
+            <button class="carousel-btn next" id="carNext">›</button>
+        </div>
+
+        <div class="pracc-filters">
+            <button class="filter-btn active" data-result="">All</button>
+            <button class="filter-btn win"  data-result="W">Wins</button>
+            <button class="filter-btn loss" data-result="L">Losses</button>
+            <button class="filter-btn draw" data-result="D">Draws</button>
+        </div>
+
+        <div id="matchList"><p style="color:var(--text-muted);">Loading...</p></div>
+        <div class="pagination" id="pagination"></div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth();
+if (!user) throw new Error('redirect');
+
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'pracc');
+
+let currentResult = '';
+let currentMap    = '';
+let currentPage   = 1;
+let allMaps       = [];
+
+api('/api/auth/me').then(me => {
+    const tn = document.getElementById('sidebarTeamName');
+    if (tn) tn.textContent = me.teamId?.name || '';
+}).catch(() => {});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentResult = btn.dataset.result;
+        currentPage = 1;
+        load();
+    });
+});
+
+let carOffset = 0;
+const PILL_W  = 110;
+
+function buildCarousel(maps) {
+    allMaps = maps;
+    const wrap  = document.getElementById('carouselWrap');
+    const track = document.getElementById('carouselTrack');
+    if (!maps.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+
+    const pills = [{ key:'', label:'All Maps' }, ...maps.map(m => ({ key:m, label:m }))];
+    track.innerHTML = pills.map(p =>
+        `<button class="map-pill${p.key === currentMap ? ' active' : ''}" data-map="${p.key}">${p.label}</button>`
+    ).join('');
+
+    track.querySelectorAll('.map-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            currentMap  = pill.dataset.map;
+            currentPage = 1;
+            track.querySelectorAll('.map-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            load();
+        });
+    });
+    updateCarouselBtns();
+}
+
+document.getElementById('carPrev').addEventListener('click', () => {
+    carOffset = Math.max(0, carOffset - PILL_W * 2);
+    document.getElementById('carouselTrack').style.transform = `translateX(-${carOffset}px)`;
+    updateCarouselBtns();
+});
+document.getElementById('carNext').addEventListener('click', () => {
+    const maxOff = Math.max(0, (allMaps.length + 1) * PILL_W - (document.getElementById('carouselTrack').parentElement?.offsetWidth || 999));
+    carOffset = Math.min(maxOff, carOffset + PILL_W * 2);
+    document.getElementById('carouselTrack').style.transform = `translateX(-${carOffset}px)`;
+    updateCarouselBtns();
+});
+function updateCarouselBtns() {
+    const maxOff = Math.max(0, (allMaps.length + 1) * PILL_W - (document.getElementById('carouselTrack').parentElement?.offsetWidth || 999));
+    document.getElementById('carPrev').disabled = carOffset <= 0;
+    document.getElementById('carNext').disabled = carOffset >= maxOff;
+}
+
+async function load() {
+    const el = document.getElementById('matchList');
+    el.innerHTML = '<p style="color:var(--text-muted);">Loading…</p>';
+    try {
+        let url = `/api/pracc/matches?page=${currentPage}&limit=20`;
+        if (currentResult) url += `&result=${currentResult}`;
+        if (currentMap)    url += `&map=${encodeURIComponent(currentMap)}`;
+
+        const { matches, pages, maps } = await api(url);
+
+        if (maps) buildCarousel(maps);
+
+        if (!matches || !matches.length) {
+            el.innerHTML = `<div class="empty-state"><div class="ei">🎮</div><p>No matches recorded yet.</p></div>`;
+            renderPagination(0, 0);
+            return;
+        }
+
+        el.innerHTML = matches.map(m => {
+            const res      = m.result || 'D';
+            const scoreStr = `${m.scoreUs ?? '?'} – ${m.scoreThem ?? '?'}`;
+            const mapChip  = m.mapName ? `<span class="map-chip">${m.mapName}</span>` : '';
+            const dt       = m.date ? formatDate(m.date) : '';
+            const vod      = m.vodUrl ? '🎬' : '';
+            return `<div class="match-card" onclick="location.href='/player/pracc-match.html?id=${m._id}'">
+                <div class="match-result ${res}">${res}</div>
+                <div class="match-score">${scoreStr}</div>
+                <div class="match-info">
+                    <div class="match-opponent">vs ${m.opponent || 'Unknown'}</div>
+                    <div class="match-sub">${mapChip}<span>${dt}</span>${vod ? `<span>${vod} VOD</span>` : ''}</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        renderPagination(pages, currentPage);
+    } catch (err) {
+        el.innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderPagination(pages, page) {
+    const el = document.getElementById('pagination');
+    if (!pages || pages <= 1) { el.innerHTML = ''; return; }
+    let html = '';
+    if (page > 1)     html += `<button class="filter-btn" onclick="goPage(${page-1})">← Prev</button>`;
+    html += `<span style="font-size:0.78rem;color:var(--text-muted);padding:6px 8px;">Page ${page} / ${pages}</span>`;
+    if (page < pages) html += `<button class="filter-btn" onclick="goPage(${page+1})">Next →</button>`;
+    el.innerHTML = html;
+}
+
+window.goPage = p => { currentPage = p; load(); window.scrollTo(0,0); };
+
+load();</script>
+</body>
+</html>

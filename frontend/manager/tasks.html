@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Tasks</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+        .filter-btn { padding:5px 12px; font-size:0.73rem; font-weight:700; letter-spacing:0.05em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.15s; }
+        .filter-btn.active { border-color:var(--accent); color:var(--accent); }
+
+        .task-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid transparent; border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; }
+        .task-card[data-priority="high"]   { border-left-color:var(--error); }
+        .task-card[data-priority="medium"] { border-left-color:#ffd700; }
+        .task-card[data-priority="low"]    { border-left-color:var(--success); }
+        .task-card.completed { opacity:0.55; }
+        .task-card-top { display:flex; align-items:flex-start; gap:12px; }
+        .task-body  { flex:1; min-width:0; }
+        .task-title { font-weight:600; font-size:0.9rem; margin-bottom:3px; }
+        .task-desc  { font-size:0.8rem; color:var(--text-muted); margin-bottom:6px; }
+        .task-meta  { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .task-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+
+        .badge-overdue { font-size:0.68rem; font-weight:800; color:var(--error); background:rgba(255,68,68,0.12); border:1px solid rgba(255,68,68,0.3); border-radius:3px; padding:1px 6px; }
+        .badge-cat     { font-size:0.69rem; color:var(--text-muted); background:var(--bg3); border:1px solid var(--border); border-radius:3px; padding:1px 6px; }
+        .upload-badge  { display:inline-flex; align-items:center; gap:3px; font-size:0.69rem; color:var(--accent); background:rgba(223,88,64,0.1); border:1px solid rgba(223,88,64,0.25); border-radius:3px; padding:1px 6px; }
+        .vod-badge     { display:inline-flex; align-items:center; gap:3px; font-size:0.69rem; color:#9f7aea; background:rgba(159,122,234,0.1); border:1px solid rgba(159,122,234,0.3); border-radius:3px; padding:1px 6px; cursor:pointer; text-decoration:none; }
+        .vod-badge:hover { background:rgba(159,122,234,0.2); }
+
+        .status-inline { font-size:0.72rem; padding:3px 6px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); cursor:pointer; }
+
+        .progress-wrap  { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; }
+        .progress-track { height:6px; background:var(--bg3); border-radius:3px; overflow:hidden; margin-top:8px; }
+        .progress-fill  { height:100%; background:var(--success); border-radius:3px; transition:width 0.4s; }
+
+        .assignee-wrap { position:relative; }
+        .assignee-btn  { width:100%; text-align:left; padding:8px 12px; font-size:0.85rem; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .assignee-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:200; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 8px 24px rgba(0,0,0,0.5); max-height:200px; overflow-y:auto; }
+        .assignee-opt { display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:0.82rem; }
+        .assignee-opt:last-child { border-bottom:none; }
+        .assignee-opt:hover { background:var(--bg3); }
+        .assignee-opt input { width:14px; height:14px; accent-color:var(--accent); flex-shrink:0; cursor:pointer; }
+
+        .comments-toggle  { font-size:0.73rem; color:var(--text-muted); cursor:pointer; padding:6px 0 0; display:inline-flex; align-items:center; gap:4px; border:none; background:none; }
+        .comments-toggle:hover { color:var(--text); }
+        .comments-section { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+        .comment-item   { padding:8px 10px; background:var(--bg3); border-radius:var(--radius); margin-bottom:6px; }
+        .comment-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+        .comment-author { font-size:0.71rem; font-weight:700; color:var(--accent); }
+        .comment-time   { font-size:0.68rem; color:var(--text-muted); }
+        .comment-text   { font-size:0.8rem; color:var(--text); word-break:break-word; }
+        .comment-del    { background:none; border:none; color:var(--error); cursor:pointer; font-size:0.85rem; padding:0 3px; line-height:1; }
+        .comment-add    { display:flex; gap:6px; margin-top:8px; }
+        .comment-input  { flex:1; padding:6px 10px; font-size:0.8rem; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); outline:none; }
+        .comment-input:focus { border-color:var(--accent); }
+        .comment-input::placeholder { color:var(--text-muted); }
+
+        .uploads-list { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:8px; }
+        .upload-item  { display:flex; align-items:center; gap:6px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:5px 8px; font-size:0.78rem; max-width:240px; }
+        .upload-item a { color:var(--accent); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; display:inline-block; }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box     { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+        .modal-title   { font-size:1rem; font-weight:700; margin-bottom:20px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; }
+        .checkbox-row input  { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+        .checkbox-row label  { font-size:0.82rem; color:var(--text-muted); cursor:pointer; }
+
+        .vod-form-section { margin-top:14px; padding:14px; background:var(--bg3); border-radius:var(--radius); border:1px solid var(--border); }
+        .vod-type-radios  { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+        .vod-radio-label  { display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.83rem; }
+        .vod-radio-label input { accent-color:#9f7aea; cursor:pointer; }
+
+        .view-modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; width:100%; max-width:660px; max-height:92vh; overflow-y:auto; }
+        .view-section   { margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+        .view-section-title { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+
+        .vod-modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; width:100%; max-width:900px; max-height:92vh; overflow-y:auto; }
+        .vod-grid { display:grid; grid-template-columns:1fr 270px; gap:16px; }
+        .vod-embed-wrap { position:relative; padding-bottom:56.25%; height:0; border-radius:var(--radius); overflow:hidden; background:#000; }
+        .vod-embed-wrap > div { position:absolute; top:0; left:0; width:100%; height:100%; }
+        .ts-list { max-height:300px; overflow-y:auto; }
+        .ts-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius); }
+        .ts-item:hover { background:var(--bg3); }
+        .ts-time { font-size:0.72rem; font-weight:700; font-family:monospace; color:#9f7aea; background:rgba(159,122,234,0.12); border:1px solid rgba(159,122,234,0.3); border-radius:3px; padding:2px 7px; white-space:nowrap; flex-shrink:0; cursor:pointer; }
+        .ts-label { font-size:0.82rem; flex:1; }
+        .ts-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 3px; }
+        .ts-del:hover { color:var(--error); }
+        .ts-add-row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+        .ts-add-row input, .ts-add-row textarea { padding:6px 8px; font-size:0.8rem; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); outline:none; font-family:inherit; resize:vertical; min-height:36px; }
+        .ts-add-row input:focus, .ts-add-row textarea:focus { border-color:#9f7aea; }
+        .ts-note { font-size:0.73rem; color:var(--text-muted); margin-top:3px; font-style:italic; padding-left:2px; }
+        .clock-btn { padding:5px 8px; font-size:0.85rem; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+        .clock-btn:hover { border-color:#9f7aea; color:#9f7aea; }
+
+        @media(max-width:680px){
+            .vod-grid { grid-template-columns:1fr; }
+            .form-row-2 { grid-template-columns:1fr; }
+        }
+
+        /* ── Team Goals widget ── */
+        .goals-widget { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; }
+        .goals-widget-hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .goals-widget-title { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); }
+        .goals-player-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .goals-player-row:last-child { border-bottom:none; }
+        .goals-player-name { font-size:0.78rem; font-weight:700; width:96px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .goals-group { display:flex; align-items:center; gap:5px; }
+        .goals-group-label { font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-right:2px; }
+        .goals-dots { display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+        .goal-dot { width:11px; height:11px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.13); background:var(--bg3); flex-shrink:0; }
+        .goal-dot.done   { background:var(--accent); border-color:var(--accent); box-shadow:0 0 4px rgba(223,88,64,.4); }
+        .goal-dot.done-g { background:var(--success); border-color:var(--success); box-shadow:0 0 4px rgba(34,197,94,.3); }
+        .goals-count-sm { font-size:0.66rem; font-weight:700; color:var(--text-muted); white-space:nowrap; }
+        .goals-no-goal { font-size:0.7rem; color:var(--text-muted); opacity:0.4; font-style:italic; }
+        .pill-btn { padding:7px 12px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); cursor:pointer; white-space:nowrap; line-height:1; }
+        .pill-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .pill-wrap { position:relative; display:inline-block; }
+        .pill-dd { position:absolute; top:calc(100% + 4px); left:0; z-index:260; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 8px 24px rgba(0,0,0,0.5); min-width:150px; overflow:hidden; }
+        .pill-dd-opt { padding:8px 14px; font-size:0.82rem; cursor:pointer; color:var(--text); }
+        .pill-dd-opt:hover { background:var(--bg3); }
+        .toggle-pill { padding:7px 12px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted); cursor:pointer; line-height:1; }
+        .toggle-pill.active-yes { background:rgba(34,197,94,0.15); border-color:#22c55e; color:#22c55e; }
+        .toggle-pill.active-no  { background:rgba(223,88,64,0.12); border-color:var(--accent); color:var(--accent); }
+        .pracc-pick-item { padding:12px 14px; border-bottom:1px solid var(--border); cursor:pointer; }
+        .pracc-pick-item:last-child { border-bottom:none; }
+        .pracc-pick-item:hover { background:var(--bg3); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Tasks</h1>
+            <p>Create and manage team tasks</p>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openModal()">+ New Task</button>
+            <select id="sortSelect" onchange="load()" style="font-size:0.78rem;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);cursor:pointer;">
+                <option value="">Sort: Priority</option>
+                <option value="due">Sort: Due Date</option>
+                <option value="recent">Sort: Newest</option>
+                <option value="alpha">Sort: A–Z</option>
+            </select>
+        </div>
+
+        <div class="filter-row" id="statusFilters">
+            <button class="filter-btn active" data-status="">All</button>
+            <button class="filter-btn" data-status="pending">Pending</button>
+            <button class="filter-btn" data-status="in_progress">In Progress</button>
+            <button class="filter-btn" data-status="completed">Completed</button>
+        </div>
+        <div class="filter-row" id="catFilters" style="margin-bottom:16px;">
+            <button class="filter-btn active" data-cat="">All types</button>
+            <button class="filter-btn" data-cat="general">General</button>
+            <button class="filter-btn" data-cat="analysis">Analysis</button>
+            <button class="filter-btn" data-cat="preparation">Prep</button>
+            <button class="filter-btn" data-cat="physical">Physical</button>
+            <button class="filter-btn" data-cat="vod_review">VOD</button>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.73rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">Team Progress</span>
+                <span style="font-size:0.82rem;" id="progressLabel">—</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+
+        <div id="goalsWidget"></div>
+
+        <div id="tasksList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="taskModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="overflow:visible;">
+        <div class="modal-title" id="modalTitle">New Task</div>
+        <input type="hidden" id="editId">
+        <div class="form-group" style="margin-top:4px;">
+            <label class="form-label">Title *</label>
+            <input class="form-input" id="fieldTitle" type="text" placeholder="Task title" maxlength="120">
+        </div>
+        <div style="display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:start;margin-top:12px;">
+            <div>
+                <label class="form-label">Type</label>
+                <div class="pill-wrap" id="typeWrap">
+                    <button class="pill-btn" id="typeBtn" onclick="toggleTypeDD()" type="button">NONE</button>
+                    <div class="pill-dd" id="typeDD" style="display:none;">
+                        <div class="pill-dd-opt" onclick="setType('none')">None</div>
+                        <div class="pill-dd-opt" onclick="setType('vod_review')">VOD Review</div>
+                        <div class="pill-dd-opt" onclick="setType('analysis')">Analysis</div>
+                        <div class="pill-dd-opt" onclick="setType('preparation')">Prep</div>
+                        <div class="pill-dd-opt" onclick="setType('physical')">Physical</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Require File</label>
+                <div style="display:flex;gap:4px;">
+                    <button class="toggle-pill" id="reqYesBtn" onclick="setReqFile(true)" type="button">YES</button>
+                    <button class="toggle-pill active-no" id="reqNoBtn" onclick="setReqFile(false)" type="button">NO</button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Description</label>
+                <textarea class="form-input" id="fieldDesc" rows="1" style="resize:none;overflow:hidden;font-family:inherit;font-size:0.82rem;min-height:0;" placeholder="Notes…"></textarea>
+            </div>
+            <div>
+                <label class="form-label" style="visibility:hidden;">.</label>
+                <button class="pill-btn" onclick="toggleDescExpand()" type="button" title="Expand" style="padding:8px 10px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
+                </button>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;" id="row3cols">
+            <div>
+                <label class="form-label">Due Date</label>
+                <input class="form-input" id="fieldDue" type="date" style="font-size:0.82rem;">
+            </div>
+            <div>
+                <label class="form-label">Assign To</label>
+                <div class="assignee-wrap" id="assigneeWrap">
+                    <button type="button" class="pill-btn" id="assigneeBtn" onclick="toggleAssignees()" style="width:100%;text-align:left;padding:8px 12px;">EVERYONE</button>
+                    <div class="assignee-dropdown" id="assigneeDropdown">
+                        <div style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);">
+                            <button type="button" class="pill-btn" style="flex:1;text-align:center;" onclick="assignSelectAll()">Everyone</button>
+                            <button type="button" class="pill-btn" style="flex:1;text-align:center;" onclick="assignSelectNone()">None</button>
+                        </div>
+                        <div id="playerCheckboxes"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="vodTypeRow" style="display:none;margin-top:10px;">
+            <label class="form-label">VOD Type</label>
+            <div class="pill-wrap" id="vodTypePillWrap" style="display:inline-block;">
+                <button class="pill-btn" id="vodTypeBtn" onclick="toggleVodTypeDD()" type="button">PAST PRACC</button>
+                <div class="pill-dd" id="vodTypeDD" style="display:none;">
+                    <div class="pill-dd-opt" onclick="setVodType('pracc')">Past Pracc</div>
+                    <div class="pill-dd-opt" onclick="setVodType('external')">External Pracc (YouTube)</div>
+                </div>
+            </div>
+        </div>
+        <div id="vodPraccWrap" style="display:none;margin-top:10px;">
+            <input type="hidden" id="fieldLinkedPracc">
+            <button class="btn btn-secondary" style="width:100%;font-size:0.8rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;" onclick="openPraccPicker()" type="button">Select a Pracc</button>
+            <div id="selectedPraccDisplay" style="font-size:0.74rem;color:var(--text-muted);margin-top:5px;text-align:center;min-height:1em;"></div>
+        </div>
+        <div id="vodExternalWrap" style="display:none;margin-top:10px;">
+            <div style="display:flex;gap:8px;">
+                <input class="form-input" id="fieldExternalVod" type="url" placeholder="https://youtube.com/live/..." style="flex:1;font-size:0.82rem;">
+                <button class="btn btn-secondary" onclick="pasteVodUrl()" type="button" style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">PASTE</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:12px;">
+            <div>
+                <label class="form-label">Priority</label>
+                <div class="pill-wrap" id="priorityWrap">
+                    <button class="pill-btn" id="priorityBtn" onclick="togglePriorityDD()" type="button">MEDIUM</button>
+                    <div class="pill-dd" id="priorityDD" style="display:none;">
+                        <div class="pill-dd-opt" onclick="setPriority('low')">Low</div>
+                        <div class="pill-dd-opt" onclick="setPriority('medium')">Medium</div>
+                        <div class="pill-dd-opt" onclick="setPriority('high')">High</div>
+                    </div>
+                </div>
+            </div>
+            <div id="statusFieldWrap" style="display:none;">
+                <label class="form-label">Status</label>
+                <div class="pill-wrap" id="statusWrap">
+                    <button class="pill-btn" id="statusBtn" onclick="toggleStatusDD()" type="button">PENDING</button>
+                    <div class="pill-dd" id="statusDD" style="display:none;">
+                        <div class="pill-dd-opt" onclick="setTaskStatus('pending')">Pending</div>
+                        <div class="pill-dd-opt" onclick="setTaskStatus('in_progress')">In Progress</div>
+                        <div class="pill-dd-opt" onclick="setTaskStatus('completed')">Completed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="saveBtn" onclick="save()">Create</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal" style="display:none;z-index:110;" onclick="if(event.target===this)closeViewModal()">
+    <div class="view-modal-box">
+        <div id="viewModalContent"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="vodModal" style="display:none;z-index:120;" onclick="if(event.target===this)closeVodModal()">
+    <div class="vod-modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div>
+                <div id="vodModalTitle" style="font-weight:700;font-size:0.95rem;"></div>
+                <div id="vodModalSub" style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;"></div>
+            </div>
+            <button class="btn btn-secondary" style="padding:4px 12px;" onclick="closeVodModal()">✕</button>
+        </div>
+        <div class="vod-grid">
+            <div>
+                <div class="vod-embed-wrap">
+                    <div id="ytPlayerWrap"><div id="ytPlayerDiv"></div></div>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">Timestamps</div>
+                <div class="ts-list" id="tsList"></div>
+                <div class="ts-add-row">
+                    <input id="tsTimeInput" type="text" placeholder="MM:SS" style="width:62px;font-family:monospace;">
+                    <button class="clock-btn" onclick="getCurrentVideoTime()" title="Use current video time"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>
+                    <input id="tsLabelInput" type="text" placeholder="Label..." style="flex:1;min-width:80px;">
+                </div>
+                <div class="ts-add-row" style="margin-top:4px;align-items:stretch;">
+                    <textarea id="tsNoteInput" rows="2" placeholder="Note (optional)…" style="flex:1;min-width:0;"></textarea>
+                    <button class="btn btn-secondary" style="font-size:0.78rem;padding:10px 16px;white-space:nowrap;align-self:stretch;font-weight:600;" onclick="addTimestamp()">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Discussion</div>
+            <div id="vodNotesList" style="max-height:200px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="vodNoteInput" class="comment-input" placeholder="Write a comment about the VOD…"
+                       style="flex:1;font-size:0.82rem;" onkeydown="if(event.key==='Enter')addVodNote()">
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 14px;white-space:nowrap;" onclick="addVodNote()">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="praccPickerModal" style="display:none;z-index:130;" onclick="if(event.target===this)closePraccPicker()">
+    <div class="modal-box" style="max-width:480px;" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:0.95rem;font-weight:700;">Select a Match</div>
+            <button class="btn btn-secondary" style="padding:4px 12px;" onclick="closePraccPicker()">✕</button>
+        </div>
+        <div id="praccPickerList" style="max-height:380px;overflow-y:auto;"></div>
+    </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api" async></script>
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast, timeFromNow } from '/js/utils.js';
+
+const user = requireAuth(['manager']);
+let currentStatus   = '';
+let currentCategory = '';
+let players  = [];
+let taskMap  = {};
+let praccs   = [];
+let selectedAssignees = [];
+let vodTaskId  = null;
+let viewTaskId = null;
+let ytPlayer   = null;
+let currentTaskType   = 'none';
+let currentVodType    = 'pracc';
+let currentPriority   = 'medium';
+let currentTaskStatus = 'pending';
+let taskReqFile       = false;
+
+window.openModal        = openModal;
+window.openEdit         = openEdit;
+window.closeModal       = closeModal;
+window.save             = save;
+window.del              = del;
+window.delUpload        = delUpload;
+window.changeStatus     = changeStatus;
+window.toggleComments   = toggleComments;
+window.addComment       = addComment;
+window.delComment       = delComment;
+window.toggleAssignees  = toggleAssignees;
+window.assignSelectAll  = assignSelectAll;
+window.assignSelectNone = assignSelectNone;
+window.playerCheckChange= playerCheckChange;
+window.onCategoryChange = onCategoryChange;
+window.onVodTypeChange  = onVodTypeChange;
+window.openVodModal     = openVodModal;
+window.closeVodModal    = closeVodModal;
+window.addTimestamp     = addTimestamp;
+window.delTimestamp     = delTimestamp;
+window.seekTo           = seekTo;
+window.getCurrentVideoTime = getCurrentVideoTime;
+window.addVodNote       = addVodNote;
+window.delVodNote       = delVodNote;
+window.openViewModal    = openViewModal;
+window.closeViewModal   = closeViewModal;
+window.toggleTypeDD     = toggleTypeDD;
+window.setType          = setType;
+window.toggleVodTypeDD  = toggleVodTypeDD;
+window.setVodType       = setVodType;
+window.setPriority      = setPriority;
+window.togglePriorityDD = togglePriorityDD;
+window.setTaskStatus    = setTaskStatus;
+window.toggleStatusDD   = toggleStatusDD;
+window.setReqFile       = setReqFile;
+window.pasteVodUrl      = pasteVodUrl;
+window.openPraccPicker  = openPraccPicker;
+window.closePraccPicker = closePraccPicker;
+window.selectPracc      = selectPracc;
+window.toggleDescExpand = toggleDescExpand;
+
+window.onYouTubeIframeAPIReady = function() {};
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'tasks');
+    initTeamName();
+    loadPlayers();
+    load();
+    loadGoalsWidget();
+
+    document.querySelectorAll('#statusFilters .filter-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#statusFilters .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentStatus = btn.dataset.status;
+            load();
+        })
+    );
+    document.querySelectorAll('#catFilters .filter-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#catFilters .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCategory = btn.dataset.cat;
+            load();
+        })
+    );
+    document.addEventListener('click', e => {
+        const assignWrap = document.getElementById('assigneeWrap');
+        const assignDD   = document.getElementById('assigneeDropdown');
+        if (assignWrap && assignDD && !assignWrap.contains(e.target)) assignDD.style.display = 'none';
+        ['typeWrap','vodTypePillWrap','priorityWrap','statusWrap'].forEach(id => {
+            const w = document.getElementById(id);
+            if (w && !w.contains(e.target)) {
+                const dd = w.querySelector('.pill-dd');
+                if (dd) dd.style.display = 'none';
+            }
+        });
+    });
+}
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+async function loadPlayers() {
+    try {
+        players = await api('/api/team/players');
+        document.getElementById('playerCheckboxes').innerHTML = players.map(p => `
+            <label class="assignee-opt">
+                <input type="checkbox" class="player-check" id="pcheck-${p._id}" value="${p._id}" onchange="playerCheckChange('${p._id}')">
+                <span>${p.username} <small style="color:var(--text-muted);">(${p.role})</small></span>
+            </label>`).join('');
+    } catch {}
+}
+
+async function loadPraccs() {
+    if (praccs.length) return;
+    try {
+        const { matches } = await api('/api/pracc/matches?limit=100');
+        praccs = (matches || []).filter(m => m.vodUrl);
+    } catch {}
+}
+
+// ── Team Goals widget ───────────────────────────────────────────────────────
+async function loadGoalsWidget() {
+    try {
+        const [goalsData, playersData] = await Promise.all([
+            api('/api/goals').catch(() => ({ goals: [] })),
+            api('/api/team/players').catch(() => ({ players: [] })),
+        ]);
+        const goals   = goalsData.goals   || [];
+        const players = playersData.players || [];
+        if (!goals.length || !players.length) return;
+
+        // Fetch today's Henrik progress for all players
+        let todayMap = {};
+        try {
+            const td = await api('/api/henrik/team/today');
+            (td.players || []).forEach(p => { todayMap[String(p.userId)] = p; });
+        } catch {}
+
+        function dots(target, done, colorClass) {
+            const cap = Math.min(target, 10);
+            if (!cap) return '';
+            return Array.from({ length: cap }, (_, i) =>
+                `<div class="goal-dot${i < done ? ' ' + colorClass : ''}"></div>`
+            ).join('');
+        }
+
+        const byPlayer = {};
+        goals.forEach(g => { byPlayer[g.playerId] = g; });
+
+        const rows = players.map(p => {
+            const g = byPlayer[p._id] || byPlayer['all'];
+            if (!g) return `<div class="goals-player-row">
+                <span class="goals-player-name">${p.username}</span>
+                <span class="goals-no-goal">no goal set</span>
+            </div>`;
+
+            const ranked = Math.max(0, (g.minRanked || 0) + (g.playerRankedAdjust || 0));
+            const dm     = Math.max(0, (g.minDM     || 0) + (g.playerDMAdjust     || 0));
+            const prog = todayMap[String(p._id)] || { ranked: 0, dm: 0 };
+            return `<div class="goals-player-row">
+                <span class="goals-player-name" title="${p.username}">${p.username}</span>
+                ${ranked > 0 ? `<div class="goals-group">
+                    <span class="goals-group-label">R</span>
+                    <div class="goals-dots">${dots(ranked, prog.ranked, 'done')}</div>
+                    <span class="goals-count-sm">${prog.ranked}/${ranked}</span>
+                </div>` : ''}
+                ${dm > 0 ? `<div class="goals-group">
+                    <span class="goals-group-label">DM</span>
+                    <div class="goals-dots">${dots(dm, prog.dm, 'done-g')}</div>
+                    <span class="goals-count-sm">${prog.dm}/${dm}</span>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        document.getElementById('goalsWidget').innerHTML = `
+            <div class="goals-widget">
+                <div class="goals-widget-hd">
+                    <span class="goals-widget-title">Team Goals — Today</span>
+                    <a href="/manager/player-goals.html" style="font-size:0.7rem;color:var(--text-muted);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Manage →</a>
+                </div>
+                ${rows}
+                <div style="font-size:0.63rem;color:var(--text-muted);opacity:0.45;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">⚡ Live progress activates after players connect their Riot ID</div>
+            </div>`;
+    } catch(e) { /* fail silently — widget is supplementary */ }
+}
+
+async function load() {
+    try {
+        const qs = new URLSearchParams({ limit: '100' });
+        if (currentCategory) qs.set('category', currentCategory);
+        const { tasks: allTasks } = await api(`/api/tasks?${qs}`);
+
+        const done = allTasks.filter(t => t.status === 'completed').length;
+        renderProgress(done, allTasks.length);
+
+        let tasks = currentStatus ? allTasks.filter(t => t.status === currentStatus) : allTasks;
+        const sort = document.getElementById('sortSelect').value;
+        const prioScore = { high:3, medium:2, low:1 };
+        if (sort === 'due') {
+            tasks = [...tasks].sort((a, b) => (!a.dueDate ? 1 : !b.dueDate ? -1 : new Date(a.dueDate) - new Date(b.dueDate)));
+        } else if (sort === 'recent') {
+            tasks = [...tasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        } else if (sort === 'alpha') {
+            tasks = [...tasks].sort((a, b) => a.title.localeCompare(b.title));
+        } else {
+            tasks = [...tasks].sort((a, b) => (prioScore[b.priority]||0) - (prioScore[a.priority]||0) || new Date(b.createdAt) - new Date(a.createdAt));
+        }
+
+        taskMap = {};
+        tasks.forEach(t => { taskMap[t._id] = t; });
+
+        const el  = document.getElementById('tasksList');
+        if (!tasks.length) { el.innerHTML = '<p style="color:var(--text-muted);">No tasks found.</p>'; return; }
+
+        const now = new Date();
+        const catLabel = { general:'General', analysis:'Analysis', preparation:'Prep', physical:'Physical', vod_review:'VOD Review' };
+
+        el.innerHTML = tasks.map(t => {
+            const uploads       = t.uploadedFiles || [];
+            const comments      = t.comments || [];
+            const isOverdue     = t.dueDate && t.status !== 'completed' && new Date(t.dueDate) < now;
+            const assigneeNames = (t.assignedTo || []).map(a => a.username).filter(Boolean).join(', ');
+
+            let vodHtml = '';
+            if (t.vodType === 'pracc' && t.linkedPraccId) {
+                const p = t.linkedPraccId;
+                vodHtml = `<a href="/manager/pracc-match.html?id=${p._id}" class="vod-badge" target="_blank" style="display:inline-flex;align-items:center;gap:4px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>Match VOD${p.mapName ? ' · '+p.mapName : ''}</a>`;
+            } else if (t.vodType === 'external' && t.externalVodUrl) {
+                vodHtml = `<span class="vod-badge" onclick="openVodModal('${t._id}')" style="display:inline-flex;align-items:center;gap:4px;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>Watch VOD${(t.vodTimestamps||[]).length ? ` (${t.vodTimestamps.length})` : ''}</span>`;
+            }
+
+            return `
+            <div class="task-card ${t.status === 'completed' ? 'completed' : ''}" data-priority="${t.priority}">
+                <div class="task-card-top">
+                    <div class="task-body">
+                        <div class="task-title" style="cursor:pointer;" onclick="openViewModal('${t._id}')">${t.title}</div>
+                        ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+                        <div class="task-meta">
+                            <span class="badge badge-${t.priority}">${t.priority}</span>
+                            ${t.category && t.category !== 'general' ? `<span class="badge-cat">${catLabel[t.category]||t.category}</span>` : ''}
+                            ${assigneeNames ? `<span style="font-size:0.72rem;color:var(--text-muted);">→ ${assigneeNames}</span>` : `<span style="font-size:0.72rem;color:var(--text-muted);">Team</span>`}
+                            ${t.dueDate ? `<span style="font-size:0.72rem;color:${isOverdue?'var(--error)':'var(--text-muted)'};">Due ${formatDate(t.dueDate)}</span>` : ''}
+                            ${isOverdue ? `<span class="badge-overdue">OVERDUE</span>` : ''}
+                            ${t.requiresUpload ? `<span class="upload-badge">${uploads.length} file${uploads.length!==1?'s':''}</span>` : ''}
+                            ${vodHtml}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <select class="status-inline" onchange="changeStatus('${t._id}',this.value)">
+                            <option value="pending"     ${t.status==='pending'    ?'selected':''}>Pending</option>
+                            <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+                            <option value="completed"   ${t.status==='completed'  ?'selected':''}>Completed</option>
+                        </select>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="openViewModal('${t._id}')">View</button>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="openEdit('${t._id}')">Edit</button>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--error);border-color:var(--error);" onclick="del('${t._id}')">Del</button>
+                    </div>
+                </div>
+
+                ${uploads.length ? `
+                <div class="uploads-list">
+                    ${uploads.map(f => `
+                    <div class="upload-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13" style="flex-shrink:0;color:var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+                        <a href="${f.url}" target="_blank">${f.caption||f.url.split('/').pop()}</a>
+                        <button onclick="delUpload('${t._id}','${f._id}')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.9rem;padding:0 2px;">×</button>
+                    </div>`).join('')}
+                </div>` : ''}
+
+                <div>
+                    <button class="comments-toggle" onclick="toggleComments('${t._id}')">
+                        ${comments.length ? `${comments.length} comment${comments.length>1?'s':''}` : 'Add comment'}
+                    </button>
+                </div>
+                <div class="comments-section" id="comments-${t._id}" style="display:none;">
+                    ${comments.map(c => `
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <span class="comment-author">${c.authorName||'?'}</span>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="comment-time">${timeFromNow(c.createdAt)}</span>
+                                <button class="comment-del" onclick="delComment('${t._id}','${c._id}')">×</button>
+                            </div>
+                        </div>
+                        <div class="comment-text">${c.text}</div>
+                    </div>`).join('')}
+                    <div class="comment-add">
+                        <input class="comment-input" type="text" id="ci-${t._id}" placeholder="Write a comment..." maxlength="500"
+                            onkeydown="if(event.key==='Enter')addComment('${t._id}')">
+                        <button class="btn btn-secondary" style="font-size:0.75rem;padding:5px 10px;white-space:nowrap;" onclick="addComment('${t._id}')">Send</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        document.getElementById('tasksList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderProgress(done, total) {
+    const wrap = document.getElementById('progressWrap');
+    if (!total) { wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    const pct = Math.round((done/total)*100);
+    document.getElementById('progressLabel').textContent = `${done} / ${total} completed  (${pct}%)`;
+    document.getElementById('progressFill').style.width = pct+'%';
+}
+
+function onCategoryChange() {}
+function onVodTypeChange() {}
+
+function toggleAssignees() {
+    const dd = document.getElementById('assigneeDropdown');
+    dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+}
+function assignSelectAll() {
+    selectedAssignees = [...players];
+    document.querySelectorAll('.player-check').forEach(cb => cb.checked=true);
+    updateAssigneeBtn();
+    document.getElementById('assigneeDropdown').style.display = 'none';
+}
+function assignSelectNone() {
+    selectedAssignees = [];
+    document.querySelectorAll('.player-check').forEach(cb => cb.checked=false);
+    updateAssigneeBtn();
+    document.getElementById('assigneeDropdown').style.display = 'none';
+}
+function playerCheckChange(id) {
+    const cb = document.getElementById(`pcheck-${id}`);
+    if (cb.checked) {
+        const p = players.find(p=>p._id===id);
+        if (p && !selectedAssignees.find(a=>a._id===id)) selectedAssignees.push(p);
+    } else {
+        selectedAssignees = selectedAssignees.filter(a=>a._id!==id);
+    }
+    updateAssigneeBtn();
+}
+function updateAssigneeBtn() {
+    const btn = document.getElementById('assigneeBtn');
+    if (!selectedAssignees.length)         btn.textContent = 'EVERYONE';
+    else if (selectedAssignees.length===1) btn.textContent = selectedAssignees[0].username.toUpperCase();
+    else                                   btn.textContent = 'CUSTOM';
+}
+function resetAssignees() {
+    selectedAssignees = [];
+    document.querySelectorAll('.player-check').forEach(cb=>cb.checked=false);
+    updateAssigneeBtn();
+}
+
+function openModal() {
+    document.getElementById('editId').value     = '';
+    document.getElementById('fieldTitle').value = '';
+    document.getElementById('fieldDesc').value  = '';
+    document.getElementById('fieldDue').value   = '';
+    document.getElementById('fieldDesc').rows   = 1;
+    document.getElementById('modalTitle').textContent  = 'New Task';
+    document.getElementById('saveBtn').textContent     = 'Create';
+    document.getElementById('statusFieldWrap').style.display = 'none';
+    setType('none');
+    setReqFile(false);
+    setPriority('medium');
+    resetAssignees();
+    resetVodForm();
+    document.getElementById('taskModal').style.display = 'flex';
+}
+
+function resetVodForm() {
+    currentVodType = 'pracc';
+    document.getElementById('vodTypeRow').style.display    = 'none';
+    document.getElementById('vodPraccWrap').style.display  = 'none';
+    document.getElementById('vodExternalWrap').style.display = 'none';
+    document.getElementById('fieldLinkedPracc').value      = '';
+    document.getElementById('fieldExternalVod').value      = '';
+    document.getElementById('selectedPraccDisplay').textContent = '';
+    document.getElementById('vodTypeBtn').textContent      = 'PAST PRACC';
+}
+
+function openEdit(id) {
+    const t = taskMap[id];
+    if (!t) return;
+    document.getElementById('editId').value    = t._id;
+    document.getElementById('fieldTitle').value = t.title;
+    document.getElementById('fieldDesc').value  = t.description || '';
+    document.getElementById('fieldDesc').rows   = t.description && t.description.length > 60 ? 3 : 1;
+    document.getElementById('fieldDue').value   = t.dueDate ? t.dueDate.split('T')[0] : '';
+    document.getElementById('modalTitle').textContent = 'Edit Task';
+    document.getElementById('saveBtn').textContent    = 'Save';
+    document.getElementById('statusFieldWrap').style.display = 'block';
+
+    const cat = t.category || 'general';
+    setType(cat === 'general' ? 'none' : cat);
+    setReqFile(!!t.requiresUpload);
+    setPriority(t.priority || 'medium');
+    setTaskStatus(t.status || 'pending');
+
+    const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : (t.assignedTo ? [t.assignedTo] : []);
+    selectedAssignees = assignees.map(a => ({ _id: a._id || a, username: a.username || '' }));
+    document.querySelectorAll('.player-check').forEach(cb => { cb.checked = selectedAssignees.some(a => a._id === cb.value); });
+    updateAssigneeBtn();
+
+    resetVodForm();
+    if (cat === 'vod_review') {
+        const vodType = t.vodType || 'pracc';
+        setVodType(vodType);
+        if (vodType === 'pracc') {
+            loadPraccs().then(() => {
+                const matchId = typeof t.linkedPraccId === 'object' ? t.linkedPraccId._id : t.linkedPraccId;
+                if (matchId) {
+                    document.getElementById('fieldLinkedPracc').value = matchId;
+                    const m = praccs.find(p => p._id === matchId);
+                    if (m) document.getElementById('selectedPraccDisplay').textContent = `vs ${m.opponent}${m.mapName ? ' · '+m.mapName : ''} — ${formatDate(m.date)}`;
+                }
+            });
+        } else if (vodType === 'external') {
+            document.getElementById('fieldExternalVod').value = t.externalVodUrl || '';
+        }
+    }
+    document.getElementById('taskModal').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('taskModal').style.display='none'; }
+
+async function save() {
+    const title    = document.getElementById('fieldTitle').value.trim();
+    const desc     = document.getElementById('fieldDesc').value.trim();
+    const dueDate  = document.getElementById('fieldDue').value;
+    const editId   = document.getElementById('editId').value;
+    if (!title) { toast('Title is required.','error'); return; }
+
+    const category      = currentTaskType === 'none' ? 'general' : currentTaskType;
+    const priority      = currentPriority;
+    const status        = currentTaskStatus;
+    const reqUp         = taskReqFile;
+    const vodType       = category==='vod_review' ? currentVodType : 'none';
+    const linkedPraccId = vodType==='pracc'    ? document.getElementById('fieldLinkedPracc').value  : null;
+    const externalVodUrl= vodType==='external' ? document.getElementById('fieldExternalVod').value.trim() : null;
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    try {
+        const body = { title, description:desc, priority, category, status, assignedTo:selectedAssignees.map(a=>a._id), dueDate:dueDate||null, requiresUpload:reqUp, vodType, linkedPraccId, externalVodUrl };
+        if (editId) {
+            await api(`/api/tasks/${editId}`, {method:'PUT', body:JSON.stringify(body)});
+            toast('Task updated!','success');
+        } else {
+            await api('/api/tasks', {method:'POST', body:JSON.stringify(body)});
+            toast('Task created!','success');
+        }
+        closeModal();
+        load();
+    } catch (err) { toast(err.message,'error'); }
+    finally { btn.disabled=false; }
+}
+
+async function changeStatus(id, newStatus) {
+    try {
+        await api(`/api/tasks/${id}/status`, {method:'PATCH', body:JSON.stringify({status:newStatus})});
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function del(id) {
+    if (!confirm('Delete this task?')) return;
+    try { await api(`/api/tasks/${id}`, {method:'DELETE'}); toast('Deleted.','success'); load(); }
+    catch (err) { toast(err.message,'error'); }
+}
+async function delUpload(taskId, fileId) {
+    if (!confirm('Remove this file?')) return;
+    try { await api(`/api/tasks/${taskId}/upload/${fileId}`, {method:'DELETE'}); toast('File removed.','success'); load(); }
+    catch (err) { toast(err.message,'error'); }
+}
+
+function toggleComments(taskId) {
+    const el = document.getElementById(`comments-${taskId}`);
+    if (!el) return;
+    const opening = el.style.display==='none';
+    el.style.display = opening ? 'block' : 'none';
+    if (opening) setTimeout(()=>document.getElementById(`ci-${taskId}`)?.focus(), 50);
+}
+async function addComment(taskId) {
+    const input = document.getElementById(`ci-${taskId}`);
+    const text  = input?.value.trim();
+    if (!text) return;
+    try { await api(`/api/tasks/${taskId}/comments`, {method:'POST', body:JSON.stringify({text})}); input.value=''; load(); }
+    catch (err) { toast(err.message,'error'); }
+}
+async function delComment(taskId, commentId) {
+    if (!confirm('Delete this comment?')) return;
+    try { await api(`/api/tasks/${taskId}/comments/${commentId}`, {method:'DELETE'}); load(); }
+    catch (err) { toast(err.message,'error'); }
+}
+
+const catLabel = {general:'General', analysis:'Analysis', preparation:'Prep', physical:'Physical', vod_review:'VOD Review'};
+
+function openViewModal(taskId) {
+    const t = taskMap[taskId];
+    if (!t) return;
+    viewTaskId = taskId;
+
+    const now       = new Date();
+    const isOverdue = t.dueDate && t.status!=='completed' && new Date(t.dueDate) < now;
+    const assignees = (t.assignedTo||[]).map(a=>a.username||a).filter(Boolean).join(', ') || 'Team (everyone)';
+    const uploads   = t.uploadedFiles || [];
+    const comments  = t.comments || [];
+
+    let vodSection = '';
+    if (t.vodType==='pracc' && t.linkedPraccId) {
+        const p = t.linkedPraccId;
+        vodSection = `
+        <div class="view-section">
+            <div class="view-section-title">VOD Review</div>
+            <a href="/manager/pracc-match.html?id=${p._id}" class="btn btn-secondary" target="_blank" style="font-size:0.78rem;">
+                Open Match VOD${p.mapName?' · '+p.mapName:''} — vs ${p.opponent||''}
+            </a>
+        </div>`;
+    } else if (t.vodType==='external' && t.externalVodUrl) {
+        const tsCnt = (t.vodTimestamps||[]).length;
+        vodSection = `
+        <div class="view-section">
+            <div class="view-section-title">VOD Review</div>
+            <button class="btn btn-secondary" style="font-size:0.78rem;" onclick="openVodModal('${t._id}')">
+                Watch VOD${tsCnt ? ` (${tsCnt} timestamp${tsCnt!==1?'s':''})` : ''}
+            </button>
+        </div>`;
+    }
+
+    document.getElementById('viewModalContent').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                    <span class="badge badge-${t.priority}">${t.priority}</span>
+                    <span class="badge badge-${t.status==='completed'?'done':t.status==='in_progress'?'medium':'pending'}">${t.status.replace('_',' ')}</span>
+                    ${t.category!=='general' ? `<span class="badge-cat">${catLabel[t.category]||t.category}</span>` : ''}
+                    ${isOverdue ? `<span class="badge-overdue">OVERDUE</span>` : ''}
+                </div>
+                <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">${t.title}</div>
+                ${t.description ? `<div style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">${t.description}</div>` : ''}
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.75rem;color:var(--text-muted);">
+                    <span>${assignees}</span>
+                    ${t.dueDate ? `<span style="color:${isOverdue?'var(--error)':'var(--text-muted)'};">Due ${formatDate(t.dueDate)}</span>` : ''}
+                    <span>${timeFromNow(t.createdAt)}</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="btn btn-secondary" style="font-size:0.75rem;padding:5px 12px;" onclick="closeViewModal();openEdit('${t._id}')">Edit</button>
+                <button class="btn btn-secondary" style="padding:4px 10px;" onclick="closeViewModal()">✕</button>
+            </div>
+        </div>
+
+        ${vodSection}
+
+        ${uploads.length ? `
+        <div class="view-section">
+            <div class="view-section-title">Files (${uploads.length})</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${uploads.map(f=>`
+                <div class="upload-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13" style="flex-shrink:0;color:var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+                    <a href="${f.url}" target="_blank">${f.caption||f.url.split('/').pop()}</a>
+                    <button onclick="delUpload('${t._id}','${f._id}')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.9rem;padding:0 2px;">×</button>
+                </div>`).join('')}
+            </div>
+        </div>` : ''}
+
+        <div class="view-section">
+            <div class="view-section-title">Discussion (${comments.length})</div>
+            <div id="viewCommentsList">
+                ${comments.map(c=>`
+                <div class="comment-item" id="vc-${c._id}">
+                    <div class="comment-header">
+                        <span class="comment-author">${c.authorName||'?'}</span>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span class="comment-time">${timeFromNow(c.createdAt)}</span>
+                            <button class="comment-del" onclick="delViewComment('${t._id}','${c._id}')">×</button>
+                        </div>
+                    </div>
+                    <div class="comment-text">${c.text}</div>
+                </div>`).join('')}
+            </div>
+            <div class="comment-add" style="margin-top:10px;">
+                <input class="comment-input" type="text" id="view-ci" placeholder="Write a comment..." maxlength="500"
+                    onkeydown="if(event.key==='Enter')addViewComment('${t._id}')">
+                <button class="btn btn-secondary" style="font-size:0.75rem;padding:5px 10px;white-space:nowrap;" onclick="addViewComment('${t._id}')">Send</button>
+            </div>
+        </div>`;
+
+    document.getElementById('viewModal').style.display = 'flex';
+    setTimeout(()=>document.getElementById('view-ci')?.focus(), 100);
+}
+
+window.addViewComment = async function(taskId) {
+    const input = document.getElementById('view-ci');
+    const text  = input?.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/tasks/${taskId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        const list = document.getElementById('viewCommentsList');
+        if (list) list.insertAdjacentHTML('beforeend', `
+            <div class="comment-item" id="vc-${c._id}">
+                <div class="comment-header">
+                    <span class="comment-author">${c.authorName||'?'}</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="comment-time">just now</span>
+                        <button class="comment-del" onclick="delViewComment('${taskId}','${c._id}')">×</button>
+                    </div>
+                </div>
+                <div class="comment-text">${c.text}</div>
+            </div>`);
+        load();
+    } catch (err) { toast(err.message,'error'); }
+};
+
+window.delViewComment = async function(taskId, commentId) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+        await api(`/api/tasks/${taskId}/comments/${commentId}`, {method:'DELETE'});
+        document.getElementById(`vc-${commentId}`)?.remove();
+        load();
+    } catch (err) { toast(err.message,'error'); }
+};
+
+function closeViewModal() { document.getElementById('viewModal').style.display='none'; viewTaskId=null; }
+
+function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+function fmtSecs(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+
+function openVodModal(taskId) {
+    const t = taskMap[taskId];
+    if (!t || !t.externalVodUrl) return;
+    vodTaskId = taskId;
+
+    document.getElementById('vodModalTitle').textContent = t.title;
+    document.getElementById('vodModalSub').textContent   = `VOD Review • ${(t.vodTimestamps||[]).length} timestamp(s)`;
+
+    const wrap = document.getElementById('ytPlayerWrap');
+    wrap.innerHTML = '<div id="ytPlayerDiv"></div>';
+    ytPlayer = null;
+    const ytId = getYouTubeId(t.externalVodUrl);
+    if (ytId && window.YT && window.YT.Player) {
+        ytPlayer = new window.YT.Player('ytPlayerDiv', {
+            videoId: ytId,
+            width:   '100%',
+            height:  '100%',
+            playerVars: { rel:0, modestbranding:1 },
+        });
+    }
+
+    renderTimestamps(t.vodTimestamps||[]);
+    renderVodNotes(t.comments||[]);
+    document.getElementById('tsTimeInput').value  = '';
+    document.getElementById('tsLabelInput').value = '';
+    document.getElementById('tsNoteInput').value  = '';
+    document.getElementById('vodNoteInput').value = '';
+    document.getElementById('vodModal').style.display = 'flex';
+}
+
+function closeVodModal() {
+    if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') ytPlayer.pauseVideo();
+    document.getElementById('vodModal').style.display = 'none';
+    vodTaskId = null;
+}
+
+function getCurrentVideoTime() {
+    if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') { toast('Video not ready yet','error'); return; }
+    const s = Math.floor(ytPlayer.getCurrentTime());
+    document.getElementById('tsTimeInput').value = fmtSecs(s);
+    document.getElementById('tsLabelInput').focus();
+}
+
+function seekTo(seconds) {
+    if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+        ytPlayer.seekTo(seconds, true);
+        ytPlayer.playVideo();
+    }
+}
+
+function renderTimestamps(list) {
+    const el = document.getElementById('tsList');
+    if (!list.length) { el.innerHTML='<p style="font-size:0.78rem;color:var(--text-muted);padding:4px 0;">No timestamps yet.</p>'; return; }
+    el.innerHTML = list.map(ts=>`
+        <div class="ts-item" id="ts-${ts._id}" style="align-items:flex-start;">
+            <span class="ts-time" onclick="seekTo(${ts.seconds})" style="margin-top:2px;">${fmtSecs(ts.seconds)}</span>
+            <div style="flex:1;min-width:0;">
+                <div class="ts-label">${ts.label||'—'}</div>
+                ${ts.note ? `<div class="ts-note">${ts.note}</div>` : ''}
+            </div>
+            <button class="ts-del" onclick="delTimestamp('${ts._id}')">×</button>
+        </div>`).join('');
+}
+
+async function addTimestamp() {
+    if (!vodTaskId) return;
+    const raw   = document.getElementById('tsTimeInput').value.trim();
+    const label = document.getElementById('tsLabelInput').value.trim();
+    const parts = raw.split(':').map(Number);
+    let seconds;
+    if (parts.length===2 && !parts.some(isNaN)) seconds = parts[0]*60+parts[1];
+    else if (parts.length===3 && !parts.some(isNaN)) seconds = parts[0]*3600+parts[1]*60+parts[2];
+    else { toast('Use MM:SS format (e.g. 1:35)','error'); return; }
+    try {
+        const note  = document.getElementById('tsNoteInput').value.trim();
+        await api(`/api/tasks/${vodTaskId}/timestamps`, {method:'POST', body:JSON.stringify({seconds, label, note})});
+        document.getElementById('tsTimeInput').value  = '';
+        document.getElementById('tsLabelInput').value = '';
+        document.getElementById('tsNoteInput').value  = '';
+        const fresh = await api('/api/tasks?limit=100');
+        const updated = fresh.tasks?.find(t=>t._id===vodTaskId);
+        if (updated) { taskMap[vodTaskId]=updated; renderTimestamps(updated.vodTimestamps||[]); document.getElementById('vodModalSub').textContent=`VOD Review •${(updated.vodTimestamps||[]).length} timestamp(s)`; }
+        toast('Timestamp added!','success');
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function delTimestamp(tsId) {
+    if (!vodTaskId) return;
+    try {
+        await api(`/api/tasks/${vodTaskId}/timestamps/${tsId}`, {method:'DELETE'});
+        document.getElementById(`ts-${tsId}`)?.remove();
+        const t = taskMap[vodTaskId];
+        if (t) { t.vodTimestamps=(t.vodTimestamps||[]).filter(ts=>ts._id!==tsId); document.getElementById('vodModalSub').textContent=`VOD Review •${t.vodTimestamps.length} timestamp(s)`; }
+    } catch (err) { toast(err.message,'error'); }
+}
+
+function renderVodNotes(comments) {
+    const el = document.getElementById('vodNotesList');
+    if (!comments.length) {
+        el.innerHTML = '<p style="font-size:0.78rem;color:var(--text-muted);">No notes yet.</p>';
+        return;
+    }
+    el.innerHTML = comments.map(c => `
+        <div style="background:var(--bg3);border-radius:var(--radius);padding:8px 10px;" id="vn-${c._id}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                <span style="font-size:0.71rem;font-weight:700;color:var(--accent);">${c.authorName||'?'}</span>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <span style="font-size:0.68rem;color:var(--text-muted);">${timeFromNow(c.createdAt)}</span>
+                    <button class="comment-del" onclick="delVodNote('${c._id}')">×</button>
+                </div>
+            </div>
+            <div style="font-size:0.8rem;word-break:break-word;">${c.text}</div>
+        </div>`).join('');
+}
+
+async function addVodNote() {
+    if (!vodTaskId) return;
+    const input = document.getElementById('vodNoteInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/tasks/${vodTaskId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        const t = taskMap[vodTaskId];
+        if (t) { t.comments = t.comments||[]; t.comments.push(c); renderVodNotes(t.comments); }
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function delVodNote(commentId) {
+    if (!vodTaskId || !confirm('Delete this note?')) return;
+    try {
+        await api(`/api/tasks/${vodTaskId}/comments/${commentId}`, {method:'DELETE'});
+        document.getElementById(`vn-${commentId}`)?.remove();
+        const t = taskMap[vodTaskId];
+        if (t) t.comments = (t.comments||[]).filter(c=>c._id!==commentId);
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}
+
+function toggleTypeDD() {
+    const dd = document.getElementById('typeDD');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function setType(type) {
+    currentTaskType = type;
+    const labels = { none:'NONE', vod_review:'VOD REVIEW', analysis:'ANALYSIS', preparation:'PREP', physical:'PHYSICAL' };
+    document.getElementById('typeBtn').textContent = labels[type] || type.toUpperCase();
+    document.getElementById('typeDD').style.display = 'none';
+    const isVod = type === 'vod_review';
+    document.getElementById('vodTypeRow').style.display = isVod ? 'block' : 'none';
+    if (!isVod) {
+        document.getElementById('vodPraccWrap').style.display   = 'none';
+        document.getElementById('vodExternalWrap').style.display = 'none';
+    } else {
+        setVodType(currentVodType);
+    }
+}
+function toggleVodTypeDD() {
+    const dd = document.getElementById('vodTypeDD');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function setVodType(type) {
+    currentVodType = type;
+    const labels = { pracc:'PAST PRACC', external:'EXTERNAL PRACC (YOUTUBE)' };
+    document.getElementById('vodTypeBtn').textContent = labels[type] || type.toUpperCase();
+    document.getElementById('vodTypeDD').style.display = 'none';
+    document.getElementById('vodPraccWrap').style.display   = type === 'pracc'    ? 'block' : 'none';
+    document.getElementById('vodExternalWrap').style.display = type === 'external' ? 'block' : 'none';
+    if (type === 'pracc') loadPraccs();
+}
+function togglePriorityDD() {
+    const dd = document.getElementById('priorityDD');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function setPriority(p) {
+    currentPriority = p;
+    document.getElementById('priorityBtn').textContent = p.toUpperCase();
+    document.getElementById('priorityDD').style.display = 'none';
+}
+function toggleStatusDD() {
+    const dd = document.getElementById('statusDD');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function setTaskStatus(s) {
+    currentTaskStatus = s;
+    document.getElementById('statusBtn').textContent = s.replace('_',' ').toUpperCase();
+    document.getElementById('statusDD').style.display = 'none';
+}
+function setReqFile(val) {
+    taskReqFile = val;
+    const yes = document.getElementById('reqYesBtn');
+    const no  = document.getElementById('reqNoBtn');
+    yes.className = 'toggle-pill' + (val ? ' active-yes' : '');
+    no.className  = 'toggle-pill' + (!val ? ' active-no' : '');
+}
+async function pasteVodUrl() {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('fieldExternalVod').value = text;
+    } catch { toast('Could not read clipboard.', 'error'); }
+}
+function openPraccPicker() {
+    const modal = document.getElementById('praccPickerModal');
+    modal.style.display = 'flex';
+    const list = document.getElementById('praccPickerList');
+    list.innerHTML = '<p style="color:var(--text-muted);padding:8px;">Loading...</p>';
+    loadPraccs().then(() => {
+        if (!praccs.length) {
+            list.innerHTML = '<p style="color:var(--text-muted);padding:16px;">No matches with VOD found.</p>';
+            return;
+        }
+        list.innerHTML = praccs.map(m => {
+            const map = m.mapName ? ` · ${m.mapName}` : '';
+            const res = m.result  ? ` (${m.result})`  : '';
+            return `<div class="pracc-pick-item" onclick="selectPracc('${m._id}','vs ${String(m.opponent||'').replace(/'/g,"\\'")}${map}${res} — ${formatDate(m.date)}')">
+                <div style="font-weight:600;font-size:0.85rem;">vs ${m.opponent||'?'}${map}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${formatDate(m.date)}${res}</div>
+            </div>`;
+        }).join('');
+    });
+}
+function closePraccPicker() {
+    document.getElementById('praccPickerModal').style.display = 'none';
+}
+function selectPracc(id, label) {
+    document.getElementById('fieldLinkedPracc').value = id;
+    document.getElementById('selectedPraccDisplay').textContent = label;
+    closePraccPicker();
+}
+function toggleDescExpand() {
+    const ta = document.getElementById('fieldDesc');
+    if (ta.rows === 1) { ta.rows = 4; ta.style.resize = 'vertical'; }
+    else               { ta.rows = 1; ta.style.resize = 'none'; }
+}</script>
+</body>
+</html>

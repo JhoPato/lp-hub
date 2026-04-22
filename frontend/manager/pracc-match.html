@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Match Detail</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.match-header { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:22px 26px; margin-bottom:20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+        .result-badge { width:58px; height:58px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:900; flex-shrink:0; }
+        .result-badge.W { background:rgba(87,242,135,0.14); color:var(--success); }
+        .result-badge.L { background:rgba(255,68,68,0.14); color:var(--error); }
+        .result-badge.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .match-score-big { font-size:1.9rem; font-weight:900; letter-spacing:0.03em; flex-shrink:0; }
+        .match-meta-col { flex:1; min-width:160px; }
+        .match-meta-col h2 { font-size:0.95rem; font-weight:700; margin:0 0 3px; }
+        .match-meta-col p  { font-size:0.76rem; color:var(--text-muted); margin:0; }
+        .mh-actions { display:flex; gap:8px; margin-left:auto; }
+        .inline-edit { display:inline-flex; align-items:center; gap:6px; }
+        .inline-edit input { background:var(--bg3); border:1px solid var(--border); border-radius:3px; color:var(--text); padding:3px 8px; font-size:0.85rem; width:160px; }
+        .inline-edit input:focus { outline:none; border-color:var(--accent); }
+        .edit-trigger { font-size:0.67rem; color:var(--text-muted); cursor:pointer; padding:1px 6px; border:1px solid var(--border); border-radius:3px; margin-left:4px; }
+        .edit-trigger:hover { border-color:var(--accent); color:var(--accent); }
+
+        .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; overflow-x:auto; }
+        .tab { padding:10px 18px; font-size:0.79rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; color:var(--text-muted); border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; white-space:nowrap; transition:all 0.2s; }
+        .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+
+        .map-replay-banner { position:relative; border-radius:var(--radius); overflow:hidden; margin-bottom:14px; min-height:130px; display:flex; flex-direction:column; justify-content:flex-end; }
+        .map-replay-banner-bg { position:absolute; inset:0; background-size:cover; background-position:center 30%; }
+        .map-replay-banner-bg::after { content:''; position:absolute; inset:0; background:linear-gradient(160deg, rgba(12,13,16,0.5) 0%, rgba(12,13,16,0.92) 100%); }
+        .map-replay-banner-content { position:relative; z-index:1; padding:14px 18px 12px; }
+        .mrb-map-name { font-size:0.6rem; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.45); margin-bottom:2px; }
+        .mrb-round-info { font-size:0.82rem; font-weight:700; color:#fff; margin-bottom:10px; }
+        .mrb-round-info .won  { color:var(--success); }
+        .mrb-round-info .lost { color:var(--error); }
+        .round-row { display:flex; align-items:center; gap:3px; overflow-x:auto; padding-bottom:2px; }
+        .round-row::-webkit-scrollbar { height:3px; }
+        .round-row::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+        .round-pip { width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.62rem; font-weight:800; cursor:pointer; border:2px solid transparent; transition:all 0.12s; flex-shrink:0; }
+        .round-pip.win  { background:rgba(87,242,135,0.22); color:var(--success); }
+        .round-pip.loss { background:rgba(255,68,68,0.22);  color:var(--error); }
+        .round-pip.active { border-color:#fff !important; transform:scale(1.15); z-index:1; }
+        .side-sep { width:1px; height:26px; background:rgba(255,255,255,0.2); flex-shrink:0; margin:0 3px; }
+        .side-label { font-size:0.56rem; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:0.1em; text-transform:uppercase; flex-shrink:0; padding:0 2px; }
+
+        .round-section-label { font-size:0.61rem; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+        .round-top-grid { display:grid; grid-template-columns:1fr 280px; gap:14px; margin-bottom:14px; }
+        .round-top-grid.minimap-expanded { display:flex; flex-direction:column; }
+        @media (max-width:760px) { .round-top-grid { grid-template-columns:1fr; } }
+        .minimap-outer { min-width:0; }
+        .minimap-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+        .minimap-header .round-section-label { margin-bottom:0; }
+        .minimap-toggle-btn { font-size:0.62rem; color:var(--text-muted); cursor:pointer; padding:2px 8px; border:1px solid var(--border); border-radius:3px; background:transparent; transition:all 0.15s; flex-shrink:0; }
+        .minimap-toggle-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .killfeed-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+        .killfeed-header .round-section-label { margin-bottom:0; }
+        .export-board-btn { font-size:0.62rem; font-weight:700; color:var(--accent); cursor:pointer; padding:2px 8px; border:1px solid var(--accent); border-radius:3px; background:transparent; transition:all 0.15s; flex-shrink:0; }
+        .export-board-btn:hover { background:var(--accent); color:#fff; }
+
+        .kill-feed { display:flex; flex-direction:column; gap:3px; max-height:280px; overflow-y:auto; }
+        .kill-row { display:flex; align-items:center; gap:6px; font-size:0.73rem; background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:5px 9px; cursor:pointer; transition:border-color 0.12s; }
+        .kill-row:hover { border-color:rgba(255,255,255,0.2); }
+        .kill-row.selected { border-color:var(--accent); background:rgba(223,88,64,0.07); }
+        .kill-row .kt  { color:var(--text-muted); min-width:32px; font-size:0.63rem; font-variant-numeric:tabular-nums; flex-shrink:0; }
+        .kill-row .fk  { font-size:0.57rem; background:rgba(255,200,0,0.18); color:#ffc800; padding:1px 5px; border-radius:3px; font-weight:900; flex-shrink:0; }
+        .kill-row .kk  { font-weight:700; }
+        .kill-row .arr { color:var(--text-muted); font-size:0.68rem; flex-shrink:0; }
+        .kill-row .kv  { }
+        .kill-row .kw  { font-size:0.61rem; background:var(--bg3); border:1px solid var(--border); padding:1px 6px; border-radius:3px; color:var(--text-muted); margin-left:auto; flex-shrink:0; }
+        .kill-row .copy-loc { font-size:0.65rem; background:none; border:none; color:#444; cursor:pointer; padding:0 2px; flex-shrink:0; transition:color 0.15s; }
+        .kill-row .copy-loc:hover { color:#7ec8a4; }
+
+        .minimap-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; position:relative; }
+        .minimap-wrap canvas { display:block; width:100%; height:auto; }
+
+        .round-players { width:100%; border-collapse:collapse; font-size:0.73rem; }
+        .round-players th { text-align:left; color:var(--text-muted); font-size:0.61rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:4px 7px; border-bottom:1px solid var(--border); }
+        .round-players td { padding:4px 7px; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .round-players .our-r { background:rgba(223,88,64,0.06); }
+        .round-players .sec-hd td { font-size:0.59rem; font-weight:900; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); padding-top:8px; }
+        .alive { color:var(--success); } .dead { color:var(--error); }
+
+        .indiv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-bottom:18px; }
+        .indiv-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+        .indiv-card.our { border-left:3px solid var(--accent); }
+        .indiv-card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .indiv-card-top img { width:38px; height:38px; border-radius:4px; object-fit:cover; background:var(--bg3); flex-shrink:0; }
+        .indiv-card-name { font-size:0.84rem; font-weight:700; }
+        .indiv-card-side { font-size:0.62rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); }
+        .indiv-stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+        .indiv-stat { text-align:center; }
+        .indiv-stat-val { font-size:0.88rem; font-weight:700; }
+        .indiv-stat-lbl { font-size:0.58rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-muted); margin-top:1px; }
+        .indiv-stats-row2 { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+        .indiv-abilities { display:flex; gap:8px; border-top:1px solid var(--border); padding-top:9px; }
+        .indiv-ability { flex:1; text-align:center; background:var(--bg3); border-radius:4px; padding:5px 2px; }
+        .indiv-ability-key { font-size:0.63rem; font-weight:800; color:var(--text-muted); letter-spacing:0.04em; }
+        .indiv-ability-key img { width:16px; height:16px; object-fit:contain; filter:brightness(0.7); display:block; margin:0 auto; }
+        .indiv-ability-val { font-size:0.95rem; font-weight:700; color:var(--text); margin-top:1px; }
+        .indiv-section-label { font-size:0.63rem; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+
+        .stats-table-wrap { overflow-x:auto; }
+        .stats-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+        .stats-table th { text-align:center; color:var(--text-muted); font-size:0.61rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .stats-table th:first-child { text-align:left; }
+        .stats-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.04); text-align:center; }
+        .stats-table td:first-child { text-align:left; font-weight:600; }
+        .stats-table .our-row { background:rgba(223,88,64,0.05); }
+        .stats-table .sep-row td { padding:1px; background:var(--border); }
+        .stats-table .sec-label td { font-size:0.61rem; font-weight:900; letter-spacing:0.06em; color:var(--text-muted); text-transform:uppercase; padding:6px 8px 2px; }
+        .acs-val { color:var(--accent); font-weight:700; }
+        .agent-img { width:22px; height:22px; border-radius:3px; vertical-align:middle; margin-right:5px; object-fit:cover; background:var(--bg3); }
+
+        .vod-section { display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:start; }
+        @media (max-width:900px) { .vod-section { grid-template-columns:1fr; } }
+        .vod-player { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+        .vod-iframe-wrap { position:relative; padding-top:56.25%; }
+        .vod-iframe-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
+        .vod-no-url { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:0.82rem; }
+        .vod-set-url { padding:14px; border-top:1px solid var(--border); display:flex; gap:8px; }
+        .vod-set-url input { flex:1; }
+        .vod-notes-col { display:flex; flex-direction:column; gap:10px; }
+        .vod-notes-list { display:flex; flex-direction:column; gap:8px; max-height:480px; overflow-y:auto; }
+        .note-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; }
+        .nc-top { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+        .nc-ts { background:var(--accent); color:#fff; font-size:0.67rem; font-weight:800; padding:2px 8px; border-radius:3px; cursor:pointer; flex-shrink:0; }
+        .nc-ts:hover { opacity:0.85; }
+        .nc-title { font-weight:700; font-size:0.8rem; flex:1; }
+        .nc-body  { font-size:0.74rem; color:var(--text-muted); line-height:1.5; }
+        .nc-actions { display:flex; gap:6px; margin-top:7px; justify-content:flex-end; }
+        .add-note-form { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+        .add-note-form h5 { font-size:0.72rem; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin:0 0 10px; }
+        .ts-row { display:flex; gap:8px; align-items:flex-end; margin-bottom:8px; }
+        .ts-row .form-group { flex:1; margin:0; }
+        .ts-display { font-size:0.88rem; font-weight:700; color:var(--accent); background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; text-align:center; min-width:66px; cursor:pointer; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div style="margin-bottom:12px;">
+            <a href="/manager/pracc.html" style="font-size:0.78rem;color:var(--text-muted);text-decoration:none;">← Back to Pracc History</a>
+        </div>
+        <div class="match-header" id="matchHeader"><p style="color:var(--text-muted);">Loading…</p></div>
+        <div class="tabs">
+            <button class="tab active" data-tab="rounds">Rounds</button>
+            <button class="tab" data-tab="players">Player Stats</button>
+            <button class="tab" data-tab="indiv">Individual Performance</button>
+            <button class="tab" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="vod">VOD Analysis</button>
+        </div>
+        <div class="tab-panel active" id="tab-rounds">
+            <div id="mapBanner"></div>
+            <div id="roundDetail"></div>
+        </div>
+        <div class="tab-panel" id="tab-players">
+            <div class="stats-table-wrap" id="playerStatsTable"></div>
+        </div>
+        <div class="tab-panel" id="tab-indiv">
+            <div id="indivPerfContent"></div>
+        </div>
+        <div class="tab-panel" id="tab-overview">
+            <div id="matchOverview"></div>
+        </div>
+        <div class="tab-panel" id="tab-vod">
+            <div class="vod-section">
+                <div class="vod-player" id="vodPlayer">
+                    <div class="vod-no-url">No VOD linked yet.</div>
+                    <div class="vod-set-url">
+                        <input type="text" class="form-input" id="vodUrlInput" placeholder="https://youtube.com/watch?v=...">
+                        <button class="btn btn-primary" id="vodSaveBtn">Save</button>
+                    </div>
+                </div>
+                <div class="vod-notes-col">
+                    <div class="add-note-form">
+                        <h5>+ Add Timestamp Note</h5>
+                        <div class="ts-row">
+                            <div class="form-group">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-input" id="noteTitle" placeholder="e.g. Retake mistake">
+                            </div>
+                            <div>
+                                <label class="form-label">Timestamp</label>
+                                <div class="ts-display" id="tsDisplay" title="Click to enter manually">0:00</div>
+                            </div>
+                            <button class="btn btn-secondary" id="captureTsBtn" style="padding:8px 10px;flex-shrink:0;align-self:flex-end;" title="Capture current video time">⏱</button>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-input" id="noteBody" rows="2" placeholder="What happened here?"></textarea>
+                        </div>
+                        <button class="btn btn-primary" id="addNoteBtn" style="width:100%;margin-top:6px;">Add Note</button>
+                    </div>
+                    <div class="vod-notes-list" id="notesList"></div>
+
+                    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+                        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">💬 Discussion</div>
+                        <div id="matchDiscList" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;max-height:240px;overflow-y:auto;"></div>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="matchDiscInput" class="form-input" placeholder="Write a comment…" style="flex:1;font-size:0.82rem;" onkeydown="if(event.key==='Enter')addMatchComment()">
+                            <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 14px;white-space:nowrap;" onclick="addMatchComment()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+</div>
+
+<script>var ytPlayer = null;
+function onYouTubeIframeAPIReady() {}
+window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+window.noteTimestamp = 0;</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager','captain']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'pracc');
+
+const params  = new URLSearchParams(location.search);
+const matchId = params.get('id');
+if (!matchId) { location.href = '/manager/pracc.html'; }
+
+let matchData    = null;
+let activeRound  = 0;
+let _weaponMap   = null;
+let _gearMap     = null;
+let _mapData     = null;
+let _minimapImgs = {};
+let _agentImgCache = {};
+
+function getAttackerSubj(roundIdx) {
+    const m = matchData;
+    const round = (m?.rounds||[])[roundIdx];
+    const roundNum = round?.roundNum ?? roundIdx;
+    const firstRound = (m?.rounds||[])[0];
+    const r0won  = firstRound?.ourTeamWon;
+    const r0role = firstRound?.winnerRole;
+    const ourStart = r0won ? r0role : (r0role === 'Attacker' ? 'Defender' : 'Attacker');
+    let ourSideNow;
+    if (roundNum < 12)      ourSideNow = ourStart;
+    else if (roundNum < 24) ourSideNow = ourStart === 'Attacker' ? 'Defender' : 'Attacker';
+    else { const p = Math.floor((roundNum - 24) / 2) % 2; ourSideNow = p === 0 ? ourStart : (ourStart === 'Attacker' ? 'Defender' : 'Attacker'); }
+    return new Set((m?.players||[]).filter(p => (p.isOurTeam && ourSideNow === 'Attacker') || (!p.isOurTeam && ourSideNow === 'Defender')).map(p => p.subject));
+}
+
+async function getWeaponMap() {
+    if (_weaponMap) return _weaponMap;
+    try {
+        const r = await fetch('https://valorant-api.com/v1/weapons?language=en-US');
+        const d = await r.json();
+        _weaponMap = {};
+        (d.data||[]).forEach(w => { _weaponMap[w.uuid.toLowerCase()] = { name: w.displayName, icon: w.killStreamIcon || w.displayIcon || '' }; });
+    } catch { _weaponMap = {}; }
+    return _weaponMap;
+}
+async function getGearMap() {
+    if (_gearMap) return _gearMap;
+    try {
+        const r = await fetch('https://valorant-api.com/v1/gear?language=en-US');
+        const d = await r.json();
+        _gearMap = {};
+        (d.data||[]).forEach(g => { _gearMap[g.uuid.toLowerCase()] = { name: g.displayName }; });
+    } catch { _gearMap = {}; }
+    return _gearMap;
+}
+async function getMapData() {
+    if (_mapData) return _mapData;
+    try {
+        const r = await fetch('https://valorant-api.com/v1/maps');
+        const d = await r.json();
+        _mapData = d.data || [];
+    } catch { _mapData = []; }
+    return _mapData;
+}
+function resolveWeapon(uuid, wMap) {
+    if (!uuid) return '';
+    const entry = (wMap||{})[uuid.toLowerCase()];
+    if (entry) return entry.name || '';
+    return uuid.split('/').pop().replace(/_/g,' ');
+}
+function weaponHtml(uuid) {
+    if (!uuid || !_weaponMap) return '';
+    const w = _weaponMap[uuid.toLowerCase()];
+    if (!w) return '';
+    const icon = w.icon ? `<img src="${w.icon}" style="height:13px;vertical-align:middle;margin-right:3px;opacity:0.85;" onerror="this.style.display='none'">` : '';
+    return `<span class="kw">${icon}${esc(w.name||'')}</span>`;
+}
+function agentIconHtml(subject, size=16) {
+    const p = (matchData.players||[]).find(p => p.subject === subject);
+    if (!p?.characterId) return '';
+    return `<img src="https://media.valorant-api.com/agents/${p.characterId}/displayicon.png" style="width:${size}px;height:${size}px;border-radius:2px;vertical-align:middle;margin-right:3px;flex-shrink:0;" onerror="this.style.display='none'">`;
+}
+async function loadAgentImg(characterId) {
+    if (!characterId) return null;
+    if (_agentImgCache[characterId] !== undefined) return _agentImgCache[characterId];
+    try {
+        const img = await loadImg(`https://media.valorant-api.com/agents/${characterId}/displayicon.png`);
+        _agentImgCache[characterId] = img;
+        return img;
+    } catch { _agentImgCache[characterId] = null; return null; }
+}
+
+async function loadMatch() {
+    try {
+        const [data, wMap, gMap, maps] = await Promise.all([
+            api(`/api/pracc/matches/${matchId}`),
+            getWeaponMap(),
+            getGearMap(),
+            getMapData()
+        ]);
+        matchData  = data;
+        _weaponMap = wMap;
+        _gearMap   = gMap;
+        _mapData   = maps;
+        renderHeader();
+        renderMatchOverview();
+        renderPlayerStats();
+        renderIndividualPerformance();
+        renderMapBanner();
+        selectRound(0);
+        initVod();
+        api('/api/auth/me').then(me => {
+            const tn = document.getElementById('sidebarTeamName');
+            if (tn) tn.textContent = me.teamId?.name || '';
+        }).catch(()=>{});
+    } catch (err) {
+        document.getElementById('matchHeader').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderMatchOverview() {
+    const m = matchData;
+    const rounds = m.rounds || [];
+    const ourSubjects = new Set((m.players||[]).filter(p => p.isOurTeam).map(p => p.subject));
+
+    const atkWon    = m.ourAttackRoundsWon    || 0;
+    const atkPlayed = m.ourAttackRoundsPlayed || 0;
+    const defWon    = m.ourDefenseRoundsWon   || 0;
+    const defPlayed = m.ourDefenseRoundsPlayed|| 0;
+    const atkWR     = atkPlayed ? Math.round((atkWon / atkPlayed) * 100) : null;
+    const defWR     = defPlayed ? Math.round((defWon / defPlayed) * 100) : null;
+
+    let pistolPlayed = 0, pistolWon = 0;
+    let bonusPlayed  = 0, bonusWon  = 0;
+    let ecoPlayed    = 0, ecoWon    = 0;
+    let halfBuyPlayed = 0, halfBuyWon = 0;
+
+    rounds.forEach(r => {
+        const rn       = r.roundNum;
+        const isPistol = rn === 0 || rn === 12;
+        const isBonus  = rn === 1 || rn === 13;
+        const ourStats = (r.playerStats||[]).filter(ps => ourSubjects.has(ps.subject));
+        const avgSpend = ourStats.length
+            ? ourStats.reduce((s, ps) => s + (ps.loadoutValue || 0), 0) / ourStats.length
+            : 0;
+
+        if (isPistol) { pistolPlayed++; if (r.ourTeamWon) pistolWon++; }
+        else if (isBonus) { bonusPlayed++; if (r.ourTeamWon) bonusWon++; }
+
+        if (!isPistol && avgSpend >= 0 && avgSpend <= 1000) { ecoPlayed++; if (r.ourTeamWon) ecoWon++; }
+        if (!isBonus  && avgSpend >= 1100 && avgSpend <= 2600) { halfBuyPlayed++; if (r.ourTeamWon) halfBuyWon++; }
+    });
+
+    const pct = (w, p) => p ? Math.round((w / p) * 100) : null;
+    const statCard = (val, label, sub) => {
+        const color = val === null ? 'var(--text-muted)' : val >= 50 ? 'var(--success)' : 'var(--error)';
+        const display = val === null ? '—' : `${val}%`;
+        return `<div class="stat-card">
+            <div class="stat-value" style="color:${color}">${display}</div>
+            <div class="stat-label">${label}${sub ? ` <span style="font-weight:400;opacity:.6;">${sub}</span>` : ''}</div>
+        </div>`;
+    };
+
+    const roundTimeline = rounds.map(r => {
+        const rn = r.roundNum ?? 0;
+        const isPistol = rn === 0 || rn === 12;
+        const isBonus  = rn === 1 || rn === 13;
+        const ourStats = (r.playerStats||[]).filter(ps => ourSubjects.has(ps.subject));
+        const avgSpend = ourStats.length ? ourStats.reduce((s, ps) => s + (ps.loadoutValue||0), 0) / ourStats.length : 0;
+        let econLabel = '';
+        if (isPistol)     econLabel = 'P';
+        else if (isBonus) econLabel = 'B';
+        else if (avgSpend <= 1000)              econLabel = 'E';
+        else if (avgSpend >= 1100 && avgSpend <= 2600) econLabel = 'H';
+        else              econLabel = 'F';
+        const econColors = { P:'#fbbf24', B:'#f97316', E:'#f87171', H:'#60a5fa', F:'#a78bfa' };
+        const c = econColors[econLabel] || '#888';
+        return `<div title="Round ${rn+1} · ${econLabel==='P'?'Pistol':econLabel==='B'?'Bonus':econLabel==='E'?'Eco':econLabel==='H'?'Half Buy':'Full Buy'} · Avg $${Math.round(avgSpend)}"
+            style="width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+            font-size:0.58rem;font-weight:900;flex-shrink:0;cursor:default;
+            background:${r.ourTeamWon?'rgba(87,242,135,0.15)':'rgba(255,68,68,0.12)'};
+            color:${c};
+            border:1px solid ${r.ourTeamWon?'rgba(87,242,135,0.3)':'rgba(255,68,68,0.25)'};">
+            ${econLabel}
+        </div>`;
+    }).join('');
+
+    document.getElementById('matchOverview').innerHTML = `
+        <div class="stat-grid" style="margin-bottom:12px;">
+            ${statCard(atkWR,  'Attack WR',  atkPlayed  ? `${atkWon}/${atkPlayed}`  : '')}
+            ${statCard(defWR,  'Defense WR', defPlayed  ? `${defWon}/${defPlayed}`  : '')}
+            ${statCard(pct(pistolWon,  pistolPlayed),  'Pistol WR',   pistolPlayed  ? `${pistolWon}/${pistolPlayed}`   : '')}
+            ${statCard(pct(bonusWon,   bonusPlayed),   'Bonus WR',    bonusPlayed   ? `${bonusWon}/${bonusPlayed}`    : '')}
+            ${statCard(pct(ecoWon,     ecoPlayed),     'Eco WR',      ecoPlayed     ? `${ecoWon}/${ecoPlayed}`        : '')}
+            ${statCard(pct(halfBuyWon, halfBuyPlayed), 'Half Buy WR', halfBuyPlayed ? `${halfBuyWon}/${halfBuyPlayed}`: '')}
+        </div>
+        <div class="card">
+            <div class="card-header"><span class="card-title">Round Timeline</span>
+                <span style="display:flex;gap:10px;font-size:0.67rem;color:var(--text-muted);">
+                    <span><span style="color:#fbbf24;font-weight:700;">P</span> Pistol</span>
+                    <span><span style="color:#f97316;font-weight:700;">B</span> Bonus</span>
+                    <span><span style="color:#f87171;font-weight:700;">E</span> Eco</span>
+                    <span><span style="color:#60a5fa;font-weight:700;">H</span> Half Buy</span>
+                    <span><span style="color:#a78bfa;font-weight:700;">F</span> Full Buy</span>
+                </span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;">${roundTimeline}</div>
+        </div>`;
+}
+
+function renderHeader() {
+    const m = matchData, res = m.result || 'D';
+    document.title = `LP Hub — vs ${m.opponent || 'Unknown'}`;
+    document.getElementById('matchHeader').innerHTML = `
+        <div class="result-badge ${res}">${res==='W'?'WIN':res==='L'?'LOSS':'DRAW'}</div>
+        <div class="match-score-big">${m.scoreUs??'?'} – ${m.scoreThem??'?'}</div>
+        <div class="match-meta-col">
+            <h2 id="opponentDisplay">vs ${esc(m.opponent||'Unknown')} <span class="edit-trigger" id="editOpponentBtn">edit</span></h2>
+            <p>${esc(m.mapName||'Unknown Map')} · ${m.date?formatDate(m.date):''}</p>
+        </div>
+        <div class="mh-actions">
+            <button class="btn btn-secondary" style="font-size:0.73rem;" onclick="deleteMatch()">🗑 Delete</button>
+        </div>`;
+    document.getElementById('editOpponentBtn')?.addEventListener('click', openOpponentEdit);
+}
+function openOpponentEdit() {
+    const h2 = document.getElementById('opponentDisplay');
+    h2.innerHTML = `<span class="inline-edit">
+        <input type="text" id="opponentInput" value="${esc(matchData.opponent||'')}">
+        <button class="btn btn-primary" style="padding:4px 10px;font-size:0.72rem;" id="saveOppBtn">Save</button>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="renderHeader()">✕</button>
+    </span>`;
+    document.getElementById('saveOppBtn').onclick = async () => {
+        const val = document.getElementById('opponentInput').value.trim();
+        try {
+            await api(`/api/pracc/matches/${matchId}`,{method:'PUT',body:JSON.stringify({opponent:val})});
+            matchData.opponent = val; toast('Saved.','success'); renderHeader();
+        } catch (err) { toast(err.message,'error'); }
+    };
+}
+window.renderHeader = renderHeader;
+window.deleteMatch = async () => {
+    if (!confirm('Delete this match permanently?')) return;
+    try {
+        await api(`/api/pracc/matches/${matchId}`,{method:'DELETE'});
+        toast('Deleted.','success');
+        setTimeout(()=> location.href='/manager/pracc.html', 800);
+    } catch (err) { toast(err.message,'error'); }
+};
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click',()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+    });
+});
+
+function renderPlayerStats() {
+    const m = matchData;
+    if (!m.players?.length) { document.getElementById('playerStatsTable').innerHTML='<p style="color:var(--text-muted);">No player data.</p>'; return; }
+    const ourP  = m.players.filter(p=>p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const their = m.players.filter(p=>!p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const pct = n => n!=null?Math.round(n)+'%':'–';
+    const rowHtml = (p,cls) => {
+        const ai = p.characterId?`<img src="https://media.valorant-api.com/agents/${p.characterId}/displayicon.png" class="agent-img" onerror="this.style.display='none'">`:'';
+        const kd = p.deaths>0?(p.kills/p.deaths).toFixed(2):p.kills>0?'∞':'0.00';
+        return `<tr class="${cls}">
+            <td>${ai}${esc(p.gameName||'?')}</td>
+            <td class="acs-val">${Math.round(p.acs||0)}</td>
+            <td>${p.kills}/${p.deaths}/${p.assists}</td>
+            <td style="color:${parseFloat(kd)>=1?'var(--success)':'var(--error)'}">${kd}</td>
+            <td style="color:#f0a500">${pct(p.headshotPercent)}</td>
+            <td style="color:var(--success)">${pct(p.kastPercent)}</td>
+            <td>${p.firstKills||0}</td><td>${p.firstDeaths||0}</td>
+            <td>${p.mk2||0}/${p.mk3||0}/${p.mk4||0}/${p.mk5||0}</td>
+            <td>${p.clutchesWon||0}/${p.clutchesAttempted||0}</td>
+            <td>${Math.round(p.damagePerRound||0)}</td>
+        </tr>`;
+    };
+    document.getElementById('playerStatsTable').innerHTML=`<table class="stats-table">
+        <thead><tr><th>Player</th><th>ACS</th><th>K/D/A</th><th>KD</th><th>HS%</th><th>KAST</th><th>FK</th><th>FD</th><th>2K/3K/4K/ACE</th><th>CL W/A</th><th>ADR</th></tr></thead>
+        <tbody>
+            <tr class="sec-label"><td colspan="11">Our Team</td></tr>
+            ${ourP.map(p=>rowHtml(p,'our-row')).join('')}
+            <tr class="sep-row"><td colspan="11"></td></tr>
+            <tr class="sec-label"><td colspan="11">Enemy</td></tr>
+            ${their.map(p=>rowHtml(p,'')).join('')}
+        </tbody></table>`;
+}
+
+let _agentAbilityCache = {};
+async function getAgentAbilities(characterId) {
+    if (!characterId) return null;
+    if (_agentAbilityCache[characterId] !== undefined) return _agentAbilityCache[characterId];
+    try {
+        const r = await fetch(`https://valorant-api.com/v1/agents/${characterId}?language=en-US`);
+        const d = await r.json();
+        const abilities = d.data?.abilities || [];
+        const slots = {};
+        abilities.forEach(a => { slots[a.slot] = a.displayIcon || null; });
+        _agentAbilityCache[characterId] = slots;
+        return slots;
+    } catch { _agentAbilityCache[characterId] = null; return null; }
+}
+
+async function renderIndividualPerformance() {
+    const m = matchData;
+    if (!m.players?.length) { document.getElementById('indivPerfContent').innerHTML='<p style="color:var(--text-muted);">No player data.</p>'; return; }
+    const allPlayers = m.players.slice();
+    const abilityMap = {};
+    await Promise.all(allPlayers.map(async p => {
+        if (p.characterId) abilityMap[p.characterId] = await getAgentAbilities(p.characterId);
+    }));
+    const ourP  = allPlayers.filter(p=>p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const their = allPlayers.filter(p=>!p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const pct   = n => n!=null ? Math.round(n)+'%' : '—';
+    const abilityIcon = (icon, fallback) => icon
+        ? `<img src="${icon}" onerror="this.outerHTML='${fallback}'">`
+        : fallback;
+    const cardHtml = (p) => {
+        const kd    = p.deaths>0 ? (p.kills/p.deaths).toFixed(2) : p.kills>0 ? '∞' : '0.00';
+        const kdCol = parseFloat(kd)>=1 ? 'var(--success)' : 'var(--error)';
+        const ai    = p.characterId ? `<img src="https://media.valorant-api.com/agents/${p.characterId}/displayicon.png" onerror="this.style.display='none'">` : `<div style="width:38px;height:38px;border-radius:4px;background:var(--bg3);flex-shrink:0;"></div>`;
+        const slots = (p.characterId && abilityMap[p.characterId]) || {};
+        const ab = (slot, fallback) => abilityIcon(slots[slot], fallback);
+        return `<div class="indiv-card${p.isOurTeam?' our':''}">
+            <div class="indiv-card-top">${ai}<div>
+                <div class="indiv-card-name">${esc(p.gameName||'?')}</div>
+                <div class="indiv-card-side">${p.isOurTeam?'Our Team':'Enemy'}</div>
+            </div></div>
+            <div class="indiv-stats-row">
+                <div class="indiv-stat"><div class="indiv-stat-val" style="color:var(--accent)">${Math.round(p.acs||0)}</div><div class="indiv-stat-lbl">ACS</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val" style="color:${kdCol}">${kd}</div><div class="indiv-stat-lbl">K/D</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val" style="color:#f0a500">${pct(p.headshotPercent)}</div><div class="indiv-stat-lbl">HS%</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val" style="color:var(--success)">${pct(p.kastPercent)}</div><div class="indiv-stat-lbl">KAST</div></div>
+            </div>
+            <div class="indiv-stats-row2">
+                <div class="indiv-stat"><div class="indiv-stat-val">${p.kills||0}/${p.deaths||0}/${p.assists||0}</div><div class="indiv-stat-lbl">K/D/A</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val">${Math.round(p.damagePerRound||0)}</div><div class="indiv-stat-lbl">ADR</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val">${p.firstKills||0}</div><div class="indiv-stat-lbl">FK</div></div>
+                <div class="indiv-stat"><div class="indiv-stat-val">${p.firstDeaths||0}</div><div class="indiv-stat-lbl">FD</div></div>
+            </div>
+            <div class="indiv-abilities">
+                <div class="indiv-ability"><div class="indiv-ability-key">${ab('Ability1','C')}</div><div class="indiv-ability-val">${p.ability1Casts||0}</div></div>
+                <div class="indiv-ability"><div class="indiv-ability-key">${ab('Ability2','Q')}</div><div class="indiv-ability-val">${p.ability2Casts||0}</div></div>
+                <div class="indiv-ability"><div class="indiv-ability-key">${ab('Grenade','E')}</div><div class="indiv-ability-val">${p.grenadeCasts||0}</div></div>
+                <div class="indiv-ability"><div class="indiv-ability-key">${ab('Ultimate','X')}</div><div class="indiv-ability-val">${p.ultimateCasts||0}</div></div>
+            </div>
+        </div>`;
+    };
+    document.getElementById('indivPerfContent').innerHTML = `
+        <div class="indiv-section-label">Our Team</div>
+        <div class="indiv-grid">${ourP.map(cardHtml).join('')}</div>
+        <div class="indiv-section-label">Enemy</div>
+        <div class="indiv-grid">${their.map(cardHtml).join('')}</div>`;
+}
+
+function getMapInfo() {
+    if (!_mapData || !matchData.mapId) return null;
+    return _mapData.find(m => m.mapUrl === matchData.mapId) || null;
+}
+
+function renderMapBanner() {
+    const m = matchData;
+    const rounds = m.rounds || [];
+    if (!rounds.length) { document.getElementById('mapBanner').innerHTML=''; return; }
+
+    const mapInfo = getMapInfo();
+    const splash  = mapInfo?.splash || '';
+    const mapDisplayName = mapInfo?.displayName || m.mapName || '';
+
+    const firstRound = rounds[0];
+    const half1Start  = 0;
+    const half1End    = 12;
+    const r0role = firstRound?.winnerRole;
+    const r0won  = firstRound?.ourTeamWon;
+    const ourStartRole = r0won ? r0role : (r0role === 'Attacker' ? 'Defender' : 'Attacker');
+    const half1Side = ourStartRole === 'Attacker' ? 'ATK' : 'DEF';
+    const half2Side = half1Side === 'ATK' ? 'DEF' : 'ATK';
+
+    let roundHtml = '';
+    let lastSideLabel = null;
+
+    rounds.forEach((r, i) => {
+        const rn          = r.roundNum ?? i;
+        const displayNum  = rn + 1;
+        const cls         = r.ourTeamWon ? 'win' : 'loss';
+        const active      = i === activeRound;
+
+        let sideNow = null;
+        if (rn === 0) {
+            sideNow = half1Side;
+        } else if (rn === half1End) {
+            sideNow = half2Side;
+        } else if (rn === half1End * 2) {
+            sideNow = 'OT';
+        }
+        if (sideNow && sideNow !== lastSideLabel) {
+            if (lastSideLabel !== null) roundHtml += `<div class="side-sep"></div>`;
+            roundHtml += `<span class="side-label">${sideNow}</span>`;
+            lastSideLabel = sideNow;
+        }
+
+        const rIcon = r.result === 'Defused' ? '💣' : r.result === 'Detonated' ? '💥' : '';
+        roundHtml += `<div class="round-pip ${cls}${active?' active':''}" data-idx="${i}" title="Round ${displayNum} · ${r.result||''}">${displayNum}${rIcon}</div>`;
+    });
+
+    const bgStyle = splash ? `style="background-image:url('${splash}')"` : `style="background:var(--bg2)"`;
+    document.getElementById('mapBanner').innerHTML = `
+        <div class="map-replay-banner">
+            <div class="map-replay-banner-bg" ${bgStyle}></div>
+            <div class="map-replay-banner-content">
+                <div class="mrb-map-name">${esc(mapDisplayName)}</div>
+                <div class="mrb-round-info" id="mrbRoundInfo">Select a round</div>
+                <div class="round-row" id="roundRow">${roundHtml}</div>
+            </div>
+        </div>`;
+
+    document.getElementById('roundRow').querySelectorAll('.round-pip').forEach(pip => {
+        pip.addEventListener('click', () => selectRound(+pip.dataset.idx));
+    });
+}
+
+function selectRound(idx) {
+    activeRound = idx;
+    document.querySelectorAll('.round-pip').forEach((p,i) => p.classList.toggle('active', i === idx));
+
+    const m = matchData;
+    const round = (m.rounds||[])[idx];
+    if (!round) { document.getElementById('roundDetail').innerHTML=''; return; }
+
+    const displayNum = (round.roundNum ?? idx) + 1;
+
+    const info = document.getElementById('mrbRoundInfo');
+    if (info) {
+        const wt   = round.ourTeamWon ? `<span class="won">WON</span>` : `<span class="lost">LOST</span>`;
+        const plant = round.plantSite ? ` · Plant ${round.plantSite}` : '';
+        info.innerHTML = `Round ${displayNum} — ${wt} · ${esc(round.result||'')}${plant}`;
+    }
+
+    const getName = (subject) => {
+        const p = (m.players||[]).find(p => p.subject === subject);
+        return esc(p?.gameName || (subject||'?').slice(0,12));
+    };
+
+    const roundKills = (m.kills||[])
+        .filter(k => k.roundNum === round.roundNum)
+        .sort((a,b) => a.roundTime - b.roundTime);
+
+    const fmtMs = ms => { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+
+    const hasPositions = roundKills.some(k => k.playerLocations?.length > 0);
+    const attackerSubj = getAttackerSubj(idx);
+
+    const ATK_COLOR = '#ff4444';
+    const DEF_COLOR = '#57f287';
+    const sideColor = (subj) => attackerSubj.has(subj) ? ATK_COLOR : DEF_COLOR;
+    const killFeedHtml = roundKills.length ? roundKills.map((k, ki) => {
+        const hasLoc = (k.playerLocations?.length > 0);
+        return `<div class="kill-row${ki===0?' selected':''}" data-ki="${ki}" onclick="selectKill(${ki})">
+            <span class="kt">${fmtMs(k.roundTime)}</span>
+            ${k.isFirstKillOfRound?`<span class="fk">FK</span>`:''}
+            ${agentIconHtml(k.killer)}
+            <span class="kk" style="color:${sideColor(k.killer)}">${getName(k.killer)}</span>
+            <span class="arr">→</span>
+            ${agentIconHtml(k.victim)}
+            <span class="kv" style="color:${sideColor(k.victim)}">${getName(k.victim)}</span>
+            ${weaponHtml(k.weaponId)}
+            ${hasLoc?`<button class="copy-loc" title="Copiar playerLocations para o calibrador" onclick="event.stopPropagation();copyLoc(${ki})">📋</button>`:''}
+        </div>`;
+    }).join('') : `<p style="color:var(--text-muted);font-size:0.74rem;padding:4px 0;">No kill data.</p>`;
+
+    const stats   = round.playerStats || [];
+    const ourSubj = new Set((m.players||[]).filter(p=>p.isOurTeam).map(p=>p.subject));
+    const armorCell = (armorId) => {
+        if (!armorId) return `<span style="color:var(--text-muted);font-size:0.7rem;">—</span>`;
+        const gMap = _gearMap || {};
+        const g = gMap[armorId.toLowerCase()];
+        const rawName = g?.name || 'Shield';
+        const isHeavy = rawName.toLowerCase().includes('heavy');
+        const name  = isHeavy ? 'Heavy' : rawName.toLowerCase().includes('light') ? 'Light' : 'Shield';
+        const color = isHeavy ? '#a78bfa' : '#60a5fa';
+        return `<span style="font-size:0.67rem;font-weight:700;padding:1px 5px;border-radius:3px;background:${color}20;color:${color};border:1px solid ${color}50;">${name}</span>`;
+    };
+    const buildRow = (ps) => {
+        const isOur = ourSubj.has(ps.subject);
+        const name  = getName(ps.subject);
+        const wMap  = _weaponMap || {};
+        const wEntry = ps.weaponId ? wMap[ps.weaponId.toLowerCase()] : null;
+        const wepCell = wEntry
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;">${wEntry.icon?`<img src="${wEntry.icon}" style="height:13px;opacity:0.85;" onerror="this.style.display='none'">`:''}${esc(wEntry.name||'')}</span>`
+            : `<span style="color:var(--text-muted);">${esc(resolveWeapon(ps.weaponId, wMap))}</span>`;
+        return `<tr class="${isOur?'our-r':''}">
+            <td><span style="display:inline-flex;align-items:center;">${agentIconHtml(ps.subject, 18)}${name}</span></td>
+            <td>${ps.kills||0}</td><td>${ps.damage||0}</td>
+            <td class="${ps.survived?'alive':'dead'}">${ps.survived?'✓':'✗'}</td>
+            <td style="font-size:0.65rem;">${wepCell}</td>
+            <td style="font-size:0.7rem;">${ps.loadoutValue?'$'+ps.loadoutValue.toLocaleString():'–'}</td>
+            <td>${armorCell(ps.armorId)}</td>
+        </tr>`;
+    };
+    const ourStats   = stats.filter(ps => ourSubj.has(ps.subject));
+    const theirStats = stats.filter(ps => !ourSubj.has(ps.subject));
+
+    const minimapHtml = hasPositions
+        ? `<div class="minimap-wrap"><canvas id="minimapCanvas" width="500" height="500"></canvas></div>`
+        : `<div class="minimap-wrap" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
+               <span style="font-size:0.72rem;color:var(--text-muted);text-align:center;padding:12px;">No position data<br>(re-import to enable)</span>
+           </div>`;
+
+    document.getElementById('roundDetail').innerHTML = `
+        <div class="round-top-grid" id="roundTopGrid">
+            <div>
+                <div class="killfeed-header">
+                    <div class="round-section-label">Kill Feed</div>
+                    ${hasPositions ? `<button class="export-board-btn" onclick="exportRoundToBoard(${idx})">⬡ Export to Board</button>` : ''}
+                </div>
+                <div class="kill-feed" id="killFeed">${killFeedHtml}</div>
+            </div>
+            <div class="minimap-outer">
+                <div class="minimap-header">
+                    <div class="round-section-label">Minimap</div>
+                    ${hasPositions ? `<button class="minimap-toggle-btn" id="minimapToggleBtn" onclick="toggleMinimap()">⛶ Expand</button>` : ''}
+                </div>
+                ${minimapHtml}
+            </div>
+        </div>
+        <div>
+            <div class="round-section-label">Round Stats</div>
+            <table class="round-players">
+                <thead><tr><th>Player</th><th>K</th><th>DMG</th><th>Alive</th><th>Weapon</th><th>Loadout</th><th>Armor</th></tr></thead>
+                <tbody>
+                    <tr class="sec-hd"><td colspan="8">Our Team</td></tr>
+                    ${ourStats.map(ps=>buildRow(ps)).join('')}
+                    <tr style="background:var(--border);"><td colspan="8" style="padding:1px;"></td></tr>
+                    <tr class="sec-hd"><td colspan="8">Enemy</td></tr>
+                    ${theirStats.map(ps=>buildRow(ps)).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    if (hasPositions && roundKills[0]?.playerLocations?.length) {
+        requestAnimationFrame(() => drawMinimap(roundKills[0], attackerSubj));
+    }
+
+    window._currentRoundKills    = roundKills;
+    window._currentAttackerSubj  = attackerSubj;
+}
+
+window.toggleMinimap = () => {
+    const grid = document.getElementById('roundTopGrid');
+    const btn  = document.getElementById('minimapToggleBtn');
+    if (!grid) return;
+    const expanded = grid.classList.toggle('minimap-expanded');
+    if (btn) btn.textContent = expanded ? '✕ Collapse' : '⛶ Expand';
+    const kills        = window._currentRoundKills   || [];
+    const attackerSubj = window._currentAttackerSubj || new Set();
+    const ki = [...(document.querySelectorAll('.kill-row'))].findIndex(r => r.classList.contains('selected'));
+    const idx = ki >= 0 ? ki : 0;
+    if (kills[idx]?.playerLocations?.length) {
+        requestAnimationFrame(() => drawMinimap(kills[idx], attackerSubj));
+    }
+};
+
+window.exportRoundToBoard = (idx) => {
+    const m            = matchData;
+    const round        = (m.rounds||[])[idx];
+    const attackerSubj = window._currentAttackerSubj || getAttackerSubj(idx);
+    const fmtMs = ms => { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+    const roundKills   = (m.kills||[])
+        .filter(k => k.roundNum === round?.roundNum)
+        .sort((a,b) => a.roundTime - b.roundTime)
+        .filter(k => k.playerLocations?.length > 0);
+    if (!roundKills.length) { alert('No position data in this round.'); return; }
+    const mapInfo  = getMapInfo();
+    const getName  = (subject) => (m.players||[]).find(p => p.subject === subject)?.gameName || subject?.slice(0,8) || '?';
+    const moments  = roundKills.map(k => ({
+        time:       fmtMs(k.roundTime),
+        killerName: getName(k.killer),
+        victimName: getName(k.victim),
+        isFK:       !!k.isFirstKillOfRound,
+        playerLocations: (k.playerLocations||[]).map(pl => {
+            const pInfo = (m.players||[]).find(p => p.subject === pl.subject);
+            return { subject: pl.subject, location: pl.location, isAttacker: attackerSubj.has(pl.subject), characterId: pInfo?.characterId || null };
+        }),
+    }));
+    const displayNum = (round.roundNum ?? idx) + 1;
+    const payload = { mapUuid: mapInfo?.uuid || null, roundNumber: displayNum, moments };
+    localStorage.setItem('lphub_board_round', JSON.stringify(payload));
+    window.open('/board/strategy-board.html', '_blank');
+};
+
+window.copyLoc = (ki) => {
+    const kills        = window._currentRoundKills   || [];
+    const attackerSubj = window._currentAttackerSubj || new Set();
+    const locs  = kills[ki]?.playerLocations || [];
+    if (!locs.length) return;
+    const payload = JSON.stringify(locs.map(pl => {
+        const pInfo = (matchData.players || []).find(p => p.subject === pl.subject);
+        return {
+            subject:     pl.subject,
+            location:    pl.location,
+            isAttacker:  attackerSubj.has(pl.subject),
+            characterId: pInfo?.characterId || null,
+        };
+    }));
+    navigator.clipboard.writeText(payload).then(() => {
+        const btn = document.querySelectorAll('.kill-row')[ki]?.querySelector('.copy-loc');
+        if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = '📋'; }, 1500); }
+    });
+};
+
+window.selectKill = (ki) => {
+    document.querySelectorAll('.kill-row').forEach((r,i) => r.classList.toggle('selected', i===ki));
+    const kills        = window._currentRoundKills   || [];
+    const attackerSubj = window._currentAttackerSubj || new Set();
+    if (kills[ki]?.playerLocations?.length) {
+        drawMinimap(kills[ki], attackerSubj);
+    }
+};
+
+async function drawMinimap(killEvent, attackerSubj) {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = 500, H = 500;
+    ctx.clearRect(0, 0, W, H);
+
+    const mapInfo = getMapInfo();
+    const locs    = killEvent.playerLocations || [];
+    if (!locs.length) return;
+
+    if (mapInfo?.displayIcon) {
+        try {
+            let img = _minimapImgs[mapInfo.mapUrl];
+            if (!img) {
+                img = await loadImg(mapInfo.displayIcon);
+                _minimapImgs[mapInfo.mapUrl] = img;
+            }
+            ctx.drawImage(img, 0, 0, W, H);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(0, 0, W, H);
+        } catch {
+            ctx.fillStyle = '#1a1b1e';
+            ctx.fillRect(0, 0, W, H);
+        }
+    } else {
+        ctx.fillStyle = '#1a1b1e';
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    const toPixel = (loc) => {
+        if (!mapInfo) return { x: W/2, y: H/2 };
+        const u = loc.y * mapInfo.xMultiplier + mapInfo.xScalarToAdd;
+        const v = loc.x * mapInfo.yMultiplier + mapInfo.yScalarToAdd;
+        return {
+            x: Math.max(18, Math.min(W - 18, u * W)),
+            y: Math.max(18, Math.min(H - 18, v * H)),
+        };
+    };
+
+    const killerSubj = killEvent.killer;
+    const victimSubj = killEvent.victim;
+
+    const agentImgs = {};
+    await Promise.all(locs.map(async pl => {
+        const pInfo = (matchData.players||[]).find(p => p.subject === pl.subject);
+        if (pInfo?.characterId && !(pInfo.characterId in agentImgs)) {
+            agentImgs[pInfo.characterId] = await loadAgentImg(pInfo.characterId);
+        }
+    }));
+
+    const R = 14;
+
+    for (const pl of locs) {
+        const px        = toPixel(pl.location);
+        const isAttacker = attackerSubj.has(pl.subject);
+        const isKiller   = pl.subject === killerSubj;
+        const isVictim   = pl.subject === victimSubj;
+        const pInfo      = (matchData.players||[]).find(p => p.subject === pl.subject);
+        const agentImg   = agentImgs[pInfo?.characterId];
+        const teamColor  = isVictim ? '#888888' : isAttacker ? '#ff4444' : '#57f287';
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px.x, px.y, R, 0, Math.PI * 2);
+        ctx.clip();
+
+        if (agentImg) {
+            ctx.drawImage(agentImg, px.x - R, px.y - R, R * 2, R * 2);
+            ctx.globalAlpha = isVictim ? 0.72 : 0.28;
+            ctx.fillStyle   = teamColor;
+            ctx.beginPath();
+            ctx.arc(px.x, px.y, R, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        } else {
+            ctx.fillStyle = isVictim ? '#555555' : isAttacker ? '#993333' : '#336633';
+            ctx.beginPath();
+            ctx.arc(px.x, px.y, R, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px.x, px.y, R, 0, Math.PI * 2);
+        if (isKiller) {
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur  = 16;
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth   = 2.5;
+        } else {
+            ctx.strokeStyle = teamColor;
+            ctx.lineWidth   = 1.8;
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        const label = pInfo?.gameName?.slice(0, 14) || '';
+        if (label) {
+            ctx.save();
+            ctx.font        = 'bold 9px sans-serif';
+            ctx.fillStyle   = '#fff';
+            ctx.shadowColor = 'rgba(0,0,0,0.95)';
+            ctx.shadowBlur  = 4;
+            ctx.textAlign   = 'center';
+            ctx.fillText(label, px.x, Math.max(11, px.y - R - 3));
+            ctx.restore();
+        }
+    }
+}
+
+function _proxyUrl(url) {
+    if (!url) return url;
+    try {
+        const h = new URL(url).hostname;
+        if (h === 'media.valorant-api.com' || h === 'valorant-api.com') {
+            return '/api/vapi-proxy?url=' + encodeURIComponent(url);
+        }
+    } catch {}
+    return url;
+}
+
+function loadImg(src) {
+    const proxied = _proxyUrl(src);
+    return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('img load failed'));
+        img.src = proxied;
+    });
+}
+
+function initVod() {
+    const m = matchData;
+    document.getElementById('vodUrlInput').value = m.vodUrl || '';
+    if (m.vodUrl) embedYT(m.vodUrl);
+    renderNotes();
+    renderDiscussion();
+    document.getElementById('vodSaveBtn').addEventListener('click', saveVodUrl);
+    document.getElementById('vodUrlInput').addEventListener('keydown', e => { if(e.key==='Enter') saveVodUrl(); });
+    document.getElementById('captureTsBtn').addEventListener('click', captureTs);
+    document.getElementById('addNoteBtn').addEventListener('click', addNote);
+    document.getElementById('tsDisplay').addEventListener('click', manualTs);
+}
+async function saveVodUrl() {
+    const url = document.getElementById('vodUrlInput').value.trim();
+    if (url && !/^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|live\/|embed\/)|youtu\.be\/)[A-Za-z0-9_-]{11}/.test(url)) {
+        toast('Please enter a valid YouTube URL','error'); return;
+    }
+    try {
+        await api(`/api/pracc/matches/${matchId}/vod`,{method:'PUT',body:JSON.stringify({vodUrl:url})});
+        matchData.vodUrl = url;
+        if (url) embedYT(url);
+        toast('VOD saved.','success');
+    } catch(err){ toast(err.message,'error'); }
+}
+function ytId(url){ const m=url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/); return m?m[1]:null; }
+function embedYT(url) {
+    const vid = ytId(url); if(!vid) return;
+    document.getElementById('vodPlayer').innerHTML=`
+        <div class="vod-iframe-wrap"><iframe id="ytIframe" src="https://www.youtube.com/embed/${vid}?enablejsapi=1" allowfullscreen></iframe></div>
+        <div class="vod-set-url"><input type="text" class="form-input" id="vodUrlInput" value="${esc(url)}"><button class="btn btn-primary" id="vodSaveBtn">Update</button></div>`;
+    document.getElementById('vodSaveBtn').addEventListener('click', saveVodUrl);
+    setTimeout(()=>{ if(typeof YT!=='undefined'&&YT.Player) window.ytPlayer=new YT.Player('ytIframe',{}); },1200);
+}
+function captureTs(){ if(window.ytPlayer?.getCurrentTime) window.noteTimestamp=Math.floor(window.ytPlayer.getCurrentTime()); updateTsDisplay(); }
+function manualTs(){ const r=prompt('Timestamp (m:ss or seconds):',fmtTs(window.noteTimestamp||0)); if(r===null)return; window.noteTimestamp=parseTs(r); updateTsDisplay(); }
+function updateTsDisplay(){ document.getElementById('tsDisplay').textContent=fmtTs(window.noteTimestamp||0); }
+function fmtTs(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function parseTs(str){ if(!str)return 0; if(str.includes(':')){ const[m,s]=str.split(':').map(Number);return(m||0)*60+(s||0); } return parseInt(str)||0; }
+async function addNote(){
+    const title=document.getElementById('noteTitle').value.trim();
+    const note=document.getElementById('noteBody').value.trim();
+    const ts=window.noteTimestamp||0;
+    if(!title&&!note){toast('Add a title or note','error');return;}
+    try{
+        const res=await api(`/api/pracc/matches/${matchId}/vod/notes`,{method:'POST',body:JSON.stringify({title,note,timestamp:ts})});
+        matchData.vodNotes=res.vodNotes;
+        document.getElementById('noteTitle').value='';
+        document.getElementById('noteBody').value='';
+        window.noteTimestamp=0; updateTsDisplay(); renderNotes(); toast('Note added.','success');
+    }catch(err){toast(err.message,'error');}
+}
+function renderNotes(){
+    const notes=((matchData.vodNotes)||[]).slice().sort((a,b)=>a.timestamp-b.timestamp);
+    const el=document.getElementById('notesList');
+    if(!notes.length){el.innerHTML='<p style="color:var(--text-muted);font-size:0.77rem;">No notes yet.</p>';return;}
+    el.innerHTML=notes.map(n=>`
+        <div class="note-card" data-id="${n._id}">
+            <div class="nc-top"><span class="nc-ts" onclick="jumpTo(${n.timestamp})">${fmtTs(n.timestamp)}</span><span class="nc-title">${esc(n.title||'')}</span></div>
+            ${n.note?`<div class="nc-body">${esc(n.note)}</div>`:''}
+            <div class="nc-actions">
+                <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.67rem;" onclick="editNote('${n._id}')">Edit</button>
+                <button class="btn btn-secondary" style="padding:3px 8px;font-size:0.67rem;color:var(--error);border-color:var(--error);" onclick="delNote('${n._id}')">Delete</button>
+            </div>
+        </div>`).join('');
+}
+window.jumpTo=(s)=>{ if(window.ytPlayer?.seekTo){window.ytPlayer.seekTo(s,true);window.ytPlayer.playVideo();return;} const iframe=document.getElementById('ytIframe'); if(iframe&&matchData.vodUrl){const vid=ytId(matchData.vodUrl);if(vid)iframe.src=`https://www.youtube.com/embed/${vid}?enablejsapi=1&start=${s}&autoplay=1`;} };
+window.editNote=(noteId)=>{ const note=(matchData.vodNotes||[]).find(n=>n._id===noteId); if(!note)return; const card=document.querySelector(`.note-card[data-id="${noteId}"]`); if(!card)return; card.innerHTML=`<div class="form-group" style="margin-bottom:6px;"><label class="form-label" style="font-size:0.64rem;">Title</label><input type="text" class="form-input" id="en-t-${noteId}" value="${esc(note.title||'')}"></div><div class="form-group" style="margin-bottom:6px;"><label class="form-label" style="font-size:0.64rem;">Timestamp</label><input type="text" class="form-input" id="en-ts-${noteId}" value="${fmtTs(note.timestamp||0)}" style="width:80px;"></div><div class="form-group" style="margin-bottom:8px;"><label class="form-label" style="font-size:0.64rem;">Note</label><textarea class="form-input" id="en-b-${noteId}" rows="2">${esc(note.note||'')}</textarea></div><div style="display:flex;gap:6px;justify-content:flex-end;"><button class="btn btn-secondary" style="padding:4px 8px;font-size:0.7rem;" onclick="renderNotes()">Cancel</button><button class="btn btn-primary" style="padding:4px 10px;font-size:0.7rem;" onclick="saveNote('${noteId}')">Save</button></div>`; };
+window.saveNote=async(noteId)=>{ const title=document.getElementById(`en-t-${noteId}`).value.trim(); const note=document.getElementById(`en-b-${noteId}`).value.trim(); const ts=parseTs(document.getElementById(`en-ts-${noteId}`).value.trim()); try{ const res=await api(`/api/pracc/matches/${matchId}/vod/notes/${noteId}`,{method:'PUT',body:JSON.stringify({title,note,timestamp:ts})}); matchData.vodNotes=res.vodNotes; renderNotes(); toast('Note updated.','success'); }catch(err){toast(err.message,'error');} };
+window.delNote=async(noteId)=>{ if(!confirm('Delete this note?'))return; try{ const res=await api(`/api/pracc/matches/${matchId}/vod/notes/${noteId}`,{method:'DELETE'}); matchData.vodNotes=res.vodNotes; renderNotes(); }catch(err){toast(err.message,'error');} };
+window.renderNotes=renderNotes;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderDiscussion() {
+    const el = document.getElementById('matchDiscList');
+    const comments = (matchData.comments || []);
+    if (!comments.length) { el.innerHTML='<p style="font-size:0.78rem;color:var(--text-muted);">No comments yet.</p>'; return; }
+    el.innerHTML = comments.map(c => `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                <div style="flex:1;">
+                    <span style="font-size:0.72rem;font-weight:700;color:var(--accent);">${esc(c.authorName)}</span>
+                    <span style="font-size:0.68rem;color:var(--text-muted);margin-left:6px;">${new Date(c.createdAt).toLocaleDateString()}</span>
+                    <div style="font-size:0.82rem;margin-top:3px;">${esc(c.text)}</div>
+                </div>
+                <button onclick="delMatchComment('${c._id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:0 3px;flex-shrink:0;" title="Delete">×</button>
+            </div>
+        </div>`).join('');
+}
+async function addMatchComment() {
+    const input = document.getElementById('matchDiscInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/pracc/matches/${matchId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        matchData.comments = matchData.comments || [];
+        matchData.comments.push(c);
+        renderDiscussion();
+    } catch(err) { toast(err.message,'error'); }
+}
+async function delMatchComment(commentId) {
+    try {
+        await api(`/api/pracc/matches/${matchId}/comments/${commentId}`, {method:'DELETE'});
+        matchData.comments = (matchData.comments||[]).filter(c => c._id !== commentId);
+        renderDiscussion();
+    } catch(err) { toast(err.message,'error'); }
+}
+window.addMatchComment = addMatchComment;
+window.delMatchComment = delMatchComment;
+
+loadMatch();</script>
+</body>
+</html>

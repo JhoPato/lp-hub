@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Announcements</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.ann-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:10px; }
+        .ann-card.pinned { border-left:3px solid var(--accent); }
+        .ann-header { display:flex; align-items:flex-start; gap:12px; }
+        .ann-info { flex:1; }
+        .ann-title { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+        .ann-body  { font-size:0.82rem; color:var(--text-muted); line-height:1.6; white-space:pre-wrap; }
+        .ann-meta  { font-size:0.72rem; color:rgba(255,255,255,0.3); margin-top:8px; }
+        .ann-actions { display:flex; gap:6px; flex-shrink:0; }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:20px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Announcements</h1>
+            <p>Post and manage team announcements</p>
+        </div>
+        <div style="margin-bottom:20px;">
+            <button class="btn btn-primary" onclick="openModal()">+ New Announcement</button>
+        </div>
+        <div id="annList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="annModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="modalTitle">New Announcement</div>
+        <input type="hidden" id="editId">
+        <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input class="form-input" id="fieldTitle" type="text" placeholder="Announcement title">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Message *</label>
+            <textarea class="form-input" id="fieldBody" rows="5" style="resize:vertical;" placeholder="Write your message here..."></textarea>
+        </div>
+        <div class="form-group" style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="fieldPinned" style="width:16px;height:16px;accent-color:var(--accent);">
+            <label for="fieldPinned" style="font-size:0.85rem;cursor:pointer;">Pin this announcement</label>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="saveBtn" onclick="save()">Post</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDateTime, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager']);
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'announcements');
+    localStorage.setItem('lpHub_lastSeenAnn', Date.now().toString());
+    load();
+    initTeamName();
+}
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+async function load() {
+    try {
+        const { items } = await api('/api/announcements');
+        const el = document.getElementById('annList');
+        if (!items.length) { el.innerHTML = '<p style="color:var(--text-muted);">No announcements yet. Create one!</p>'; return; }
+        el.innerHTML = items.map(a => `
+            <div class="ann-card ${a.isPinned ? 'pinned' : ''}" id="ann-${a._id}">
+                <div class="ann-header">
+                    <div class="ann-info">
+                        <div class="ann-title" style="${a.isPinned ? 'display:flex;align-items:center;gap:5px;' : ''}">${a.isPinned ? '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13" style="flex-shrink:0;color:var(--accent);"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0zM19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>' : ''}${a.title}</div>
+                        <div class="ann-body">${a.body}</div>
+                        <div class="ann-meta">Posted by ${a.authorId?.username || 'Manager'} · ${formatDateTime(a.createdAt)}</div>
+                    </div>
+                    <div class="ann-actions">
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="togglePin('${a._id}','${a.isPinned}')">${a.isPinned ? 'Unpin' : 'Pin'}</button>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="openEdit('${a._id}','${escapeQ(a.title)}',\`${escapeQ(a.body)}\`,'${a.isPinned}')">Edit</button>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--error);border-color:var(--error);" onclick="del('${a._id}')">Delete</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    } catch (err) {
+        document.getElementById('annList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function escapeQ(s) { return String(s).replace(/`/g,'\\`').replace(/\$/g,'\\$'); }
+
+window.openModal = () => {
+    document.getElementById('editId').value = '';
+    document.getElementById('fieldTitle').value = '';
+    document.getElementById('fieldBody').value = '';
+    document.getElementById('fieldPinned').checked = false;
+    document.getElementById('modalTitle').textContent = 'New Announcement';
+    document.getElementById('saveBtn').textContent = 'Post';
+    document.getElementById('annModal').style.display = 'flex';
+};
+
+window.openEdit = (id, title, body, pinned) => {
+    document.getElementById('editId').value = id;
+    document.getElementById('fieldTitle').value = title;
+    document.getElementById('fieldBody').value = body;
+    document.getElementById('fieldPinned').checked = pinned === 'true';
+    document.getElementById('modalTitle').textContent = 'Edit Announcement';
+    document.getElementById('saveBtn').textContent = 'Save';
+    document.getElementById('annModal').style.display = 'flex';
+};
+
+window.closeModal = () => { document.getElementById('annModal').style.display = 'none'; };
+
+window.save = async () => {
+    const title   = document.getElementById('fieldTitle').value.trim();
+    const body    = document.getElementById('fieldBody').value.trim();
+    const pinned  = document.getElementById('fieldPinned').checked;
+    const editId  = document.getElementById('editId').value;
+    if (!title || !body) { toast('Title and message are required.', 'error'); return; }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    try {
+        if (editId) {
+            await api(`/api/announcements/${editId}`, { method: 'PUT', body: JSON.stringify({ title, body }) });
+            toast('Announcement updated!', 'success');
+        } else {
+            await api('/api/announcements', { method: 'POST', body: JSON.stringify({ title, body, isPinned: pinned }) });
+            toast('Announcement posted!', 'success');
+        }
+        closeModal();
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; }
+};
+
+window.togglePin = async (id, current) => {
+    try {
+        await api(`/api/announcements/${id}/pin`, { method: 'PATCH' });
+        toast(current === 'true' ? 'Unpinned.' : 'Pinned!', 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.del = async (id) => {
+    if (!confirm('Delete this announcement?')) return;
+    try {
+        await api(`/api/announcements/${id}`, { method: 'DELETE' });
+        toast('Deleted.', 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Invite Codes</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.invite-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
+        .invite-code { font-family:monospace; font-size:1.1rem; font-weight:900; letter-spacing:0.12em; color:var(--accent); background:var(--bg3); padding:6px 12px; border-radius:4px; }
+        .invite-info { flex:1; }
+        .invite-meta { font-size:0.75rem; color:var(--text-muted); margin-top:4px; }
+        .invite-used { opacity:0.5; }
+        .used-badge { font-size:0.7rem; background:var(--bg3); border:1px solid var(--border); padding:2px 8px; border-radius:4px; color:var(--text-muted); }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:20px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+        .copy-btn { background:none; border:1px solid var(--border); color:var(--text-muted); padding:4px 10px; font-size:0.72rem; border-radius:4px; cursor:pointer; transition:all 0.2s; }
+        .copy-btn:hover { border-color:var(--accent); color:var(--accent); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Invite Codes</h1>
+            <p>Generate and manage player invitations</p>
+        </div>
+        <div style="margin-bottom:20px;">
+            <button class="btn btn-primary" onclick="openModal()">+ Generate Invite</button>
+        </div>
+        <div id="invitesList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="genModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title">Generate Invite Code</div>
+        <div class="form-group">
+            <label class="form-label">Role for new member</label>
+            <select class="form-input" id="fieldRole" onchange="onRoleChange()">
+                <option value="player" selected>Player</option>
+                <option value="captain">Captain</option>
+                <option value="manager" class="owner-only" style="display:none;">Manager</option>
+                <option value="social" class="owner-only" style="display:none;">Social</option>
+                <option value="owner" class="owner-only" style="display:none;">Owner</option>
+            </select>
+        </div>
+        <div id="siteTeamFields" style="display:none;">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin:10px 0 6px;padding:8px;background:var(--bg3);border-radius:4px;">
+                LP-API team assignment for roster sync (optional)
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                    <label class="form-label">Region</label>
+                    <input type="text" class="form-input" id="fieldRegion" placeholder="br, uk, cl…">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Team Index</label>
+                    <input type="number" class="form-input" id="fieldTeamIndex" placeholder="0" min="0">
+                </div>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Expires in</label>
+            <select class="form-input" id="fieldExpiry">
+                <option value="1">1 day</option>
+                <option value="3">3 days</option>
+                <option value="7" selected>7 days</option>
+                <option value="30">30 days</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="genBtn" onclick="generate()">Generate</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="codeModal" style="display:none;" onclick="if(event.target===this)closeCodeModal()">
+    <div class="modal-box" style="text-align:center;" onclick="event.stopPropagation()">
+        <div class="modal-title">Invite Code Generated</div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:20px;margin-bottom:20px;">
+            <div style="font-family:monospace;font-size:1.8rem;font-weight:900;letter-spacing:0.2em;color:var(--accent);" id="generatedCode">XXXXXXXX</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;" id="generatedCodeMeta"></div>
+        </div>
+        <div class="modal-actions" style="justify-content:center;">
+            <button class="btn btn-primary" onclick="copyGenCode()">📋 Copy Code</button>
+            <button class="btn btn-secondary" onclick="closeCodeModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager', 'owner']);
+if (user) {
+    const sidebarRole = user.role === 'owner' ? 'owner' : 'manager';
+    document.getElementById('sidebar').innerHTML = buildSidebar(sidebarRole, 'invites');
+
+    
+    if (user.role === 'owner') {
+        document.querySelectorAll('.owner-only').forEach(el => el.style.display = '');
+    }
+    initTeamName();
+    load();
+}
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+async function load() {
+    try {
+        const codes = await api('/api/invites');
+        const el = document.getElementById('invitesList');
+        if (!codes.length) { el.innerHTML = '<p style="color:var(--text-muted);">No invite codes yet.</p>'; return; }
+
+        el.innerHTML = codes.map(c => {
+            const expired = new Date(c.expiresAt) < new Date();
+            const status  = c.isUsed ? 'Used' : expired ? 'Expired' : 'Active';
+            const statusColor = c.isUsed ? 'var(--text-muted)' : expired ? 'var(--error)' : 'var(--success)';
+            return `<div class="invite-card ${c.isUsed || expired ? 'invite-used' : ''}">
+                <div class="invite-code">${c.code}</div>
+                <div class="invite-info">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="badge badge-${c.role === 'manager' ? 'high' : c.role === 'captain' ? 'medium' : 'low'}">${c.role}</span>
+                        <span style="font-size:0.72rem;color:${statusColor};font-weight:700;">${status}</span>
+                    </div>
+                    <div class="invite-meta">
+                        ${c.isUsed ? `Used by ${c.usedBy?.username || '?'} · ` : ''}
+                        Expires: ${new Date(c.expiresAt).toLocaleDateString('en-GB')}
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    ${!c.isUsed && !expired ? `<button class="copy-btn" onclick="copyCode('${c.code}')">Copy</button>` : ''}
+                    <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--error);border-color:var(--error);" onclick="revoke('${c._id}')">Revoke</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        document.getElementById('invitesList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+window.copyCode = (code) => {
+    navigator.clipboard.writeText(code).then(() => toast('Code copied!', 'success'));
+};
+
+window.onRoleChange = () => {
+    const role = document.getElementById('fieldRole').value;
+    document.getElementById('siteTeamFields').style.display = role === 'manager' ? 'block' : 'none';
+};
+
+window.openModal  = () => { document.getElementById('genModal').style.display = 'flex'; };
+window.closeModal = () => { document.getElementById('genModal').style.display = 'none'; };
+
+window.generate = async () => {
+    const role    = document.getElementById('fieldRole').value;
+    const days    = Number(document.getElementById('fieldExpiry').value);
+    const region  = document.getElementById('fieldRegion')?.value.trim() || null;
+    const tidxRaw = document.getElementById('fieldTeamIndex')?.value;
+    const teamIndex = tidxRaw !== '' && tidxRaw !== undefined ? Number(tidxRaw) : null;
+    const siteTeam  = (role === 'manager' && region) ? { region, teamIndex } : undefined;
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    try {
+        const res = await api('/api/invites/generate', { method: 'POST', body: JSON.stringify({ role, expiresInDays: days, siteTeam }) });
+        closeModal();
+        document.getElementById('generatedCode').textContent = res.code;
+        document.getElementById('generatedCodeMeta').textContent = res.role.toUpperCase() + ' · expires ' + new Date(res.expiresAt).toLocaleDateString('en-GB');
+        document.getElementById('codeModal').style.display = 'flex';
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; }
+};
+
+window.copyGenCode = () => {
+    const code = document.getElementById('generatedCode').textContent;
+    navigator.clipboard.writeText(code).then(() => toast('Copied!', 'success'));
+};
+window.closeCodeModal = () => { document.getElementById('codeModal').style.display = 'none'; };
+
+window.revoke = async (id) => {
+    if (!confirm('Revoke this invite code?')) return;
+    try {
+        await api(`/api/invites/${id}`, { method: 'DELETE' });
+        toast('Invite revoked.', 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};</script>
+</body>
+</html>

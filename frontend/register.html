@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Create Account</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.tab-bar {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 8px 12px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            margin-bottom: -1px;
+        }
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }</style>
+</head>
+<body>
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">LOST PUPPIES <span>HUB</span></div>
+        <div class="auth-subtitle">Join the platform</div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tabNewBtn"  onclick="switchTab('new')">New Account</button>
+            <button class="tab-btn"        id="tabJoinBtn" onclick="switchTab('join')">Join Another Team</button>
+        </div>
+
+        <div class="tab-panel active" id="panelNew">
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Invite Code</label>
+                    <input type="text" id="inviteCode" placeholder="Ex: A1B2C3D4" maxlength="8" style="text-transform:uppercase;" required>
+                </div>
+                <div class="form-group">
+                    <label>Username / IGN</label>
+                    <input type="text" id="username" placeholder="Your in-game name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Min 6 characters" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="btnRegister">CREATE ACCOUNT</button>
+            </form>
+            <div class="discord-divider">or</div>
+            <button class="btn btn-discord btn-block" id="btnDiscordRegister">
+                <svg width="18" height="14" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.5.4a.2.2 0 0 0-.2.1 40.7 40.7 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0A37.5 37.5 0 0 0 25.5.5a.2.2 0 0 0-.2-.1 58.4 58.4 0 0 0-14.6 4.5.2.2 0 0 0-.1.1C1.6 18.7-.9 32.2.3 45.5a.2.2 0 0 0 .1.2 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .3-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.8a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.3 0a.2.2 0 0 1 .3 0l1 .9a.2.2 0 0 1 0 .4 36 36 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .3.1 58.6 58.6 0 0 0 17.8-8.9.2.2 0 0 0 .1-.2c1.5-15.3-2.5-28.7-10.5-40.5a.2.2 0 0 0-.1-.1ZM23.7 37.7c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="currentColor"/></svg>
+                REGISTER WITH DISCORD
+            </button>
+        </div>
+
+        <div class="tab-panel" id="panelJoin">
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">
+                Already have an account? Use your credentials + a new invite code to join a second team.
+            </p>
+            <form id="joinForm">
+                <div class="form-group">
+                    <label>Invite Code</label>
+                    <input type="text" id="joinInviteCode" placeholder="Ex: A1B2C3D4" maxlength="8" style="text-transform:uppercase;" required>
+                </div>
+                <div class="form-group">
+                    <label>Email or Username</label>
+                    <input type="text" id="joinEmail" placeholder="your@email.com or username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="joinPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="btnJoin">JOIN TEAM</button>
+            </form>
+        </div>
+
+        <div id="alertMsg" class="alert"></div>
+
+        <p style="text-align:center; margin-top:20px; font-size:0.8rem; color:var(--text-muted);">
+            Already have an account? <a href="/login.html">Sign in</a>
+        </p>
+    </div>
+</div>
+
+<script>function switchTab(tab) {
+        document.getElementById('tabNewBtn').classList.toggle('active',  tab === 'new');
+        document.getElementById('tabJoinBtn').classList.toggle('active', tab === 'join');
+        document.getElementById('panelNew').classList.toggle('active',   tab === 'new');
+        document.getElementById('panelJoin').classList.toggle('active',  tab === 'join');
+        document.getElementById('alertMsg').className = 'alert';
+        document.getElementById('alertMsg').textContent = '';
+    }
+
+    ['inviteCode', 'joinInviteCode'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn   = document.getElementById('btnRegister');
+        const alert = document.getElementById('alertMsg');
+        btn.disabled = true; btn.textContent = 'CREATING...';
+        alert.className = 'alert'; alert.textContent = '';
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    inviteCode: document.getElementById('inviteCode').value.trim(),
+                    username:   document.getElementById('username').value.trim(),
+                    email:      document.getElementById('email').value.trim(),
+                    password:   document.getElementById('password').value,
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            localStorage.setItem('lp_hub_token', data.token);
+            localStorage.setItem('lp_hub_user',  JSON.stringify(data.user));
+
+            alert.textContent = 'Account created! Redirecting...';
+            alert.className = 'alert alert-success show';
+
+            setTimeout(() => {
+                if (data.user.role === 'manager') window.location.href = '/manager/dashboard.html';
+                else window.location.href = '/player/dashboard.html';
+            }, 1000);
+        } catch (err) {
+            alert.textContent = err.message;
+            alert.className = 'alert alert-error show';
+            btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
+        }
+    });
+
+    document.getElementById('joinForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn   = document.getElementById('btnJoin');
+        const alert = document.getElementById('alertMsg');
+        btn.disabled = true; btn.textContent = 'JOINING...';
+        alert.className = 'alert'; alert.textContent = '';
+
+        try {
+            const res = await fetch('/api/auth/join-team', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    inviteCode: document.getElementById('joinInviteCode').value.trim(),
+                    email:      document.getElementById('joinEmail').value.trim(),
+                    password:   document.getElementById('joinPassword').value,
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            localStorage.setItem('lp_hub_token', data.token);
+            localStorage.setItem('lp_hub_user',  JSON.stringify(data.user));
+            if (data.teams) localStorage.setItem('lp_hub_teams', JSON.stringify(data.teams));
+
+            alert.textContent = data.message || 'Joined! Redirecting...';
+            alert.className = 'alert alert-success show';
+
+            setTimeout(() => {
+                if (data.user.role === 'manager') window.location.href = '/manager/dashboard.html';
+                else window.location.href = '/player/dashboard.html';
+            }, 1200);
+        } catch (err) {
+            alert.textContent = err.message;
+            alert.className = 'alert alert-error show';
+            btn.disabled = false; btn.textContent = 'JOIN TEAM';
+        }
+    });
+
+    document.getElementById('btnDiscordRegister').addEventListener('click', () => {
+        const code    = (document.getElementById('inviteCode').value || '').trim().toUpperCase();
+        const alertEl = document.getElementById('alertMsg');
+        if (!code) {
+            alertEl.textContent = 'Enter your invite code first.';
+            alertEl.className   = 'alert alert-error show';
+            document.getElementById('inviteCode').focus();
+            return;
+        }
+        window.location.href = '/api/auth/discord?action=register&inviteCode=' + encodeURIComponent(code);
+    });
+
+    const _rParams = new URLSearchParams(window.location.search);
+    const _rError  = _rParams.get('discord_error');
+    if (_rError) {
+        const _msgs = {
+            no_invite:      'Invite code is required.',
+            invalid_invite: 'Invalid or already used invite code.',
+            expired_invite: 'Invite code has expired.',
+            server_error:   'Server error. Try again.',
+            access_denied:  'Discord authorization cancelled.',
+        };
+        const _el = document.getElementById('alertMsg');
+        _el.textContent = _msgs[_rError] || 'Discord registration failed.';
+        _el.className   = 'alert alert-error show';
+    }
+</script>
+</body>
+</html>

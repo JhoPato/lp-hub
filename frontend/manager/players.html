@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Players</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.player-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
+        .player-avatar { width:40px; height:40px; border-radius:50%; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; color:var(--accent); flex-shrink:0; overflow:hidden; }
+        .player-avatar img { width:40px; height:40px; object-fit:cover; border-radius:50%; }
+        .player-info { flex:1; }
+        .player-name { font-weight:700; font-size:0.95rem; }
+        .player-sub  { font-size:0.78rem; color:var(--text-muted); margin-top:2px; }
+        .player-actions { display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+        .inactive-label { font-size:0.7rem; color:var(--error); margin-left:6px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Players</h1>
+            <p>Manage your team roster</p>
+        </div>
+        <div id="playersList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager']);
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'players');
+    initTeamName();
+    load();
+}
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+async function load() {
+    try {
+        const players = await api('/api/team/players');
+        const el = document.getElementById('playersList');
+        if (!players.length) { el.innerHTML = '<p style="color:var(--text-muted);">No players yet. Generate invite codes to invite players.</p>'; return; }
+
+        el.innerHTML = players.map(p => {
+            const initials = (p.username || 'U').slice(0, 2).toUpperCase();
+            const roleOptions = ['player','captain','manager'].map(r =>
+                `<option value="${r}" ${p.role === r ? 'selected' : ''}>${r}</option>`
+            ).join('');
+            return `<div class="player-card ${!p.isActive ? 'inactive' : ''}">
+                <div class="player-avatar">
+                    ${p.profilePhotoUrl ? `<img src="${p.profilePhotoUrl}" alt="${p.username}">` : initials}
+                </div>
+                <div class="player-info">
+                    <div class="player-name">${p.username}${!p.isActive ? '<span class="inactive-label">INACTIVE</span>' : ''}</div>
+                    <div class="player-sub">${p.email} · joined ${new Date(p.createdAt).toLocaleDateString('en-GB')}</div>
+                </div>
+                <div class="player-actions">
+                    <select class="form-input" style="padding:4px 8px;font-size:0.78rem;width:auto;" onchange="changeRole('${p._id}', this.value)">
+                        ${roleOptions}
+                    </select>
+                    ${p.isActive
+                        ? `<button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--error);border-color:var(--error);" onclick="deactivate('${p._id}', '${p.username}')">Deactivate</button>`
+                        : `<button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;color:var(--success);border-color:var(--success);" onclick="reactivate('${p._id}', '${p.username}')">Reactivate</button>`
+                    }
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        document.getElementById('playersList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+window.changeRole = async (userId, newRole) => {
+    try {
+        await api(`/api/team/players/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role: newRole }) });
+        toast(`Role updated to ${newRole}.`, 'success');
+    } catch (err) { toast(err.message, 'error'); load(); }
+};
+
+window.deactivate = async (userId, name) => {
+    if (!confirm(`Deactivate ${name}? They will not be able to log in.`)) return;
+    try {
+        await api(`/api/team/players/${userId}/deactivate`, { method: 'PATCH', body: JSON.stringify({ isActive: false }) });
+        toast(`${name} deactivated.`, 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.reactivate = async (userId, name) => {
+    try {
+        await api(`/api/team/players/${userId}/deactivate`, { method: 'PATCH', body: JSON.stringify({ isActive: true }) });
+        toast(`${name} reactivated.`, 'success');
+        load();
+    } catch (err) { toast(err.message, 'error'); }
+};</script>
+</body>
+</html>

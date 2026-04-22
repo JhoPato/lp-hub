@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc Stats</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+        .tab-btn { padding:10px 20px; background:none; border:none; border-bottom:2px solid transparent;
+            color:var(--text-muted); font-size:0.82rem; font-weight:600; text-transform:uppercase;
+            letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-pane { display:none; } .tab-pane.active { display:block; }
+
+        .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:24px; }
+        .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+        .stat-value { font-size:2rem; font-weight:900; color:var(--accent); line-height:1; }
+        .stat-label { font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+        .stat-value.win-color  { color:var(--success); }
+        .stat-value.loss-color { color:var(--error); }
+        .stat-value.draw-color { color:var(--text-muted); }
+
+        .map-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .map-name { font-size:0.8rem; font-weight:600; width:100px; flex-shrink:0; color:var(--text); }
+        .map-bar-track { flex:1; height:14px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+        .map-bar-fill { height:100%; border-radius:2px; transition:width 0.6s ease; }
+        .map-bar-fill.good { background:var(--success); }
+        .map-bar-fill.mid  { background:#f0a500; }
+        .map-bar-fill.bad  { background:var(--error); }
+        .map-pct { font-size:0.75rem; font-weight:700; width:38px; text-align:right; flex-shrink:0; }
+        .map-record { font-size:0.7rem; color:var(--text-muted); width:54px; flex-shrink:0; }
+
+        .trend-grid { display:flex; flex-wrap:wrap; gap:5px; padding:4px 0; }
+        .trend-dot { width:22px; height:22px; border-radius:3px; flex-shrink:0; display:flex;
+            align-items:center; justify-content:center; font-size:0.6rem; font-weight:900; cursor:default; }
+        .trend-dot.W { background:rgba(87,242,135,0.2); color:var(--success); }
+        .trend-dot.L { background:rgba(255,68,68,0.15); color:var(--error); }
+        .trend-dot.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+
+        .opp-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:0.83rem; }
+        .opp-name { flex:1; font-weight:600; }
+
+        .player-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .player-table th { font-size:0.65rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; text-align:right;
+            border-bottom:1px solid var(--border); white-space:nowrap; }
+        .player-table th:first-child { text-align:left; }
+        .player-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.04); text-align:right; vertical-align:middle; }
+        .player-table td:first-child { text-align:left; }
+        .player-table tr:hover td { background:var(--bg2); }
+        .tag-muted { font-size:0.72rem; color:var(--text-muted); font-weight:400; }
+        .acs-val { font-weight:700; color:var(--accent); }
+        .kast-val { color:var(--success); }
+        .hs-val   { color:#f0a500; }
+        .mk-pill { display:inline-block; padding:1px 5px; border-radius:2px; font-size:0.68rem; font-weight:700; margin-right:2px; }
+        .mk2 { background:rgba(255,255,255,0.06); }
+        .mk3 { background:rgba(240,165,0,0.15); color:#f0a500; }
+        .mk4 { background:rgba(87,242,135,0.12); color:var(--success); }
+        .mk5 { background:rgba(229,57,53,0.15); color:var(--error); }
+
+        .mh-table { width:100%; border-collapse:collapse; font-size:0.83rem; }
+        .mh-table th { font-size:0.65rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; text-align:left;
+            border-bottom:1px solid var(--border); }
+        .mh-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .mh-table tr:hover td { background:var(--bg2); }
+        .result-chip { display:inline-block; padding:2px 8px; border-radius:3px; font-size:0.72rem; font-weight:700; }
+        .result-chip.W { background:rgba(87,242,135,0.15); color:var(--success); }
+        .result-chip.L { background:rgba(255,68,68,0.12); color:var(--error); }
+        .result-chip.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .side-mini { font-size:0.72rem; color:var(--text-muted); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Pracc Stats</h1>
+            <p id="statsSubtitle" style="color:var(--text-muted);">Loading...</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="showTab('players')">Player Stats</button>
+            <button class="tab-btn" onclick="showTab('history')">Match History</button>
+        </div>
+
+        <div id="tab-overview" class="tab-pane active">
+            <div id="overviewContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+        <div id="tab-players" class="tab-pane">
+            <div id="playersContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+        <div id="tab-history" class="tab-pane">
+            <div id="historyContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar } from '/js/utils.js';
+
+const user = requireAuth();
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'pracc-stats');
+    api('/api/auth/me').then(me => {
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    }).catch(() => {});
+    loadAllStats();
+}
+
+window.showTab = function(name) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+};
+
+async function loadAllStats() {
+    try {
+        const data = await api('/api/pracc/matches/stats');
+        const { total, matches, playerStats } = data;
+
+        document.getElementById('statsSubtitle').textContent =
+            total ? `Based on ${total} match${total > 1 ? 'es' : ''}` : 'No matches recorded yet';
+
+        if (!total) {
+            const empty = '<p style="color:var(--text-muted);">No matches recorded yet.</p>';
+            document.getElementById('overviewContent').innerHTML = empty;
+            document.getElementById('playersContent').innerHTML  = empty;
+            document.getElementById('historyContent').innerHTML  = empty;
+            return;
+        }
+
+        renderOverview(matches, total);
+        renderPlayers(playerStats);
+        renderHistory(matches);
+    } catch (e) {
+        const err = '<p style="color:var(--error);">Failed to load stats.</p>';
+        ['overviewContent','playersContent','historyContent'].forEach(id => {
+            document.getElementById(id).innerHTML = err;
+        });
+    }
+}
+
+function renderOverview(matches, total) {
+    const wins   = matches.filter(m => m.result === 'W').length;
+    const losses = matches.filter(m => m.result === 'L').length;
+    const draws  = matches.filter(m => m.result === 'D').length;
+    const wr     = total ? Math.round((wins / total) * 100) : 0;
+
+    const atkPlayed = matches.reduce((s, m) => s + (m.ourAttackRoundsPlayed || 0), 0);
+    const atkWon    = matches.reduce((s, m) => s + (m.ourAttackRoundsWon    || 0), 0);
+    const defPlayed = matches.reduce((s, m) => s + (m.ourDefenseRoundsPlayed|| 0), 0);
+    const defWon    = matches.reduce((s, m) => s + (m.ourDefenseRoundsWon   || 0), 0);
+    const atkWR     = atkPlayed ? Math.round((atkWon / atkPlayed) * 100) : 0;
+    const defWR     = defPlayed ? Math.round((defWon / defPlayed) * 100) : 0;
+
+    const mapStats = {};
+    matches.forEach(m => {
+        const k = m.mapName || 'Unknown';
+        if (!mapStats[k]) mapStats[k] = { w:0, l:0, d:0 };
+        mapStats[k][m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd']++;
+    });
+    const mapRows = Object.entries(mapStats)
+        .map(([name, s]) => ({ name, ...s, total: s.w + s.l + s.d }))
+        .sort((a, b) => b.total - a.total);
+
+    const oppStats = {};
+    matches.forEach(m => {
+        const k = m.opponent || 'Unknown';
+        if (!oppStats[k]) oppStats[k] = { w:0, l:0, d:0 };
+        oppStats[k][m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd']++;
+    });
+    const oppRows = Object.entries(oppStats)
+        .map(([name, s]) => ({ name, ...s, total: s.w + s.l + s.d }))
+        .sort((a, b) => b.total - a.total).slice(0, 10);
+
+    const recent = [...matches].slice(0, 20).reverse();
+
+    document.getElementById('overviewContent').innerHTML = `
+        <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Matches</div></div>
+            <div class="stat-card"><div class="stat-value win-color">${wins}</div><div class="stat-label">Wins</div></div>
+            <div class="stat-card"><div class="stat-value loss-color">${losses}</div><div class="stat-label">Losses</div></div>
+            <div class="stat-card"><div class="stat-value draw-color">${draws}</div><div class="stat-label">Draws</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${wr>=50?'var(--success)':'var(--error)'}">${wr}%</div><div class="stat-label">Win Rate</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${atkWR>=50?'var(--success)':'var(--error)'}">${atkWR}%</div><div class="stat-label">Attack WR</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${defWR>=50?'var(--success)':'var(--error)'}">${defWR}%</div><div class="stat-label">Defense WR</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><span class="card-title">Recent Form (last 20)</span></div>
+            <div class="trend-grid">
+                ${recent.map(m => `<div class="trend-dot ${m.result}" title="${escHtml(m.opponent||'')} · ${m.scoreUs}–${m.scoreThem}">${m.result}</div>`).join('')}
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header"><span class="card-title">Map Win Rates</span></div>
+                ${mapRows.length ? mapRows.map(m => {
+                    const pct = m.total ? Math.round((m.w / m.total) * 100) : 0;
+                    const cls = pct >= 60 ? 'good' : pct >= 40 ? 'mid' : 'bad';
+                    return `<div class="map-bar-row">
+                        <span class="map-name">${escHtml(m.name)}</span>
+                        <div class="map-bar-track"><div class="map-bar-fill ${cls}" style="width:${pct}%"></div></div>
+                        <span class="map-pct" style="color:${pct>=60?'var(--success)':pct>=40?'#f0a500':'var(--error)'}">${pct}%</span>
+                        <span class="map-record">${m.w}-${m.l}${m.d?'-'+m.d:''}</span>
+                    </div>`;
+                }).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;">No map data yet.</p>'}
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">Record vs Opponents</span></div>
+                ${oppRows.map(o => {
+                    const pct = o.total ? Math.round((o.w / o.total) * 100) : 0;
+                    return `<div class="opp-row">
+                        <span class="opp-name">${escHtml(o.name)}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted);">${o.w}W-${o.l}L${o.d?'-'+o.d+'D':''}</span>
+                        <span style="font-size:0.72rem;color:${pct>=50?'var(--success)':'var(--error)'};">${pct}%</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header"><span class="card-title">Side Win Rates</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:4px 0;">
+                ${[['Attack', atkWon, atkPlayed, atkWR], ['Defense', defWon, defPlayed, defWR]].map(([label, won, played, wr2]) => `
+                <div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:0.8rem;font-weight:600;">${label}</span>
+                        <span style="font-size:0.8rem;color:${wr2>=50?'var(--success)':'var(--error)'};">${won}/${played} · ${wr2}%</span>
+                    </div>
+                    <div class="map-bar-track">
+                        <div class="map-bar-fill ${wr2>=60?'good':wr2>=40?'mid':'bad'}" style="width:${wr2}%"></div>
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>`;
+}
+
+function renderPlayers(playerStats) {
+    if (!playerStats.length) {
+        document.getElementById('playersContent').innerHTML = '<p style="color:var(--text-muted);">No player data yet.</p>';
+        return;
+    }
+    document.getElementById('playersContent').innerHTML = `
+        <div class="card">
+            <div class="card-header"><span class="card-title">Team Player Stats</span><span style="font-size:0.72rem;color:var(--text-muted);">Aggregated across all matches</span></div>
+            <div style="overflow-x:auto;">
+            <table class="player-table">
+                <thead><tr>
+                    <th>Player</th><th>Matches</th><th>ACS</th><th>K/D/A</th>
+                    <th>K/D</th><th>DMG/R</th><th>HS%</th><th>KAST</th>
+                    <th>FK</th><th>FD</th><th>Multi-kills</th><th>Clutches</th>
+                </tr></thead>
+                <tbody>
+                ${playerStats.map(p => {
+                    const mkStr = [
+                        p.mk2 ? `<span class="mk-pill mk2">2K×${p.mk2}</span>` : '',
+                        p.mk3 ? `<span class="mk-pill mk3">3K×${p.mk3}</span>` : '',
+                        p.mk4 ? `<span class="mk-pill mk4">4K×${p.mk4}</span>` : '',
+                        p.mk5 ? `<span class="mk-pill mk5">ACE×${p.mk5}</span>` : '',
+                    ].filter(Boolean).join('') || '<span style="color:var(--text-muted);">—</span>';
+                    const clutchStr = p.clutchesAttempted
+                        ? `${p.clutchesWon}/${p.clutchesAttempted} (${p.clutchRate}%)`
+                        : '—';
+                    return `<tr>
+                        <td><span style="font-weight:600;">${escHtml(p.gameName)}</span><span class="tag-muted"> #${escHtml(p.tagLine)}</span></td>
+                        <td>${p.matchCount}</td>
+                        <td class="acs-val">${p.acs}</td>
+                        <td>${p.kills}/${p.deaths}/${p.assists}</td>
+                        <td style="color:${p.kd>=1?'var(--success)':'var(--error)'};">${p.kd}</td>
+                        <td>${p.damagePerRound}</td>
+                        <td class="hs-val">${p.headshotPercent}%</td>
+                        <td class="kast-val">${p.kastPercent}%</td>
+                        <td style="color:var(--success);">${p.firstKills}</td>
+                        <td style="color:var(--error);">${p.firstDeaths}</td>
+                        <td>${mkStr}</td>
+                        <td style="font-size:0.78rem;">${clutchStr}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+}
+
+function renderHistory(matches) {
+    document.getElementById('historyContent').innerHTML = `
+        <div class="card">
+        <div style="overflow-x:auto;">
+        <table class="mh-table">
+            <thead><tr>
+                <th>Date</th><th>Result</th><th>Score</th><th>Map</th>
+                <th>Opponent</th><th>ATK</th><th>DEF</th><th>Duration</th>
+            </tr></thead>
+            <tbody>
+            ${matches.map(m => {
+                const dt  = new Date(m.date).toLocaleDateString();
+                const dur = Math.round((m.gameLengthMillis || 0) / 60000);
+                const atkWR = m.ourAttackRoundsPlayed  ? Math.round((m.ourAttackRoundsWon  / m.ourAttackRoundsPlayed)  * 100) : 0;
+                const defWR = m.ourDefenseRoundsPlayed ? Math.round((m.ourDefenseRoundsWon / m.ourDefenseRoundsPlayed) * 100) : 0;
+                return `<tr>
+                    <td>${dt}</td>
+                    <td><span class="result-chip ${m.result}">${m.result}</span></td>
+                    <td style="font-weight:700;">${m.scoreUs}–${m.scoreThem}</td>
+                    <td>${escHtml(m.mapName || '—')}</td>
+                    <td>${escHtml(m.opponent || '—')}</td>
+                    <td class="side-mini" style="color:${atkWR>=50?'var(--success)':'var(--error)'};">
+                        ${m.ourAttackRoundsWon}/${m.ourAttackRoundsPlayed} (${atkWR}%)</td>
+                    <td class="side-mini" style="color:${defWR>=50?'var(--success)':'var(--error)'};">
+                        ${m.ourDefenseRoundsWon}/${m.ourDefenseRoundsPlayed} (${defWR}%)</td>
+                    <td>${dur ? dur + ' min' : '—'}</td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>
+        </div>
+        </div>`;
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}</script>
+</body>
+</html>

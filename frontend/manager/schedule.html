@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Schedule</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .event-row { display:flex; align-items:flex-start; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
+        .event-row:last-child { border-bottom:none; }
+        .event-time { font-size:0.78rem; font-weight:700; color:var(--text-muted); min-width:80px; padding-top:2px; white-space:nowrap; }
+        .event-body { flex:1; }
+        .event-title { font-weight:700; font-size:0.9rem; }
+        .event-meta  { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+        .event-del   { background:none; border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:var(--radius); font-size:0.7rem; font-weight:700; padding:3px 8px; cursor:pointer; flex-shrink:0; transition:background 0.15s; }
+        .event-del:hover { background:rgba(239,68,68,0.1); }
+
+        .day-group { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; }
+        .day-label { font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:10px; }
+        .day-label span { color:#fff; margin-left:6px; }
+
+        .type-badge { display:inline-block; font-size:0.6rem; font-weight:800; letter-spacing:0.05em; padding:2px 7px; border-radius:3px; text-transform:uppercase; margin-right:6px; }
+        .type-pracc      { background:rgba(223,88,64,0.15); color:#df5840; border:1px solid rgba(223,88,64,0.3); }
+        .type-tournament { background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); }
+        .type-warmup     { background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+        .type-other      { background:rgba(107,114,128,0.15); color:#9ca3af; border:1px solid rgba(107,114,128,0.3); }
+        .recurr-badge    { font-size:0.6rem; color:var(--text-muted); border:1px solid var(--border); border-radius:3px; padding:1px 5px; }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:520px; position:relative; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1.1rem; font-weight:800; margin-bottom:20px; letter-spacing:0.5px; }
+
+        .ctrl-row { display:flex; gap:12px; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; }
+        .ctrl-group { display:flex; flex-direction:column; gap:4px; }
+        .ctrl-label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); }
+
+        .type-wrap { position:relative; }
+        .type-pill { font-size:0.72rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; padding:6px 14px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg3); color:var(--text-muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+        .type-pill.selected-pracc      { background:rgba(223,88,64,0.15); border-color:rgba(223,88,64,0.5); color:#df5840; }
+        .type-pill.selected-tournament { background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.5); color:#818cf8; }
+        .type-pill.selected-warmup     { background:rgba(251,191,36,0.15); border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+        .type-pill.selected-other      { background:rgba(107,114,128,0.15); border-color:rgba(107,114,128,0.5); color:#9ca3af; }
+        .type-dropdown { position:absolute; top:calc(100% + 4px); left:0; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; z-index:50; min-width:130px; display:none; }
+        .type-dropdown.open { display:block; }
+        .type-opt { padding:8px 14px; font-size:0.72rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; cursor:pointer; transition:background 0.1s; }
+        .type-opt:hover { background:rgba(255,255,255,0.06); }
+        .type-opt[data-type="pracc"]      { color:#df5840; }
+        .type-opt[data-type="tournament"] { color:#818cf8; }
+        .type-opt[data-type="warmup"]     { color:#fbbf24; }
+        .type-opt[data-type="other"]      { color:#9ca3af; }
+
+        .toggle-group { display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+        .toggle-btn { font-size:0.72rem; font-weight:800; padding:6px 12px; border:none; background:var(--bg3); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+        .toggle-btn.active-yes { background:rgba(34,197,94,0.15); color:#22c55e; }
+        .toggle-btn.active-no  { background:rgba(239,68,68,0.12); color:#ef4444; }
+
+        .notes-wrap { flex:1; min-width:160px; }
+        .notes-inner { display:flex; gap:4px; }
+        .notes-input { flex:1; resize:none; font-size:0.8rem; padding:6px 10px; height:34px; min-width:0; transition:height 0.2s; box-sizing:border-box; }
+        .notes-expand { flex-shrink:0; width:34px; height:34px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+        .notes-expand:hover { border-color:rgba(255,255,255,0.25); color:#fff; }
+
+        .cal-wrap { margin-bottom:16px; }
+        .cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+        .cal-nav-btn { background:none; border:1px solid var(--border); color:var(--text-muted); border-radius:var(--radius); padding:4px 10px; cursor:pointer; font-size:0.8rem; }
+        .cal-nav-btn:hover { color:#fff; border-color:#fff; }
+        .cal-month-label { font-size:0.85rem; font-weight:700; }
+        .cal-year-label  { font-size:1.2rem; font-weight:900; color:var(--text-muted); }
+        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+        .cal-dow { font-size:0.62rem; font-weight:700; text-align:center; color:var(--text-muted); padding:4px 0; }
+        .cal-day { font-size:0.8rem; text-align:center; padding:6px 2px; border-radius:4px; cursor:pointer; transition:background 0.1s; border:1px solid transparent; }
+        .cal-day:hover { background:rgba(255,255,255,0.06); }
+        .cal-day.other-month { color:rgba(255,255,255,0.2); pointer-events:none; }
+        .cal-day.today { border-color:rgba(255,255,255,0.2); }
+        .cal-day.selected { background:rgba(34,197,94,0.25); color:#22c55e; border-color:rgba(34,197,94,0.5); font-weight:700; }
+        .selected-dates-preview { font-size:0.7rem; color:var(--text-muted); margin-top:6px; min-height:18px; }
+
+        .dow-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+        .dow-btn { font-size:0.7rem; font-weight:800; padding:6px 10px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg3); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+        .dow-btn.active { background:rgba(34,197,94,0.2); border-color:rgba(34,197,94,0.5); color:#22c55e; }
+
+        .time-row { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+        .time-group { display:flex; flex-direction:column; gap:4px; }
+        .time-group input { width:110px; }
+
+        .extra-field { margin-bottom:14px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
+        .success-state { text-align:center; padding:10px 0 6px; }
+        .success-msg { font-size:1rem; font-weight:800; color:#22c55e; margin-bottom:16px; letter-spacing:0.5px; }
+
+        .filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+        .filter-btn { font-size:0.68rem; font-weight:800; padding:5px 12px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg2); color:var(--text-muted); cursor:pointer; transition:all 0.15s; text-transform:uppercase; letter-spacing:0.05em; }
+        .filter-btn:hover { border-color:rgba(255,255,255,0.2); color:#fff; }
+        .filter-btn[data-type="all"].active        { background:var(--bg3); border-color:rgba(255,255,255,0.25); color:#fff; }
+        .filter-btn[data-type="pracc"].active      { background:rgba(223,88,64,0.18); border-color:rgba(223,88,64,0.5); color:#df5840; }
+        .filter-btn[data-type="tournament"].active { background:rgba(99,102,241,0.18); border-color:rgba(99,102,241,0.5); color:#818cf8; }
+        .filter-btn[data-type="warmup"].active     { background:rgba(251,191,36,0.18); border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+        .filter-btn[data-type="other"].active      { background:rgba(107,114,128,0.18); border-color:rgba(107,114,128,0.5); color:#9ca3af; }
+        .filter-sep { width:1px; height:18px; background:var(--border); margin:0 4px; }
+        .event-gcal { display:flex; align-items:center; color:var(--text-muted); padding:3px 6px; border:1px solid var(--border); border-radius:var(--radius); text-decoration:none; font-size:0.68rem; flex-shrink:0; transition:all 0.15s; }
+        .event-gcal:hover { color:#60a5fa; border-color:rgba(96,165,250,0.4); }
+    </style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+            <div class="page-header">
+                <div>
+                    <h1>Schedule</h1>
+                    <p>Upcoming team events</p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+                <button class="btn btn-primary" onclick="openModal()">+ New Event</button>
+                <button class="btn btn-secondary" onclick="downloadICS()" title="Download ICS file for Google Calendar / Apple Calendar" style="font-size:0.78rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14" style="vertical-align:-2px;margin-right:5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    Export .ics
+                </button>
+            </div>
+            <div class="filter-row" id="filterRow">
+                <button class="filter-btn active" data-type="all"        onclick="setFilter('all')">All</button>
+                <button class="filter-btn"         data-type="pracc"      onclick="setFilter('pracc')">Pracc</button>
+                <button class="filter-btn"         data-type="tournament" onclick="setFilter('tournament')">Tournament</button>
+                <button class="filter-btn"         data-type="warmup"     onclick="setFilter('warmup')">Warmup</button>
+                <button class="filter-btn"         data-type="other"      onclick="setFilter('other')">Other</button>
+            </div>
+            <div id="scheduleList"><p style="color:var(--text-muted);">Loading…</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="modal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title">New Event</div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label" style="font-size:0.65rem;">TITLE *</label>
+            <input type="text" class="form-input" id="sTitle" placeholder="Event title" maxlength="200">
+        </div>
+
+        <div class="ctrl-row">
+            <div class="ctrl-group">
+                <div class="ctrl-label">Type</div>
+                <div class="type-wrap">
+                    <button class="type-pill" id="typePill" onclick="toggleTypeDropdown(event)">NONE</button>
+                    <div class="type-dropdown" id="typeDropdown">
+                        <div class="type-opt" data-type="pracc"      onclick="selectType('pracc')">PRACC</div>
+                        <div class="type-opt" data-type="tournament" onclick="selectType('tournament')">TOURNAMENT</div>
+                        <div class="type-opt" data-type="warmup"     onclick="selectType('warmup')">WARMUP</div>
+                        <div class="type-opt" data-type="other"      onclick="selectType('other')">OTHER</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ctrl-group">
+                <div class="ctrl-label">Recurring</div>
+                <div class="toggle-group">
+                    <button class="toggle-btn" id="btnYes" onclick="setRecurring(true)">YES</button>
+                    <button class="toggle-btn active-no" id="btnNo"  onclick="setRecurring(false)">NO</button>
+                </div>
+            </div>
+            <div class="ctrl-group notes-wrap">
+                <div class="ctrl-label">Write Notes</div>
+                <div class="notes-inner">
+                    <textarea class="form-input notes-input" id="sNotes" placeholder="NOTES"></textarea>
+                    <button class="notes-expand" id="notesExpandBtn" onclick="toggleNotes()" title="Expand">⤢</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="calSection" class="cal-wrap">
+            <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="calPrev()">←</button>
+                <div>
+                    <span class="cal-month-label" id="calMonthLabel"></span>
+                    <span class="cal-year-label" id="calYearLabel"></span>
+                </div>
+                <button class="cal-nav-btn" onclick="calNext()">→</button>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+            <div class="selected-dates-preview" id="selPreview"></div>
+        </div>
+
+        <div id="recurSection" style="display:none; margin-bottom:16px;">
+            <div class="ctrl-label" style="margin-bottom:6px;">Repeat on</div>
+            <div class="dow-row" id="dowRow">
+                <button class="dow-btn" data-day="0" onclick="toggleDow(0)">SUN</button>
+                <button class="dow-btn" data-day="1" onclick="toggleDow(1)">MON</button>
+                <button class="dow-btn" data-day="2" onclick="toggleDow(2)">TUE</button>
+                <button class="dow-btn" data-day="3" onclick="toggleDow(3)">WED</button>
+                <button class="dow-btn" data-day="4" onclick="toggleDow(4)">THU</button>
+                <button class="dow-btn" data-day="5" onclick="toggleDow(5)">FRI</button>
+                <button class="dow-btn" data-day="6" onclick="toggleDow(6)">SAT</button>
+            </div>
+            <div class="time-group">
+                <div class="ctrl-label">Repeat Until (optional)</div>
+                <input type="date" class="form-input" id="sRecurUntil" style="width:160px;">
+            </div>
+        </div>
+
+        <div class="time-row">
+            <div class="time-group">
+                <div class="ctrl-label">Start Time</div>
+                <input type="time" class="form-input" id="sStart">
+            </div>
+            <div class="time-group">
+                <div class="ctrl-label">End Time</div>
+                <input type="time" class="form-input" id="sEnd">
+            </div>
+        </div>
+
+        <div class="extra-field" id="opponentField" style="display:none;">
+            <label class="form-label" style="font-size:0.65rem;">Opponent Team</label>
+            <input type="text" class="form-input" id="sOpponent" placeholder="Team Red">
+        </div>
+
+        <div class="extra-field" id="streamField" style="display:none;">
+            <label class="form-label" style="font-size:0.65rem;">Stream URL</label>
+            <input type="text" class="form-input" id="sStream" placeholder="https://twitch.tv/...">
+        </div>
+
+        <div id="formActions" class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitEvent()">Schedule</button>
+        </div>
+
+        <div id="successState" class="success-state" style="display:none;">
+            <div class="success-msg">✓ Event scheduled!</div>
+            <div class="modal-actions" style="justify-content:center;">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="resetForm()">Do Another Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast, formatDate } from '/js/utils.js';
+
+const user = requireAuth(['manager', 'captain', 'owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(
+    user.role === 'owner' ? 'owner' : 'manager',
+    'schedule'
+);
+
+const TYPES = ['pracc', 'tournament', 'warmup', 'other'];
+const TYPE_LABELS = { pracc: 'PRACC', tournament: 'TOURNAMENT', warmup: 'WARMUP', other: 'OTHER' };
+const DOW_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+let typeIdx     = -1;
+let isRecurring = false;
+let selectedDates = [];
+let selectedDow   = [];
+let calYear, calMonth;
+let allEvents   = [];
+let activeFilter = 'all';
+
+function today() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+async function loadEvents() {
+    try {
+        allEvents = await api('/api/schedule');
+        renderList();
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+window.setFilter = (type) => {
+    activeFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    renderList();
+};
+
+function filteredEvents() {
+    return activeFilter === 'all' ? allEvents : allEvents.filter(ev => ev.type === activeFilter);
+}
+
+function gcalUrl(ev) {
+    const d  = new Date(ev.date);
+    const ds = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const st = ev.startTime.replace(':', '') + '00';
+    const et = ev.endTime.replace(':', '') + '00';
+    const details = [ev.notes, ev.opponent ? `vs ${ev.opponent}` : '', ev.streamUrl].filter(Boolean).join('\n');
+    const p = new URLSearchParams({ action: 'TEMPLATE', text: ev.title, dates: `${ds}T${st}/${ds}T${et}` });
+    if (details) p.set('details', details);
+    return `https://calendar.google.com/calendar/render?${p.toString()}`;
+}
+
+function generateICS(events) {
+    const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0',
+        'PRODID:-//LP Hub//Schedule//EN',
+        'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    ];
+    events.forEach((ev, i) => {
+        const d  = new Date(ev.date);
+        const ds = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        const st = ev.startTime.replace(':', '') + '00';
+        const et = ev.endTime.replace(':', '') + '00';
+        lines.push('BEGIN:VEVENT');
+        lines.push(`UID:lphub-${ev._id || i}-${ds}`);
+        lines.push(`DTSTART:${ds}T${st}`);
+        lines.push(`DTEND:${ds}T${et}`);
+        lines.push(`SUMMARY:${ev.title}`);
+        lines.push(`CATEGORIES:${ev.type.toUpperCase()}`);
+        if (ev.notes)     lines.push(`DESCRIPTION:${ev.notes.replace(/\n/g,'\\n')}`);
+        if (ev.streamUrl) lines.push(`URL:${ev.streamUrl}`);
+        lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+}
+
+window.downloadICS = () => {
+    const evs = filteredEvents();
+    if (!evs.length) { toast('No events to export.', 'error'); return; }
+    const ics  = generateICS(evs);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'lp-hub-schedule.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+function renderList() {
+    const el = document.getElementById('scheduleList');
+    const events = filteredEvents();
+    if (!events.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);">No upcoming events. Click "+ New Event" to add one.</p>';
+        return;
+    }
+
+    const groups = {};
+    events.forEach(ev => {
+        const key = new Date(ev.date).toISOString().slice(0, 10);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ev);
+    });
+
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    el.innerHTML = Object.entries(groups).map(([key, evs]) => {
+        const d  = new Date(key + 'T00:00:00');
+        const wd = days[d.getDay()];
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = months[d.getMonth()];
+
+        const rows = evs.map(ev => {
+            const canDel = ['manager','captain','owner'].includes(user.role);
+            const recurBadge = ev.isRecurring ? `<span class="recurr-badge">↻</span>` : '';
+            const streamIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="11" height="11" style="vertical-align:-1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>`;
+            const meta = [
+                ev.opponent ? `vs ${ev.opponent}` : '',
+                ev.streamUrl ? `${streamIcon} Stream` : '',
+                ev.notes,
+            ].filter(Boolean).join(' · ');
+            const gcalIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5M12 12.75v2.25m0 0H9.75m2.25 0h2.25"/></svg>`;
+            return `<div class="event-row">
+                <div class="event-time">${ev.startTime} – ${ev.endTime}</div>
+                <div class="event-body">
+                    <div class="event-title">
+                        <span class="type-badge type-${ev.type}">${TYPE_LABELS[ev.type] || ev.type}</span>
+                        ${ev.title} ${recurBadge}
+                    </div>
+                    ${meta ? `<div class="event-meta">${meta}</div>` : ''}
+                </div>
+                <a href="${gcalUrl(ev)}" target="_blank" class="event-gcal" title="Add to Google Calendar">${gcalIcon}</a>
+                ${canDel ? `<button class="event-del" onclick="deleteEvent('${ev._id}')">✕</button>` : ''}
+            </div>`;
+        }).join('');
+
+        return `<div class="day-group">
+            <div class="day-label">${wd} <span>${dd} ${mm}</span></div>
+            ${rows}
+        </div>`;
+    }).join('');
+}
+
+window.deleteEvent = async (id) => {
+    if (!confirm('Delete this event?')) return;
+    try {
+        await api(`/api/schedule/${id}`, { method: 'DELETE' });
+        allEvents = allEvents.filter(ev => ev._id !== id);
+        renderList();
+        toast('Event deleted.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.openModal = () => {
+    resetForm();
+    document.getElementById('modal').style.display = 'flex';
+};
+
+window.closeModal = () => {
+    document.getElementById('modal').style.display = 'none';
+};
+
+window.resetForm = () => {
+    typeIdx     = -1;
+    isRecurring = false;
+    selectedDates = [];
+    selectedDow   = [];
+
+    document.getElementById('sTitle').value    = '';
+    document.getElementById('sNotes').value    = '';
+    document.getElementById('sStart').value    = '';
+    document.getElementById('sEnd').value      = '';
+    document.getElementById('sOpponent').value = '';
+    document.getElementById('sStream').value   = '';
+    document.getElementById('sRecurUntil').value = '';
+    document.getElementById('sNotes').style.height = '34px';
+    document.getElementById('notesExpandBtn').textContent = '⤢';
+
+    const tp = document.getElementById('typePill');
+    tp.textContent = 'NONE';
+    tp.className = 'type-pill';
+    document.getElementById('typeDropdown').classList.remove('open');
+
+    document.getElementById('btnYes').classList.remove('active-yes');
+    document.getElementById('btnNo').classList.add('active-no');
+    document.getElementById('calSection').style.display = '';
+    document.getElementById('recurSection').style.display = 'none';
+    document.getElementById('opponentField').style.display = 'none';
+    document.getElementById('streamField').style.display   = 'none';
+    document.getElementById('formActions').style.display   = 'flex';
+    document.getElementById('successState').style.display  = 'none';
+
+    document.querySelectorAll('.dow-btn').forEach(b => b.classList.remove('active'));
+
+    const now = today();
+    calYear  = now.getFullYear();
+    calMonth = now.getMonth();
+    renderCal();
+};
+
+window.toggleTypeDropdown = (e) => {
+    e.stopPropagation();
+    document.getElementById('typeDropdown').classList.toggle('open');
+};
+
+window.selectType = (type) => {
+    typeIdx = TYPES.indexOf(type);
+    const pill = document.getElementById('typePill');
+    pill.textContent = TYPE_LABELS[type];
+    pill.className = `type-pill selected-${type}`;
+    document.getElementById('typeDropdown').classList.remove('open');
+    document.getElementById('opponentField').style.display = ['pracc', 'tournament'].includes(type) ? '' : 'none';
+    document.getElementById('streamField').style.display   = type === 'tournament' ? '' : 'none';
+};
+
+document.addEventListener('click', () => {
+    document.getElementById('typeDropdown')?.classList.remove('open');
+});
+
+window.setRecurring = (val) => {
+    isRecurring = val;
+    document.getElementById('btnYes').classList.toggle('active-yes', val);
+    document.getElementById('btnNo').classList.toggle('active-no', !val);
+    document.getElementById('calSection').style.display    = val ? 'none' : '';
+    document.getElementById('recurSection').style.display  = val ? ''     : 'none';
+};
+
+window.toggleNotes = () => {
+    const ta = document.getElementById('sNotes');
+    const expanded = ta.style.height === '90px';
+    ta.style.height = expanded ? '34px' : '90px';
+    document.getElementById('notesExpandBtn').textContent = expanded ? '⤢' : '⤡';
+};
+
+function renderCal() {
+    const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    document.getElementById('calMonthLabel').textContent = months[calMonth] + ' ';
+    document.getElementById('calYearLabel').textContent  = calYear;
+
+    const grid = document.getElementById('calGrid');
+    const todayStr = today().toISOString().slice(0, 10);
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    let html = ['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d =>
+        `<div class="cal-dow">${d}</div>`
+    ).join('');
+
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-day other-month"></div>`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isToday = dateStr === todayStr;
+        const isSel   = selectedDates.includes(dateStr);
+        html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="toggleDate('${dateStr}')">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
+    updateSelPreview();
+}
+
+window.calPrev = () => {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCal();
+};
+
+window.calNext = () => {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCal();
+};
+
+window.toggleDate = (dateStr) => {
+    const idx = selectedDates.indexOf(dateStr);
+    if (idx === -1) selectedDates.push(dateStr);
+    else selectedDates.splice(idx, 1);
+    renderCal();
+};
+
+function updateSelPreview() {
+    const el = document.getElementById('selPreview');
+    if (!selectedDates.length) { el.textContent = ''; return; }
+    const sorted = [...selectedDates].sort();
+    el.textContent = sorted.length + ' date' + (sorted.length > 1 ? 's' : '') + ' selected: ' + sorted.slice(0, 5).join(', ') + (sorted.length > 5 ? '…' : '');
+}
+
+window.toggleDow = (day) => {
+    const btn = document.querySelector(`.dow-btn[data-day="${day}"]`);
+    const idx = selectedDow.indexOf(day);
+    if (idx === -1) { selectedDow.push(day); btn.classList.add('active'); }
+    else            { selectedDow.splice(idx, 1); btn.classList.remove('active'); }
+};
+
+window.submitEvent = async () => {
+    const title     = document.getElementById('sTitle').value.trim();
+    const startTime = document.getElementById('sStart').value;
+    const endTime   = document.getElementById('sEnd').value;
+
+    if (!title) return toast('Title is required.', 'error');
+    if (typeIdx < 0) return toast('Please select a type.', 'error');
+    if (!startTime || !endTime) return toast('Start and end time are required.', 'error');
+
+    const type = TYPES[typeIdx];
+
+    if (!isRecurring && selectedDates.length === 0)
+        return toast('Select at least one date.', 'error');
+    if (isRecurring && selectedDow.length === 0)
+        return toast('Select at least one day of the week.', 'error');
+
+    const body = {
+        type, title,
+        notes:       document.getElementById('sNotes').value.trim(),
+        startTime, endTime,
+        isRecurring,
+        dates:       !isRecurring ? selectedDates.map(s => new Date(s).toISOString()) : [],
+        recurDays:   isRecurring  ? selectedDow : [],
+        recurUntil:  isRecurring  ? (document.getElementById('sRecurUntil').value || null) : null,
+        opponent:    ['pracc', 'tournament'].includes(type) ? document.getElementById('sOpponent').value.trim() : '',
+        streamUrl:   type === 'tournament' ? document.getElementById('sStream').value.trim()   : '',
+    };
+
+    try {
+        await api('/api/schedule', { method: 'POST', body: JSON.stringify(body) });
+        document.getElementById('formActions').style.display  = 'none';
+        document.getElementById('successState').style.display = '';
+        loadEvents();
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+loadEvents();
+</script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Match Detail</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.match-header { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:22px 26px; margin-bottom:20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+        .result-badge { width:58px; height:58px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:900; flex-shrink:0; }
+        .result-badge.W { background:rgba(87,242,135,0.14); color:var(--success); }
+        .result-badge.L { background:rgba(255,68,68,0.14); color:var(--error); }
+        .result-badge.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .match-score-big { font-size:1.9rem; font-weight:900; letter-spacing:0.03em; flex-shrink:0; }
+        .match-meta-col { flex:1; min-width:160px; }
+        .match-meta-col h2 { font-size:0.95rem; font-weight:700; margin:0 0 3px; }
+        .match-meta-col p  { font-size:0.76rem; color:var(--text-muted); margin:0; }
+
+        .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; overflow-x:auto; }
+        .tab { padding:10px 18px; font-size:0.79rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; color:var(--text-muted); border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; white-space:nowrap; transition:all 0.2s; }
+        .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+
+        .map-replay-banner { position:relative; border-radius:var(--radius); overflow:hidden; margin-bottom:14px; min-height:130px; display:flex; flex-direction:column; justify-content:flex-end; }
+        .map-replay-banner-bg { position:absolute; inset:0; background-size:cover; background-position:center 30%; }
+        .map-replay-banner-bg::after { content:''; position:absolute; inset:0; background:linear-gradient(160deg, rgba(12,13,16,0.5) 0%, rgba(12,13,16,0.92) 100%); }
+        .map-replay-banner-content { position:relative; z-index:1; padding:14px 18px 12px; }
+        .mrb-map-name { font-size:0.6rem; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.45); margin-bottom:2px; }
+        .mrb-round-info { font-size:0.82rem; font-weight:700; color:#fff; margin-bottom:10px; }
+        .mrb-round-info .won  { color:var(--success); }
+        .mrb-round-info .lost { color:var(--error); }
+        .round-row { display:flex; align-items:center; gap:3px; overflow-x:auto; padding-bottom:2px; }
+        .round-row::-webkit-scrollbar { height:3px; }
+        .round-row::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+        .round-pip { width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.62rem; font-weight:800; cursor:pointer; border:2px solid transparent; transition:all 0.12s; flex-shrink:0; }
+        .round-pip.win  { background:rgba(87,242,135,0.22); color:var(--success); }
+        .round-pip.loss { background:rgba(255,68,68,0.22);  color:var(--error); }
+        .round-pip.active { border-color:#fff !important; transform:scale(1.15); z-index:1; }
+        .side-sep { width:1px; height:26px; background:rgba(255,255,255,0.2); flex-shrink:0; margin:0 3px; }
+        .side-label { font-size:0.56rem; font-weight:900; color:rgba(255,255,255,0.4); letter-spacing:0.1em; text-transform:uppercase; flex-shrink:0; padding:0 2px; }
+
+        .round-section-label { font-size:0.61rem; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+        .round-top-grid { display:grid; grid-template-columns:1fr 280px; gap:14px; margin-bottom:14px; }
+        .round-top-grid.minimap-expanded { display:flex; flex-direction:column; }
+        @media (max-width:760px) { .round-top-grid { grid-template-columns:1fr; } }
+        .minimap-outer { min-width:0; }
+        .minimap-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+        .minimap-header .round-section-label { margin-bottom:0; }
+        .minimap-toggle-btn { font-size:0.62rem; color:var(--text-muted); cursor:pointer; padding:2px 8px; border:1px solid var(--border); border-radius:3px; background:transparent; transition:all 0.15s; flex-shrink:0; }
+        .minimap-toggle-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+        .kill-feed { display:flex; flex-direction:column; gap:3px; max-height:280px; overflow-y:auto; }
+        .kill-row { display:flex; align-items:center; gap:6px; font-size:0.73rem; background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:5px 9px; cursor:pointer; transition:border-color 0.12s; }
+        .kill-row:hover { border-color:rgba(255,255,255,0.2); }
+        .kill-row.selected { border-color:var(--accent); background:rgba(223,88,64,0.07); }
+        .kill-row .kt  { color:var(--text-muted); min-width:32px; font-size:0.63rem; font-variant-numeric:tabular-nums; flex-shrink:0; }
+        .kill-row .fk  { font-size:0.57rem; background:rgba(255,200,0,0.18); color:#ffc800; padding:1px 5px; border-radius:3px; font-weight:900; flex-shrink:0; }
+        .kill-row .kk  { font-weight:700; }
+        .kill-row .arr { color:var(--text-muted); font-size:0.68rem; flex-shrink:0; }
+        .kill-row .kv  { }
+        .kill-row .kw  { font-size:0.61rem; background:var(--bg3); border:1px solid var(--border); padding:1px 6px; border-radius:3px; color:var(--text-muted); margin-left:auto; flex-shrink:0; }
+
+        .minimap-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; position:relative; }
+        .minimap-wrap canvas { display:block; width:100%; height:auto; }
+
+        .round-players { width:100%; border-collapse:collapse; font-size:0.73rem; }
+        .round-players th { text-align:left; color:var(--text-muted); font-size:0.61rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:4px 7px; border-bottom:1px solid var(--border); }
+        .round-players td { padding:4px 7px; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .round-players .our-r { background:rgba(223,88,64,0.06); }
+        .round-players .sec-hd td { font-size:0.59rem; font-weight:900; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); padding-top:8px; }
+        .alive { color:var(--success); } .dead { color:var(--error); }
+
+        .stats-table-wrap { overflow-x:auto; }
+        .stats-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+        .stats-table th { text-align:center; color:var(--text-muted); font-size:0.61rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .stats-table th:first-child { text-align:left; }
+        .stats-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.04); text-align:center; }
+        .stats-table td:first-child { text-align:left; font-weight:600; }
+        .stats-table .our-row { background:rgba(223,88,64,0.05); }
+        .stats-table .sep-row td { padding:1px; background:var(--border); }
+        .stats-table .sec-label td { font-size:0.61rem; font-weight:900; letter-spacing:0.06em; color:var(--text-muted); text-transform:uppercase; padding:6px 8px 2px; }
+        .acs-val { color:var(--accent); font-weight:700; }
+        .agent-img { width:22px; height:22px; border-radius:3px; vertical-align:middle; margin-right:5px; object-fit:cover; background:var(--bg3); }
+
+        .vod-section { display:grid; grid-template-columns:1fr 320px; gap:18px; align-items:start; }
+        @media (max-width:900px) { .vod-section { grid-template-columns:1fr; } }
+        .vod-player { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+        .vod-iframe-wrap { position:relative; padding-top:56.25%; }
+        .vod-iframe-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
+        .vod-no-url { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:0.82rem; }
+        .vod-notes-title { font-size:0.7rem; font-weight:900; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+        .vod-notes-list { display:flex; flex-direction:column; gap:8px; max-height:500px; overflow-y:auto; }
+        .note-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; }
+        .nc-top { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+        .nc-ts { background:var(--accent); color:#fff; font-size:0.67rem; font-weight:800; padding:2px 8px; border-radius:3px; cursor:pointer; flex-shrink:0; }
+        .nc-ts:hover { opacity:0.85; }
+        .nc-title { font-weight:700; font-size:0.8rem; flex:1; }
+        .nc-body  { font-size:0.74rem; color:var(--text-muted); line-height:1.5; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+
+        <div style="margin-bottom:12px;">
+            <a href="/player/pracc.html" style="font-size:0.78rem;color:var(--text-muted);text-decoration:none;">← Back to Pracc History</a>
+        </div>
+
+        <div class="match-header" id="matchHeader"><p style="color:var(--text-muted);">Loading…</p></div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="rounds">Rounds</button>
+            <button class="tab" data-tab="players">Player Stats</button>
+            <button class="tab" data-tab="vod">VOD Analysis</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-rounds">
+            <div id="mapBanner"></div>
+            <div id="roundDetail"></div>
+        </div>
+        <div class="tab-panel" id="tab-players">
+            <div class="stats-table-wrap" id="playerStatsTable"></div>
+        </div>
+        <div class="tab-panel" id="tab-vod">
+            <div class="vod-section">
+                <div class="vod-player" id="vodPlayer">
+                    <div class="vod-no-url">No VOD available for this match.</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="vod-notes-title">Coach Notes</div>
+                    <div class="vod-notes-list" id="notesList">
+                        <p style="color:var(--text-muted);font-size:0.78rem;">No notes yet.</p>
+                    </div>
+
+                    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+                        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">💬 Discussion</div>
+                        <div id="matchDiscList" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;max-height:240px;overflow-y:auto;"></div>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="matchDiscInput" class="form-input" placeholder="Write a comment…" style="flex:1;font-size:0.82rem;" onkeydown="if(event.key==='Enter')addMatchComment()">
+                            <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 14px;white-space:nowrap;" onclick="addMatchComment()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </main>
+</div>
+
+<script>var ytPlayer = null;
+function onYouTubeIframeAPIReady() {}
+window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth(['player','captain','manager']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar('player', 'pracc');
+
+const params  = new URLSearchParams(location.search);
+const matchId = params.get('id');
+if (!matchId) { location.href = '/player/pracc.html'; }
+
+let matchData    = null;
+let activeRound  = 0;
+let _weaponMap   = null;
+let _mapData     = null;
+let _minimapImgs = {};
+
+function getAttackerSubj(roundIdx) {
+    const m = matchData;
+    const round = (m?.rounds||[])[roundIdx];
+    const roundNum = round?.roundNum ?? roundIdx;
+    const firstRound = (m?.rounds||[])[0];
+    const r0won  = firstRound?.ourTeamWon;
+    const r0role = firstRound?.winnerRole;
+    const ourStart = r0won ? r0role : (r0role === 'Attacker' ? 'Defender' : 'Attacker');
+    let ourSideNow;
+    if (roundNum < 12)      ourSideNow = ourStart;
+    else if (roundNum < 24) ourSideNow = ourStart === 'Attacker' ? 'Defender' : 'Attacker';
+    else { const p = Math.floor((roundNum - 24) / 2) % 2; ourSideNow = p === 0 ? ourStart : (ourStart === 'Attacker' ? 'Defender' : 'Attacker'); }
+    return new Set((m?.players||[]).filter(p => (p.isOurTeam && ourSideNow === 'Attacker') || (!p.isOurTeam && ourSideNow === 'Defender')).map(p => p.subject));
+}
+
+async function getWeaponMap() {
+    if (_weaponMap) return _weaponMap;
+    try {
+        const r = await fetch('https://valorant-api.com/v1/weapons?language=en-US');
+        const d = await r.json();
+        _weaponMap = {};
+        (d.data||[]).forEach(w => { _weaponMap[w.uuid.toLowerCase()] = w.displayName; });
+    } catch { _weaponMap = {}; }
+    return _weaponMap;
+}
+async function getMapData() {
+    if (_mapData) return _mapData;
+    try {
+        const r = await fetch('https://valorant-api.com/v1/maps');
+        const d = await r.json();
+        _mapData = d.data || [];
+    } catch { _mapData = []; }
+    return _mapData;
+}
+function resolveWeapon(uuid, wMap) {
+    if (!uuid) return '';
+    return (wMap||{})[uuid.toLowerCase()] || uuid.split('/').pop().replace(/_/g,' ');
+}
+
+async function loadMatch() {
+    try {
+        const [data, wMap, maps] = await Promise.all([
+            api(`/api/pracc/matches/${matchId}`),
+            getWeaponMap(),
+            getMapData()
+        ]);
+        matchData  = data;
+        _weaponMap = wMap;
+        _mapData   = maps;
+        renderHeader();
+        renderPlayerStats();
+        renderMapBanner();
+        selectRound(0);
+        initVod();
+        api('/api/auth/me').then(me => {
+            const tn = document.getElementById('sidebarTeamName');
+            if (tn) tn.textContent = me.teamId?.name || '';
+        }).catch(()=>{});
+    } catch (err) {
+        document.getElementById('matchHeader').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderHeader() {
+    const m = matchData, res = m.result || 'D';
+    document.title = `LP Hub — vs ${m.opponent || 'Unknown'}`;
+    document.getElementById('matchHeader').innerHTML = `
+        <div class="result-badge ${res}">${res==='W'?'WIN':res==='L'?'LOSS':'DRAW'}</div>
+        <div class="match-score-big">${m.scoreUs??'?'} – ${m.scoreThem??'?'}</div>
+        <div class="match-meta-col">
+            <h2>vs ${esc(m.opponent||'Unknown')}</h2>
+            <p>${esc(m.mapName||'Unknown Map')} · ${m.date?formatDate(m.date):''}</p>
+        </div>`;
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+    });
+});
+
+function renderPlayerStats() {
+    const m = matchData;
+    if (!m.players?.length) { document.getElementById('playerStatsTable').innerHTML='<p style="color:var(--text-muted);">No player data.</p>'; return; }
+    const ourP  = m.players.filter(p=>p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const their = m.players.filter(p=>!p.isOurTeam).sort((a,b)=>(b.acs||0)-(a.acs||0));
+    const pct = n => n!=null?Math.round(n)+'%':'–';
+    const rowHtml = (p, cls) => {
+        const ai = p.characterId?`<img src="https://media.valorant-api.com/agents/${p.characterId}/displayicon.png" class="agent-img" onerror="this.style.display='none'">`:'';
+        const kd = p.deaths>0?(p.kills/p.deaths).toFixed(2):p.kills>0?'∞':'0.00';
+        return `<tr class="${cls}">
+            <td>${ai}${esc(p.gameName||'?')}</td>
+            <td class="acs-val">${Math.round(p.acs||0)}</td>
+            <td>${p.kills}/${p.deaths}/${p.assists}</td>
+            <td style="color:${parseFloat(kd)>=1?'var(--success)':'var(--error)'}">${kd}</td>
+            <td style="color:#f0a500">${pct(p.headshotPercent)}</td>
+            <td style="color:var(--success)">${pct(p.kastPercent)}</td>
+            <td>${p.firstKills||0}</td><td>${p.firstDeaths||0}</td>
+            <td>${p.mk2||0}/${p.mk3||0}/${p.mk4||0}/${p.mk5||0}</td>
+            <td>${p.clutchesWon||0}/${p.clutchesAttempted||0}</td>
+            <td>${Math.round(p.damagePerRound||0)}</td>
+        </tr>`;
+    };
+    document.getElementById('playerStatsTable').innerHTML=`<table class="stats-table">
+        <thead><tr><th>Player</th><th>ACS</th><th>K/D/A</th><th>KD</th><th>HS%</th><th>KAST</th><th>FK</th><th>FD</th><th>2K/3K/4K/ACE</th><th>CL W/A</th><th>ADR</th></tr></thead>
+        <tbody>
+            <tr class="sec-label"><td colspan="11">Our Team</td></tr>
+            ${ourP.map(p=>rowHtml(p,'our-row')).join('')}
+            <tr class="sep-row"><td colspan="11"></td></tr>
+            <tr class="sec-label"><td colspan="11">Enemy</td></tr>
+            ${their.map(p=>rowHtml(p,'')).join('')}
+        </tbody></table>`;
+}
+
+function getMapInfo() {
+    if (!_mapData || !matchData.mapId) return null;
+    return _mapData.find(m => m.mapUrl === matchData.mapId) || null;
+}
+
+function renderMapBanner() {
+    const m = matchData;
+    const rounds = m.rounds || [];
+    if (!rounds.length) { document.getElementById('mapBanner').innerHTML=''; return; }
+
+    const mapInfo = getMapInfo();
+    const splash  = mapInfo?.splash || '';
+    const mapDisplayName = mapInfo?.displayName || m.mapName || '';
+
+    const firstRound  = rounds[0];
+    const half1End    = 12; 
+    const r0role      = firstRound?.winnerRole;
+    const r0won       = firstRound?.ourTeamWon;
+    const ourStartRole = r0won ? r0role : (r0role === 'Attacker' ? 'Defender' : 'Attacker');
+    const half1Side   = ourStartRole === 'Attacker' ? 'ATK' : 'DEF';
+    const half2Side   = half1Side === 'ATK' ? 'DEF' : 'ATK';
+
+    let roundHtml = '';
+    let lastSideLabel = null;
+
+    rounds.forEach((r, i) => {
+        const rn         = r.roundNum ?? i;
+        const displayNum = rn + 1;
+        const cls        = r.ourTeamWon ? 'win' : 'loss';
+        const active     = i === activeRound;
+
+        let sideNow = null;
+        if (rn === 0)              sideNow = half1Side;
+        else if (rn === half1End)  sideNow = half2Side;
+        else if (rn === half1End * 2) sideNow = 'OT';
+
+        if (sideNow && sideNow !== lastSideLabel) {
+            if (lastSideLabel !== null) roundHtml += `<div class="side-sep"></div>`;
+            roundHtml += `<span class="side-label">${sideNow}</span>`;
+            lastSideLabel = sideNow;
+        }
+
+        const rIcon = r.result === 'Defused' ? '💣' : r.result === 'Detonated' ? '💥' : '';
+        roundHtml += `<div class="round-pip ${cls}${active?' active':''}" data-idx="${i}" title="Round ${displayNum} · ${r.result||''}">${displayNum}${rIcon}</div>`;
+    });
+
+    const bgStyle = splash ? `style="background-image:url('${splash}')"` : `style="background:var(--bg2)"`;
+    document.getElementById('mapBanner').innerHTML = `
+        <div class="map-replay-banner">
+            <div class="map-replay-banner-bg" ${bgStyle}></div>
+            <div class="map-replay-banner-content">
+                <div class="mrb-map-name">${esc(mapDisplayName)}</div>
+                <div class="mrb-round-info" id="mrbRoundInfo">Select a round</div>
+                <div class="round-row" id="roundRow">${roundHtml}</div>
+            </div>
+        </div>`;
+
+    document.getElementById('roundRow').querySelectorAll('.round-pip').forEach(pip => {
+        pip.addEventListener('click', () => selectRound(+pip.dataset.idx));
+    });
+}
+
+function selectRound(idx) {
+    activeRound = idx;
+    document.querySelectorAll('.round-pip').forEach((p,i) => p.classList.toggle('active', i === idx));
+
+    const m = matchData;
+    const round = (m.rounds||[])[idx];
+    if (!round) { document.getElementById('roundDetail').innerHTML=''; return; }
+
+    const displayNum = (round.roundNum ?? idx) + 1;
+
+    const info = document.getElementById('mrbRoundInfo');
+    if (info) {
+        const wt    = round.ourTeamWon ? `<span class="won">WON</span>` : `<span class="lost">LOST</span>`;
+        const plant = round.plantSite ? ` · Plant ${round.plantSite}` : '';
+        info.innerHTML = `Round ${displayNum} — ${wt} · ${esc(round.result||'')}${plant}`;
+    }
+
+    const getName = (subject) => {
+        const p = (m.players||[]).find(p => p.subject === subject);
+        return esc(p?.gameName || (subject||'?').slice(0,12));
+    };
+
+    const roundKills = (m.kills||[])
+        .filter(k => k.roundNum === round.roundNum)
+        .sort((a,b) => a.roundTime - b.roundTime);
+
+    const fmtMs = ms => { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+
+    const hasPositions = roundKills.some(k => k.playerLocations?.length > 0);
+
+    const attackerSubj = getAttackerSubj(idx);
+    const ATK_COLOR = '#ff4444';
+    const DEF_COLOR = '#57f287';
+    const sideColor = (subj) => attackerSubj.has(subj) ? ATK_COLOR : DEF_COLOR;
+    const killFeedHtml = roundKills.length ? roundKills.map((k, ki) => {
+        const wepName = resolveWeapon(k.weaponId, _weaponMap||{});
+        return `<div class="kill-row${ki===0?' selected':''}" data-ki="${ki}" onclick="selectKill(${ki})">
+            <span class="kt">${fmtMs(k.roundTime)}</span>
+            ${k.isFirstKillOfRound?`<span class="fk">FK</span>`:''}
+            <span class="kk" style="color:${sideColor(k.killer)}">${getName(k.killer)}</span>
+            <span class="arr">→</span>
+            <span class="kv" style="color:${sideColor(k.victim)}">${getName(k.victim)}</span>
+            ${wepName?`<span class="kw">${esc(wepName)}</span>`:''}
+        </div>`;
+    }).join('') : `<p style="color:var(--text-muted);font-size:0.74rem;padding:4px 0;">No kill data.</p>`;
+
+    const stats   = round.playerStats || [];
+    const ourSubj = new Set((m.players||[]).filter(p=>p.isOurTeam).map(p=>p.subject));
+    const buildRow = (ps) => {
+        const isOur = ourSubj.has(ps.subject);
+        const name  = getName(ps.subject);
+        const wep   = resolveWeapon(ps.weaponId, _weaponMap||{});
+        return `<tr class="${isOur?'our-r':''}">
+            <td>${name}</td>
+            <td>${ps.kills||0}</td><td>${ps.damage||0}</td><td>${ps.headshots||0}</td>
+            <td class="${ps.survived?'alive':'dead'}">${ps.survived?'✓':'✗'}</td>
+            <td style="font-size:0.65rem;color:var(--text-muted);">${esc(wep)}</td>
+            <td style="font-size:0.7rem;">${ps.loadoutValue?'$'+ps.loadoutValue.toLocaleString():'–'}</td>
+        </tr>`;
+    };
+    const ourStats   = stats.filter(ps =>  ourSubj.has(ps.subject));
+    const theirStats = stats.filter(ps => !ourSubj.has(ps.subject));
+
+    const minimapHtml = hasPositions
+        ? `<div class="minimap-wrap"><canvas id="minimapCanvas" width="500" height="500"></canvas></div>`
+        : `<div class="minimap-wrap" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
+               <span style="font-size:0.72rem;color:var(--text-muted);text-align:center;padding:12px;">No position data<br>(re-import to enable)</span>
+           </div>`;
+
+    document.getElementById('roundDetail').innerHTML = `
+        <div class="round-top-grid" id="roundTopGrid">
+            <div>
+                <div class="round-section-label">Kill Feed</div>
+                <div class="kill-feed" id="killFeed">${killFeedHtml}</div>
+            </div>
+            <div class="minimap-outer">
+                <div class="minimap-header">
+                    <div class="round-section-label">Minimap</div>
+                    ${hasPositions ? `<button class="minimap-toggle-btn" id="minimapToggleBtn" onclick="toggleMinimap()">⛶ Expand</button>` : ''}
+                </div>
+                ${minimapHtml}
+            </div>
+        </div>
+        <div>
+            <div class="round-section-label">Round Stats</div>
+            <table class="round-players">
+                <thead><tr><th>Player</th><th>K</th><th>DMG</th><th>HS</th><th>Alive</th><th>Weapon</th><th>Loadout</th></tr></thead>
+                <tbody>
+                    <tr class="sec-hd"><td colspan="7">Our Team</td></tr>
+                    ${ourStats.map(ps=>buildRow(ps)).join('')}
+                    <tr style="background:var(--border);"><td colspan="7" style="padding:1px;"></td></tr>
+                    <tr class="sec-hd"><td colspan="7">Enemy</td></tr>
+                    ${theirStats.map(ps=>buildRow(ps)).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    if (hasPositions && roundKills[0]?.playerLocations?.length) {
+        requestAnimationFrame(() => drawMinimap(roundKills[0], attackerSubj));
+    }
+
+    window._currentRoundKills   = roundKills;
+    window._currentAttackerSubj = attackerSubj;
+}
+
+window.toggleMinimap = () => {
+    const grid = document.getElementById('roundTopGrid');
+    const btn  = document.getElementById('minimapToggleBtn');
+    if (!grid) return;
+    const expanded = grid.classList.toggle('minimap-expanded');
+    if (btn) btn.textContent = expanded ? '✕ Collapse' : '⛶ Expand';
+    const kills        = window._currentRoundKills   || [];
+    const attackerSubj = window._currentAttackerSubj || new Set();
+    const ki = [...(document.querySelectorAll('.kill-row'))].findIndex(r => r.classList.contains('selected'));
+    const idx = ki >= 0 ? ki : 0;
+    if (kills[idx]?.playerLocations?.length) {
+        requestAnimationFrame(() => drawMinimap(kills[idx], attackerSubj));
+    }
+};
+
+window.selectKill = (ki) => {
+    document.querySelectorAll('.kill-row').forEach((r,i) => r.classList.toggle('selected', i===ki));
+    const kills        = window._currentRoundKills   || [];
+    const attackerSubj = window._currentAttackerSubj || new Set();
+    if (kills[ki]?.playerLocations?.length) {
+        drawMinimap(kills[ki], attackerSubj);
+    }
+};
+
+async function drawMinimap(killEvent, attackerSubj) {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = 500, H = 500;
+    ctx.clearRect(0, 0, W, H);
+
+    const mapInfo = getMapInfo();
+    const locs    = killEvent.playerLocations || [];
+    if (!locs.length) return;
+
+    if (mapInfo?.displayIcon) {
+        try {
+            let img = _minimapImgs[mapInfo.mapUrl];
+            if (!img) {
+                img = await loadImg(mapInfo.displayIcon);
+                _minimapImgs[mapInfo.mapUrl] = img;
+            }
+            ctx.drawImage(img, 0, 0, W, H);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(0, 0, W, H);
+        } catch {
+            ctx.fillStyle = '#1a1b1e';
+            ctx.fillRect(0, 0, W, H);
+        }
+    } else {
+        ctx.fillStyle = '#1a1b1e';
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    const toPixel = (loc) => {
+        if (!mapInfo) return { x: W/2, y: H/2 };
+        const u = loc.y * mapInfo.xMultiplier + mapInfo.xScalarToAdd;
+        const v = loc.x * mapInfo.yMultiplier + mapInfo.yScalarToAdd;
+        return {
+            x: Math.max(8, Math.min(W - 8, u * W)),
+            y: Math.max(8, Math.min(H - 8, v * H)),
+        };
+    };
+
+    const killerSubj = killEvent.killer;
+    const victimSubj = killEvent.victim;
+
+    const kLoc = locs.find(pl => pl.subject === killerSubj);
+    const vLoc = locs.find(pl => pl.subject === victimSubj);
+    if (kLoc && vLoc) {
+        const kp = toPixel(kLoc.location);
+        const vp = toPixel(vLoc.location);
+        ctx.beginPath();
+        ctx.moveTo(kp.x, kp.y);
+        ctx.lineTo(vp.x, vp.y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    for (const pl of locs) {
+        const px   = toPixel(pl.location);
+        const endX = px.x + Math.cos(pl.viewRadians) * 18;
+        const endY  = px.y - Math.sin(pl.viewRadians) * 18;
+        ctx.beginPath();
+        ctx.moveTo(px.x, px.y);
+        ctx.lineTo(endX, endY);
+        ctx.strokeStyle = attackerSubj.has(pl.subject) ? 'rgba(255,68,68,0.55)' : 'rgba(87,242,135,0.55)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    for (const pl of locs) {
+        const px         = toPixel(pl.location);
+        const isAttacker = attackerSubj.has(pl.subject);
+        const isKiller   = pl.subject === killerSubj;
+        const isVictim = pl.subject === victimSubj;
+
+        ctx.beginPath();
+        ctx.arc(px.x, px.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = isVictim ? '#888888' : isAttacker ? '#ff4444' : '#57f287';
+        ctx.fill();
+        ctx.save();
+        if (isKiller) {
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur  = 14;
+            ctx.strokeStyle = '#ffd700';
+        } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        }
+        ctx.lineWidth = isKiller ? 2 : 1.2;
+        ctx.beginPath();
+        ctx.arc(px.x, px.y, 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        if (isVictim) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(px.x-4, px.y-4); ctx.lineTo(px.x+4, px.y+4); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px.x+4, px.y-4); ctx.lineTo(px.x-4, px.y+4); ctx.stroke();
+        }
+
+        const pInfo = (matchData.players||[]).find(p => p.subject === pl.subject);
+        const label = pInfo?.gameName?.slice(0, 14) || '';
+        if (label) {
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = 'rgba(0,0,0,0.9)';
+            ctx.shadowBlur = 4;
+            const tw = ctx.measureText(label).width;
+            const tx = Math.max(2, Math.min(W - tw - 2, px.x - tw / 2));
+            const ty = Math.max(11, Math.min(H - 2, px.y - 11));
+            ctx.textAlign = 'left';
+            ctx.fillText(label, tx, ty);
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'center';
+        }
+    }
+}
+
+function _proxyUrl(url) {
+    if (!url) return url;
+    try {
+        const h = new URL(url).hostname;
+        if (h === 'media.valorant-api.com' || h === 'valorant-api.com') {
+            return '/api/vapi-proxy?url=' + encodeURIComponent(url);
+        }
+    } catch {}
+    return url;
+}
+
+function loadImg(src) {
+    const proxied = _proxyUrl(src);
+    return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('img load failed'));
+        img.src = proxied;
+    });
+}
+
+function initVod() {
+    const m = matchData;
+    if (m.vodUrl) embedYT(m.vodUrl);
+    renderNotes();
+    renderDiscussion();
+}
+
+function ytId(url) {
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+function embedYT(url) {
+    const vid = ytId(url); if (!vid) return;
+    document.getElementById('vodPlayer').innerHTML = `
+        <div class="vod-iframe-wrap">
+            <iframe id="ytIframe" src="https://www.youtube.com/embed/${vid}?enablejsapi=1" allowfullscreen></iframe>
+        </div>`;
+    setTimeout(() => { if (typeof YT!=='undefined'&&YT.Player) window.ytPlayer=new YT.Player('ytIframe',{}); }, 1200);
+}
+
+function fmtTs(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+
+function renderNotes() {
+    const notes = ((matchData.vodNotes)||[]).slice().sort((a,b) => a.timestamp - b.timestamp);
+    const el = document.getElementById('notesList');
+    if (!notes.length) { el.innerHTML='<p style="color:var(--text-muted);font-size:0.78rem;">No coach notes yet.</p>'; return; }
+    el.innerHTML = notes.map(n => `
+        <div class="note-card">
+            <div class="nc-top">
+                <span class="nc-ts" onclick="jumpTo(${n.timestamp})">${fmtTs(n.timestamp)}</span>
+                <span class="nc-title">${esc(n.title||'')}</span>
+            </div>
+            ${n.note?`<div class="nc-body">${esc(n.note)}</div>`:''}
+        </div>`).join('');
+}
+
+window.jumpTo = (s) => {
+    if (window.ytPlayer?.seekTo) { window.ytPlayer.seekTo(s, true); window.ytPlayer.playVideo(); return; }
+    const iframe = document.getElementById('ytIframe');
+    if (iframe && matchData.vodUrl) {
+        const vid = ytId(matchData.vodUrl);
+        if (vid) iframe.src = `https://www.youtube.com/embed/${vid}?enablejsapi=1&start=${s}&autoplay=1`;
+    }
+};
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderDiscussion() {
+    const el = document.getElementById('matchDiscList');
+    const comments = (matchData.comments || []);
+    if (!comments.length) { el.innerHTML='<p style="font-size:0.78rem;color:var(--text-muted);">No comments yet.</p>'; return; }
+    const myId = user?._id || user?.userId || '';
+    el.innerHTML = comments.map(c => {
+        const isMine = myId && (c.authorId === myId || c.authorId?._id === myId);
+        return `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                <div style="flex:1;">
+                    <span style="font-size:0.72rem;font-weight:700;color:var(--accent);">${esc(c.authorName)}</span>
+                    <span style="font-size:0.68rem;color:var(--text-muted);margin-left:6px;">${new Date(c.createdAt).toLocaleDateString()}</span>
+                    <div style="font-size:0.82rem;margin-top:3px;">${esc(c.text)}</div>
+                </div>
+                ${isMine ? `<button onclick="delMatchComment('${c._id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:0 3px;flex-shrink:0;" title="Delete">×</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+async function addMatchComment() {
+    const input = document.getElementById('matchDiscInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/pracc/matches/${matchId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        matchData.comments = matchData.comments || [];
+        matchData.comments.push(c);
+        renderDiscussion();
+    } catch(err) { toast(err.message,'error'); }
+}
+async function delMatchComment(commentId) {
+    try {
+        await api(`/api/pracc/matches/${matchId}/comments/${commentId}`, {method:'DELETE'});
+        matchData.comments = (matchData.comments||[]).filter(c => c._id !== commentId);
+        renderDiscussion();
+    } catch(err) { toast(err.message,'error'); }
+}
+window.addMatchComment = addMatchComment;
+window.delMatchComment = delMatchComment;
+
+loadMatch();</script>
+</body>
+</html>

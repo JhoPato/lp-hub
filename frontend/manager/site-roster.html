@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Website Rosters</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.action-bar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+
+        .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:12px; }
+        .team-card-header { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+        .team-logo { width:38px; height:38px; border-radius:var(--radius); object-fit:cover; background:var(--bg3); border:1px solid var(--border); flex-shrink:0; }
+        .team-logo-ph { width:38px; height:38px; border-radius:var(--radius); background:var(--bg3); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+        .team-name-block { flex:1; min-width:0; }
+        .team-name  { font-weight:700; font-size:0.95rem; }
+        .team-meta  { font-size:0.74rem; color:var(--text-muted); margin-top:1px; }
+
+        .link-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+        .link-select { flex:1; min-width:200px; background:var(--bg3); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:7px 10px; font-size:0.83rem; cursor:pointer; }
+        .link-select:focus { outline:none; border-color:var(--accent); }
+
+        .sync-badge { font-size:0.72rem; padding:2px 8px; border-radius:20px; border:1px solid; font-weight:600; white-space:nowrap; }
+        .sync-badge.linked   { border-color:var(--accent);  color:var(--accent);  background:rgba(223,88,64,0.08); }
+        .sync-badge.synced   { border-color:#22c55e; color:#22c55e; background:rgba(34,197,94,0.08); }
+        .sync-badge.unlinked { border-color:#555; color:#888; }
+
+        .roster-grid { display:flex; gap:20px; flex-wrap:wrap; }
+        .roster-col { flex:1; min-width:180px; }
+        .roster-col-label { font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+        .roster-pill { display:inline-block; background:var(--bg3); border:1px solid var(--border); border-radius:20px; padding:3px 10px; font-size:0.78rem; margin:2px; }
+        .empty-note { font-size:0.78rem; color:var(--text-muted); font-style:italic; }
+
+        .result-log { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:20px; max-height:240px; overflow-y:auto; }
+        .result-row { font-size:0.82rem; padding:4px 0; display:flex; gap:8px; align-items:center; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .result-row:last-child { border-bottom:none; }
+        .badge-pulled { color:#22c55e; font-weight:700; }
+        .badge-pushed { color:var(--accent); font-weight:700; }
+        .badge-error  { color:#f87171; font-weight:700; }
+        .badge-nf     { color:#888; font-weight:700; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>Website Rosters</h1>
+                <p>Link Hub teams to LP-API teams, then pull or push rosters</p>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary"   id="btnPullAll" onclick="pullAll()">⬇ Pull All from LP-API</button>
+            <button class="btn btn-secondary" id="btnPushAll" onclick="pushAll()">⬆ Push All to LP-API</button>
+            <button class="btn btn-secondary" id="btnRefresh" onclick="init()">↺ Refresh</button>
+        </div>
+
+        <div id="resultLog" style="display:none;" class="result-log">
+            <div id="resultRows"></div>
+        </div>
+
+        <div id="teamList"><p style="color:var(--text-muted);">Loading…</p></div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'site-roster');
+
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d) {
+    if (!d) return 'Never';
+    return new Date(d).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+let lpTeams  = [];
+let hubTeams = [];
+
+async function init() {
+    document.getElementById('btnRefresh').disabled = true;
+    try {
+        [lpTeams, hubTeams] = await Promise.all([
+            api('/api/site/roster/lp-teams'),
+            api('/api/site/roster/all'),
+        ]);
+        render();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { document.getElementById('btnRefresh').disabled = false; }
+}
+window.init = init;
+
+function render() {
+    const el = document.getElementById('teamList');
+    if (!hubTeams.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);">No Hub teams found.</p>';
+        return;
+    }
+
+    
+    const baseOptions = `<option value="">— Not linked —</option>` +
+        lpTeams.map(t =>
+            `<option value="${esc(t.region)}|${t.teamIndex}">${esc(t.region.toUpperCase())} — ${esc(t.name)}</option>`
+        ).join('');
+
+    el.innerHTML = hubTeams.map(t => {
+        const linked  = t.lpApiTeam?.region != null;
+        const synced  = !!t.websiteRoster?.lastSynced;
+        const players = t.websiteRoster?.players || [];
+        const coaches = t.websiteRoster?.coaches || [];
+
+        const logoHtml = t.logoUrl
+            ? `<img class="team-logo" src="${esc(t.logoUrl)}" alt="">`
+            : `<div class="team-logo-ph">🐾</div>`;
+
+        const selectedVal = linked ? `${t.lpApiTeam.region}|${t.lpApiTeam.teamIndex}` : '';
+
+        
+        const optionsHtml = baseOptions.replace(
+            `value="${esc(selectedVal)}"`,
+            `value="${esc(selectedVal)}" selected`
+        );
+
+        let badgeClass = 'unlinked', badgeText = '○ Not linked';
+        if (linked && synced)  { badgeClass = 'synced';  badgeText = '✓ Synced'; }
+        else if (linked)       { badgeClass = 'linked';  badgeText = '⟳ Linked'; }
+
+        const playerPills = players.length
+            ? players.map(p => `<span class="roster-pill">${esc(typeof p === 'string' ? p : p.name)}</span>`).join('')
+            : `<span class="empty-note">Empty — pull to populate</span>`;
+        const coachPills = coaches.length
+            ? coaches.map(c => `<span class="roster-pill">${esc(typeof c === 'string' ? c : c.name)}</span>`).join('')
+            : `<span class="empty-note">None</span>`;
+
+        return `
+        <div class="team-card">
+            <div class="team-card-header">
+                ${logoHtml}
+                <div class="team-name-block">
+                    <div class="team-name">${esc(t.name)}</div>
+                    <div class="team-meta">${esc((t.region || '').toUpperCase())} · Last synced: ${fmtDate(t.websiteRoster?.lastSynced)}</div>
+                </div>
+                <span class="sync-badge ${badgeClass}">${badgeText}</span>
+            </div>
+
+            <div class="link-row">
+                <span style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;">LP-API Team:</span>
+                <select class="link-select" data-id="${esc(String(t._id))}" onchange="saveLink(this)">
+                    ${optionsHtml}
+                </select>
+            </div>
+
+            <div class="roster-grid">
+                <div class="roster-col">
+                    <div class="roster-col-label">Players (${players.length})</div>
+                    <div>${playerPills}</div>
+                </div>
+                <div class="roster-col">
+                    <div class="roster-col-label">Coaches (${coaches.length})</div>
+                    <div>${coachPills}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.saveLink = async (select) => {
+    const teamId = select.dataset.id;
+    const val    = select.value;
+    let region = null, teamIndex = null;
+    if (val) {
+        const parts = val.split('|');
+        region    = parts[0];
+        teamIndex = Number(parts[1]);
+    }
+    try {
+        await api('/api/site/roster/link', {
+            method: 'POST',
+            body: JSON.stringify({ teamId, region, teamIndex }),
+        });
+        const t = hubTeams.find(h => String(h._id) === teamId);
+        if (t) t.lpApiTeam = { region, teamIndex };
+        render();
+        toast(region ? 'Team linked!' : 'Link removed.', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+function showResults(results) {
+    const log = document.getElementById('resultLog');
+    log.style.display = 'block';
+    document.getElementById('resultRows').innerHTML = results.map(r => {
+        let badge = '';
+        if      (r.status === 'pulled') badge = `<span class="badge-pulled">PULLED</span> ${r.players} players, ${r.coaches} coaches`;
+        else if (r.status === 'pushed') badge = `<span class="badge-pushed">PUSHED</span>`;
+        else if (r.status === 'error')  badge = `<span class="badge-error">ERROR</span> ${esc(r.error || '')}`;
+        else                            badge = `<span class="badge-nf">NOT FOUND</span> in LP-API`;
+        return `<div class="result-row"><span style="flex:0 0 160px;font-weight:600;">${esc(r.name)}</span>${badge}</div>`;
+    }).join('');
+}
+
+window.pullAll = async () => {
+    const btn = document.getElementById('btnPullAll');
+    btn.disabled = true; btn.textContent = 'Pulling…';
+    try {
+        const { results } = await api('/api/site/roster/pull-all', { method: 'POST' });
+        showResults(results);
+        toast(`Pulled ${results.filter(r => r.status === 'pulled').length} teams.`, 'success');
+        hubTeams = await api('/api/site/roster/all');
+        render();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '⬇ Pull All from LP-API'; }
+};
+
+window.pushAll = async () => {
+    const btn = document.getElementById('btnPushAll');
+    btn.disabled = true; btn.textContent = 'Pushing…';
+    try {
+        const { results } = await api('/api/site/roster/push-all', { method: 'POST' });
+        showResults(results);
+        const ok = results.filter(r => r.status === 'pushed').length;
+        const er = results.filter(r => r.status === 'error').length;
+        toast(`Pushed ${ok} teams${er ? `, ${er} errors` : ''}.`, er ? 'error' : 'success');
+        hubTeams = await api('/api/site/roster/all');
+        render();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '⬆ Push All to LP-API'; }
+};
+
+init();</script>
+</body>
+</html>

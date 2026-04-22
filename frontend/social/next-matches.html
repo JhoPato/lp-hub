@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Next Matches</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .month-group { margin-bottom:32px; }
+        .month-label { font-size:0.7rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+        .match-list  { display:flex; flex-direction:column; gap:10px; }
+
+        .match-card {
+            background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+            padding:16px 20px; display:grid; grid-template-columns:56px auto 1fr auto;
+            gap:16px; align-items:center; cursor:pointer; transition:border-color .15s, background .15s;
+        }
+        .match-card:hover { border-color:var(--accent); background:var(--bg3); }
+
+        .match-date-block { text-align:center; }
+        .match-day-name { font-size:0.65rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); }
+        .match-day-num  { font-size:1.6rem; font-weight:800; line-height:1; color:var(--text); }
+
+        .match-logo { width:40px; height:40px; object-fit:contain; border-radius:4px; }
+        .match-logo-placeholder { width:40px; height:40px; background:var(--bg3); border:1px solid var(--border); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; color:var(--text-muted); }
+
+        .match-info { display:flex; flex-direction:column; gap:3px; }
+        .match-tournament { font-size:0.75rem; font-weight:700; color:var(--accent); letter-spacing:0.04em; text-transform:uppercase; }
+        .match-teams      { font-size:0.95rem; font-weight:600; color:var(--text); }
+        .match-time       { font-size:0.78rem; color:var(--text-muted); }
+
+        .match-actions { display:flex; align-items:center; gap:8px; }
+        .stream-chip {
+            display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600;
+            padding:5px 12px; border-radius:4px; background:rgba(145,71,255,0.15); color:#a855f7;
+            border:1px solid rgba(145,71,255,0.3); white-space:nowrap; pointer-events:none;
+        }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:600px; }
+        .modal-top { display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+        .modal-logo { width:52px; height:52px; object-fit:contain; border-radius:6px; }
+        .modal-logo-ph { width:52px; height:52px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:var(--text-muted); }
+        .modal-title-block { flex:1; }
+        .modal-tournament { font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent); margin-bottom:3px; }
+        .modal-match-title { font-size:1.1rem; font-weight:700; }
+        .modal-rows { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
+        .modal-row { display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:10px 14px; background:var(--bg3); border-radius:6px; gap:16px; }
+        .modal-row-label { color:var(--text-muted); font-size:0.75rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; white-space:nowrap; }
+        .modal-row-value { font-weight:600; text-align:right; }
+        .modal-footer { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+        .modal-footer .btn { white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+
+        .range-select { display:flex; gap:8px; align-items:center; }
+        .range-select label { font-size:0.75rem; color:var(--text-muted); }
+        .range-select select { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); padding:5px 10px; font-size:0.8rem; cursor:pointer; }
+        .empty-state { padding:48px 0; text-align:center; color:var(--text-muted); font-size:0.88rem; }
+
+        .twitch-icon { width:14px; height:14px; fill:currentColor; flex-shrink:0; }
+    </style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+            <div class="page-header">
+                <div>
+                    <h1>Next Matches</h1>
+                    <p>Upcoming tournament schedule</p>
+                </div>
+                <div class="range-select">
+                    <label>Show next</label>
+                    <select id="rangeSelect" onchange="load()">
+                        <option value="30">30 days</option>
+                        <option value="60" selected>60 days</option>
+                        <option value="90">90 days</option>
+                        <option value="180">6 months</option>
+                    </select>
+                </div>
+            </div>
+            <div id="matchesContainer"><div class="empty-state">Loading...</div></div>
+        </div>
+    </main>
+</div>
+
+<div id="matchModal" class="modal-overlay" style="display:none" onclick="closeModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-top">
+            <div id="mLogo"></div>
+            <div class="modal-title-block">
+                <div class="modal-tournament" id="mTournament"></div>
+                <div class="modal-match-title" id="mTitle"></div>
+            </div>
+        </div>
+        <div class="modal-rows" id="mRows"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="mCopyBtn" style="display:none" onclick="copyStream()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy Stream Link
+            </button>
+            <a id="mStreamLink" class="btn btn-primary" href="#" target="_blank" rel="noopener" style="display:none">
+                <svg class="twitch-icon" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                Open Stream
+            </a>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['social', 'owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role === 'owner' ? 'owner' : 'social', 'next-matches');
+
+const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function fmtTime(t) {
+    if (!t) return '—';
+    const [h, m] = t.split(':').map(Number);
+    return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+function countryFlag(code) {
+    if (!code || code.length !== 2) return '';
+    return `<img src="https://flagcdn.com/w40/${code.toLowerCase()}.png" width="28" style="border-radius:2px;vertical-align:middle;margin-right:6px;flex-shrink:0;" alt="${code}">`;
+}
+
+function teamLogo(teamId, cls) {
+    const url = teamId?.logos?.main?.url || teamId?.logoUrl || '';
+    const tag  = teamId?.tag || teamId?.name || '?';
+    if (url) return `<img src="${url}" class="${cls}" alt="${tag}" onerror="this.replaceWith(this.nextElementSibling)"><span class="${cls.replace('match-logo','match-logo-placeholder').replace('modal-logo','modal-logo-ph')}" style="display:none">${tag}</span>`;
+    return `<div class="${cls.includes('modal') ? 'modal-logo-ph' : 'match-logo-placeholder'}">${tag}</div>`;
+}
+
+let _currentStream = '';
+
+window.openModal = function(ev) {
+    const d    = new Date(ev._date);
+    const team = ev.teamId || {};
+    const logo = team.logos?.main?.url || team.logoUrl || '';
+    const tag  = team.tag || team.name || '';
+    const vs   = ev.opponent ? `${team.name || tag} vs ${ev.opponent}` : (team.name || tag || '—');
+
+    const logoEl = document.getElementById('mLogo');
+    logoEl.innerHTML = logo
+        ? `<img src="${logo}" class="modal-logo" alt="${tag}">`
+        : `<div class="modal-logo-ph">${tag}</div>`;
+
+    document.getElementById('mTournament').textContent = ev.title;
+    document.getElementById('mTitle').textContent      = vs;
+
+    const rows = [
+        ['Team',       team.name || tag || '—'],
+        ['Opponent',   ev.opponent || '—'],
+        ['Date',       `${DAY_NAMES[d.getDay()]}, ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`],
+        ['Time',       ev.startTime ? `${fmtTime(ev.startTime)} — ${fmtTime(ev.endTime)}` : '—'],
+        ev.notes ? ['Notes', ev.notes] : null,
+    ].filter(Boolean);
+
+    document.getElementById('mRows').innerHTML = rows.map(([label, val]) => `
+        <div class="modal-row">
+            <span class="modal-row-label">${label}</span>
+            <span class="modal-row-value">${val}</span>
+        </div>`).join('');
+
+    _currentStream = ev.streamUrl || '';
+    document.getElementById('mCopyBtn').style.display   = _currentStream ? '' : 'none';
+    document.getElementById('mStreamLink').style.display = _currentStream ? '' : 'none';
+    if (_currentStream) document.getElementById('mStreamLink').href = _currentStream;
+
+    document.getElementById('matchModal').style.display = 'flex';
+};
+
+window.closeModal = function(e) {
+    if (!e || e.target === document.getElementById('matchModal')) {
+        document.getElementById('matchModal').style.display = 'none';
+    }
+};
+
+window.copyStream = function() {
+    navigator.clipboard.writeText(_currentStream).then(() => toast('Stream link copied!', 'success'));
+};
+
+window.load = async function() {
+    const days = parseInt(document.getElementById('rangeSelect').value) || 60;
+    const from = new Date(); from.setHours(0,0,0,0);
+    const to   = new Date(Date.now() + days * 86400000);
+    const container = document.getElementById('matchesContainer');
+    container.innerHTML = '<div class="empty-state">Loading...</div>';
+
+    let events;
+    try {
+        events = await api(`/api/schedule/tournament?from=${from.toISOString()}&to=${to.toISOString()}`);
+    } catch {
+        container.innerHTML = '<div class="empty-state">Failed to load matches.</div>';
+        return;
+    }
+
+    if (!events.length) {
+        container.innerHTML = '<div class="empty-state">No tournament matches scheduled in this period.</div>';
+        return;
+    }
+
+    window._eventsData = events.map(ev => ({ ...ev, _date: new Date(ev.date) }));
+
+    const grouped = {};
+    for (const ev of window._eventsData) {
+        const d   = ev._date;
+        const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
+        if (!grouped[key]) grouped[key] = { label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, events: [] };
+        grouped[key].events.push(ev);
+    }
+
+    let idx = 0;
+    container.innerHTML = Object.values(grouped).map(group => `
+        <div class="month-group">
+            <div class="month-label">${group.label}</div>
+            <div class="match-list">
+                ${group.events.map(ev => {
+                    const d    = ev._date;
+                    const team = ev.teamId || {};
+                    const logo = team.logos?.main?.url || team.logoUrl || '';
+                    const tag  = team.tag || team.name || '?';
+                    const vs   = ev.opponent ? `${team.name || tag} vs ${ev.opponent}` : (team.name || tag || '—');
+                    const flag = countryFlag(team.region || '');
+                    const i    = idx++;
+                    return `
+                    <div class="match-card" onclick="openModal(window._eventsData[${i}])">
+                        <div class="match-date-block">
+                            <div class="match-day-name">${DAY_NAMES[d.getDay()]}</div>
+                            <div class="match-day-num">${d.getDate()}</div>
+                        </div>
+                        ${logo
+                            ? `<img src="${logo}" class="match-logo" alt="${tag}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="match-logo-placeholder" style="display:none">${tag}</div>`
+                            : `<div class="match-logo-placeholder">${tag}</div>`
+                        }
+                        <div class="match-info">
+                            <div class="match-tournament">${ev.title}</div>
+                            <div class="match-teams" style="display:flex;align-items:center;">${flag}${vs}</div>
+                            <div class="match-time">${fmtTime(ev.startTime)}${ev.endTime ? ` — ${fmtTime(ev.endTime)}` : ''}</div>
+                        </div>
+                        <div class="match-actions">
+                            ${ev.streamUrl ? `<div class="stream-chip">
+                                <svg class="twitch-icon" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                                Stream
+                            </div>` : ''}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+    `).join('');
+};
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Tasks</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+        .filter-btn { padding:6px 14px; font-size:0.75rem; font-weight:700; letter-spacing:0.06em; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; border-radius:var(--radius); transition:all 0.2s; }
+        .filter-btn.active { border-color:var(--accent); color:var(--accent); }
+        .sort-row { display:flex; align-items:center; gap:8px; margin-bottom:18px; }
+        .sort-row label { font-size:0.75rem; color:var(--text-muted); font-weight:600; letter-spacing:0.06em; }
+        .sort-row select { font-size:0.78rem; background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:var(--radius); padding:5px 10px; cursor:pointer; }
+
+        .progress-wrap  { margin-bottom:20px; }
+        .progress-label { display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:5px; }
+        .progress-bar   { height:5px; background:var(--bg3); border-radius:3px; overflow:hidden; }
+        .progress-fill  { height:100%; background:var(--success); border-radius:3px; transition:width 0.4s; }
+
+        .task-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
+        .task-card[data-priority="high"]   { border-left-color:var(--error); }
+        .task-card[data-priority="medium"] { border-left-color:#f59e0b; }
+        .task-card[data-priority="low"]    { border-left-color:var(--success); }
+        .task-card.completed { opacity:0.55; }
+        .task-card-top { display:flex; align-items:flex-start; gap:12px; }
+
+        .task-toggle { width:22px; height:22px; border:2px solid var(--border); border-radius:4px; cursor:pointer; flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:900; transition:all 0.15s; user-select:none; }
+        .task-toggle[data-status="pending"]     { border-color:var(--border); background:transparent; color:transparent; }
+        .task-toggle[data-status="in_progress"] { border-color:#f59e0b; background:rgba(245,158,11,0.12); color:#f59e0b; }
+        .task-toggle[data-status="completed"]   { border-color:var(--success); background:var(--success); color:#000; }
+        .task-toggle:hover { border-color:var(--accent); opacity:0.8; }
+
+        .task-body  { flex:1; min-width:0; }
+        .task-title { font-weight:600; font-size:0.9rem; margin-bottom:4px; cursor:pointer; }
+        .task-title:hover { color:var(--accent); }
+        .task-desc  { font-size:0.8rem; color:var(--text-muted); margin-bottom:8px; line-height:1.5; }
+        .task-meta  { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .task-view-btn { font-size:0.72rem; color:var(--text-muted); cursor:pointer; padding:3px 8px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); white-space:nowrap; }
+        .task-view-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+        .badge-cat    { font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:3px; background:var(--bg3); color:var(--text-muted); border:1px solid var(--border); }
+        .badge-overdue{ font-size:0.68rem; font-weight:700; background:rgba(223,88,64,0.15); color:var(--accent); border:1px solid rgba(223,88,64,0.3); border-radius:3px; padding:2px 7px; }
+        .upload-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; background:rgba(223,88,64,0.10); color:var(--accent); border:1px solid rgba(223,88,64,0.25); border-radius:3px; padding:2px 7px; }
+        .vod-badge    { display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; color:#9f7aea; background:rgba(159,122,234,0.10); border:1px solid rgba(159,122,234,0.3); border-radius:3px; padding:2px 7px; cursor:pointer; text-decoration:none; }
+        .vod-badge:hover { background:rgba(159,122,234,0.2); }
+
+        .upload-area  { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+        .uploaded-files { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+        .uploaded-item  { display:flex; align-items:center; gap:5px; background:var(--bg3); border:1px solid var(--border); border-radius:3px; padding:4px 8px; font-size:0.78rem; }
+        .uploaded-item a { color:var(--accent); text-decoration:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; }
+        .upload-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+        .comments-section { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+        .comments-toggle  { font-size:0.75rem; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:5px; user-select:none; border:none; background:none; padding:0; }
+        .comments-toggle:hover { color:var(--text); }
+        .comments-body    { margin-top:10px; display:none; }
+        .comments-body.open { display:block; }
+        .comment-item   { display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; }
+        .comment-avatar { width:24px; height:24px; background:var(--bg3); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; color:var(--text-muted); flex-shrink:0; }
+        .comment-content { flex:1; min-width:0; }
+        .comment-meta   { font-size:0.7rem; color:var(--text-muted); margin-bottom:2px; }
+        .comment-text   { font-size:0.8rem; line-height:1.5; word-break:break-word; }
+        .comment-del    { font-size:0.7rem; color:var(--text-muted); cursor:pointer; padding:0 4px; background:none; border:none; }
+        .comment-del:hover { color:var(--error); }
+        .comment-input-row { display:flex; gap:8px; margin-top:10px; }
+
+        
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+
+        
+        .view-modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; width:100%; max-width:660px; max-height:92vh; overflow-y:auto; }
+        .view-section   { margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+        .view-section-title { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+        .view-comment-item { padding:8px 10px; background:var(--bg3); border-radius:var(--radius); margin-bottom:6px; }
+        .view-comment-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+        .view-comment-author { font-size:0.71rem; font-weight:700; color:var(--accent); }
+        .view-comment-time   { font-size:0.68rem; color:var(--text-muted); }
+        .view-comment-text   { font-size:0.8rem; color:var(--text); word-break:break-word; }
+        .view-comment-del    { background:none; border:none; color:var(--error); cursor:pointer; font-size:0.85rem; padding:0 3px; }
+
+        
+        .vod-modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; width:100%; max-width:900px; max-height:92vh; overflow-y:auto; }
+        .vod-grid { display:grid; grid-template-columns:1fr 270px; gap:16px; }
+        .vod-embed-wrap { position:relative; padding-bottom:56.25%; height:0; border-radius:var(--radius); overflow:hidden; background:#000; }
+        .vod-embed-wrap > div { position:absolute; top:0; left:0; width:100%; height:100%; }
+        .ts-list { max-height:300px; overflow-y:auto; }
+        .ts-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius); }
+        .ts-item:hover { background:var(--bg3); }
+        .ts-time { font-size:0.72rem; font-weight:700; font-family:monospace; color:#9f7aea; background:rgba(159,122,234,0.12); border:1px solid rgba(159,122,234,0.3); border-radius:3px; padding:2px 7px; white-space:nowrap; flex-shrink:0; cursor:pointer; }
+        .ts-label { font-size:0.82rem; flex:1; }
+        .ts-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem; padding:0 3px; }
+        .ts-del:hover { color:var(--error); }
+        .ts-add-row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+        .ts-add-row input, .ts-add-row textarea { padding:6px 8px; font-size:0.8rem; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); outline:none; font-family:inherit; resize:vertical; min-height:36px; }
+        .ts-add-row input:focus, .ts-add-row textarea:focus { border-color:#9f7aea; }
+        .ts-note { font-size:0.73rem; color:var(--text-muted); margin-top:3px; font-style:italic; padding-left:2px; }
+        .clock-btn { padding:5px 8px; font-size:0.85rem; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+        .clock-btn:hover { border-color:#9f7aea; color:#9f7aea; }
+
+        @media(max-width:680px){ .vod-grid { grid-template-columns:1fr; } }
+
+        /* ── Daily Goals widget ── */
+        .goals-widget { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; }
+        .goals-widget-hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .goals-widget-title { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); }
+        .goals-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+        .goals-row:last-of-type { margin-bottom:0; }
+        .goals-row-label { font-size:0.71rem; font-weight:600; color:var(--text-muted); width:88px; flex-shrink:0; }
+        .goals-dots { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+        .goal-dot { width:13px; height:13px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.13); background:var(--bg3); flex-shrink:0; transition:all .2s; }
+        .goal-dot.done  { background:var(--accent); border-color:var(--accent); box-shadow:0 0 5px rgba(223,88,64,.4); }
+        .goal-dot.done-g{ background:var(--success); border-color:var(--success); box-shadow:0 0 5px rgba(34,197,94,.3); }
+        .goals-count { font-size:0.72rem; font-weight:700; color:var(--text-muted); white-space:nowrap; }
+        .goals-bar-track { flex:1; max-width:120px; height:6px; background:var(--bg3); border-radius:3px; overflow:hidden; }
+        .goals-bar-fill  { height:100%; border-radius:3px; background:var(--success); transition:width .5s; }
+        .goals-riot-note { font-size:0.63rem; color:var(--text-muted); opacity:0.5; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.04); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>Tasks</h1>
+            <p>Your assignments and team tasks</p>
+        </div>
+
+        <div id="goalsWidget"></div>
+
+        <div class="progress-wrap" id="progressWrap" style="display:none;">
+            <div class="progress-label">
+                <span id="progressLabel">0 / 0 completed</span>
+                <span id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="filter-row" id="scopeFilters">
+            <button class="filter-btn active" data-scope="">All Tasks</button>
+            <button class="filter-btn" data-scope="mine">Mine</button>
+            <button class="filter-btn" data-scope="team">Team</button>
+        </div>
+        <div class="filter-row" id="statusFilters">
+            <button class="filter-btn active" data-status="">All</button>
+            <button class="filter-btn" data-status="pending">Pending</button>
+            <button class="filter-btn" data-status="in_progress">In Progress</button>
+            <button class="filter-btn" data-status="completed">Completed</button>
+        </div>
+        <div class="filter-row" id="categoryFilters" style="margin-bottom:10px;">
+            <button class="filter-btn active" data-cat="">All</button>
+            <button class="filter-btn" data-cat="general">General</button>
+            <button class="filter-btn" data-cat="analysis">Analysis</button>
+            <button class="filter-btn" data-cat="preparation">Preparation</button>
+            <button class="filter-btn" data-cat="physical">Physical</button>
+            <button class="filter-btn" data-cat="vod_review">🎬 VOD</button>
+        </div>
+        <div class="sort-row">
+            <label>SORT BY</label>
+            <select id="sortSelect" onchange="applySort()">
+                <option value="priority">Priority</option>
+                <option value="due">Due Date</option>
+                <option value="newest">Newest</option>
+            </select>
+        </div>
+
+        <div id="tasksList"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="viewModal" style="display:none;z-index:110;" onclick="if(event.target===this)closeViewModal()">
+    <div class="view-modal-box">
+        <div id="viewModalContent"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="vodModal" style="display:none;z-index:120;" onclick="if(event.target===this)closeVodModal()">
+    <div class="vod-modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div>
+                <div id="vodModalTitle" style="font-weight:700;font-size:0.95rem;"></div>
+                <div id="vodModalSub" style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;"></div>
+            </div>
+            <button class="btn btn-secondary" style="padding:4px 12px;" onclick="closeVodModal()">✕</button>
+        </div>
+        <div class="vod-grid">
+            <div>
+                <div class="vod-embed-wrap">
+                    <div id="ytPlayerWrap"><div id="ytPlayerDiv"></div></div>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">Timestamps</div>
+                <div class="ts-list" id="tsList"></div>
+                <div class="ts-add-row">
+                    <input id="tsTimeInput" type="text" placeholder="MM:SS" style="width:62px;font-family:monospace;">
+                    <button class="clock-btn" onclick="getCurrentVideoTime()" title="Use current video time">🕐</button>
+                    <input id="tsLabelInput" type="text" placeholder="Label..." style="flex:1;min-width:80px;">
+                </div>
+                <div class="ts-add-row" style="margin-top:4px;align-items:stretch;">
+                    <textarea id="tsNoteInput" rows="2" placeholder="Note (optional)…" style="flex:1;min-width:0;"></textarea>
+                    <button class="btn btn-secondary" style="font-size:0.78rem;padding:10px 16px;white-space:nowrap;align-self:stretch;font-weight:600;" onclick="addTimestamp()">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">💬 Discussion</div>
+            <div id="vodNotesList" style="max-height:200px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="vodNoteInput" class="comment-input" placeholder="Write a comment about the VOD…"
+                       style="flex:1;font-size:0.82rem;" onkeydown="if(event.key==='Enter')addVodNote()">
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 14px;white-space:nowrap;" onclick="addVodNote()">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api" async></script>
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, timeFromNow, toast } from '/js/utils.js';
+
+const user = requireAuth();
+let currentScope    = '';
+let currentStatus   = '';
+let currentCategory = '';
+let currentSort     = 'priority';
+let allTasks        = [];
+let taskMap         = {};
+let currentUserId   = null;
+let vodTaskId       = null;
+let ytPlayer        = null;
+
+window.toggleStatus        = toggleStatus;
+window.uploadFile          = uploadFile;
+window.toggleComments      = toggleComments;
+window.addComment          = addComment;
+window.delComment          = delComment;
+window.applySort           = applySort;
+window.openVodModal        = openVodModal;
+window.closeVodModal       = closeVodModal;
+window.seekTo              = seekTo;
+window.addTimestamp        = addTimestamp;
+window.delTimestamp        = delTimestamp;
+window.getCurrentVideoTime = getCurrentVideoTime;
+window.addVodNote          = addVodNote;
+window.delVodNote          = delVodNote;
+window.openViewModal       = openViewModal;
+window.closeViewModal      = closeViewModal;
+
+window.onYouTubeIframeAPIReady = function() {};
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'tasks');
+    load();
+    loadGoalsWidget();
+
+    document.querySelectorAll('#scopeFilters .filter-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#scopeFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            currentScope = btn.dataset.scope;
+            load();
+        })
+    );
+    document.querySelectorAll('#statusFilters .filter-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#statusFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            currentStatus = btn.dataset.status;
+            renderTasks();
+        })
+    );
+    document.querySelectorAll('#categoryFilters .filter-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#categoryFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCategory = btn.dataset.cat;
+            renderTasks();
+        })
+    );
+}
+
+function applySort() { currentSort = document.getElementById('sortSelect').value; renderTasks(); }
+
+// ── Daily Goals widget ──────────────────────────────────────────────────────
+async function loadGoalsWidget() {
+    try {
+        const { goals } = await api('/api/goals');
+        if (!goals?.length) return;
+
+        const userId = user._id || user.id;
+        const goal = goals.find(g => g.playerId === userId) || goals.find(g => g.playerId === 'all');
+        if (!goal) return;
+
+        const ranked = Math.max(0, (goal.minRanked || 0) + (goal.playerRankedAdjust || 0));
+        const dm     = Math.max(0, (goal.minDM     || 0) + (goal.playerDMAdjust     || 0));
+        const warmup = goal.warmupMinutes || 0;
+        if (!ranked && !dm && !warmup) return;
+
+        // Fetch today's progress from Henrik (gracefully falls back to 0)
+        let doneRanked = 0, doneDM = 0, doneWarmup = 0;
+        try {
+            const prog = await api('/api/henrik/player/today');
+            if (prog.hasRiotId) { doneRanked = prog.ranked; doneDM = prog.dm; }
+        } catch {}
+
+        function dots(target, done, colorClass) {
+            const cap = Math.min(target, 10);
+            return Array.from({ length: cap }, (_, i) =>
+                `<div class="goal-dot${i < done ? ' ' + colorClass : ''}"></div>`
+            ).join('');
+        }
+
+        const warmupPct = warmup > 0 ? Math.min(100, Math.round(doneWarmup / warmup * 100)) : 0;
+        const profileLink = user.role === 'player' ? '/player/profile.html' : '/manager/player-goals.html';
+        const detailLink  = user.role === 'player' ? '/manager/player-goals.html' : '/manager/player-goals.html';
+
+        document.getElementById('goalsWidget').innerHTML = `
+            <div class="goals-widget">
+                <div class="goals-widget-hd">
+                    <span class="goals-widget-title">Today's Goals</span>
+                    <a href="${detailLink}" style="font-size:0.7rem;color:var(--text-muted);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Details →</a>
+                </div>
+                ${ranked > 0 ? `<div class="goals-row">
+                    <span class="goals-row-label">Ranked</span>
+                    <div class="goals-dots">${dots(ranked, doneRanked, 'done')}</div>
+                    <span class="goals-count">${doneRanked}/${ranked}</span>
+                </div>` : ''}
+                ${dm > 0 ? `<div class="goals-row">
+                    <span class="goals-row-label">Deathmatch</span>
+                    <div class="goals-dots">${dots(dm, doneDM, 'done-g')}</div>
+                    <span class="goals-count">${doneDM}/${dm}</span>
+                </div>` : ''}
+                ${warmup > 0 ? `<div class="goals-row">
+                    <span class="goals-row-label">Warmup</span>
+                    <div class="goals-bar-track"><div class="goals-bar-fill" style="width:${warmupPct}%;"></div></div>
+                    <span class="goals-count">${doneWarmup}/${warmup} min</span>
+                </div>` : ''}
+                ${doneRanked === 0 && doneDM === 0 ? `<div class="goals-riot-note">⚡ Live completion tracking after connecting Riot ID in <a href="${profileLink}" style="color:var(--accent);text-decoration:none;">My Profile</a></div>` : ''}
+            </div>`;
+    } catch(e) { /* goals widget is supplementary — fail silently */ }
+}
+
+async function load() {
+    try {
+        const me = await api('/api/auth/me');
+        currentUserId = me._id;
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+
+        let url = '/api/tasks?limit=100';
+        if (currentScope==='mine') url += '&mine=true';
+        if (currentScope==='team') url += '&mine=false';
+
+        const { tasks } = await api(url);
+        allTasks = tasks;
+        taskMap = {};
+        tasks.forEach(t=>{ taskMap[t._id]=t; });
+        renderProgress(tasks);
+        renderTasks();
+    } catch (err) {
+        document.getElementById('tasksList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function renderProgress(tasks) {
+    if (!tasks.length) { document.getElementById('progressWrap').style.display='none'; return; }
+    const done = tasks.filter(t=>t.status==='completed').length;
+    const pct  = Math.round((done/tasks.length)*100);
+    document.getElementById('progressWrap').style.display = '';
+    document.getElementById('progressLabel').textContent = `${done} / ${tasks.length} completed`;
+    document.getElementById('progressPct').textContent   = `${pct}%`;
+    document.getElementById('progressFill').style.width  = `${pct}%`;
+}
+
+const catLabel  = {general:'General', analysis:'Analysis', preparation:'Preparation', physical:'Physical', vod_review:'VOD Review'};
+const prioScore = {high:3, medium:2, low:1};
+
+function renderTasks() {
+    const now  = new Date();
+    let tasks  = allTasks.slice();
+    if (currentStatus)   tasks = tasks.filter(t=>t.status===currentStatus);
+    if (currentCategory) tasks = tasks.filter(t=>t.category===currentCategory);
+
+    if (currentSort==='priority')      tasks.sort((a,b)=>(prioScore[b.priority]||0)-(prioScore[a.priority]||0));
+    else if (currentSort==='due')      tasks.sort((a,b)=>(!a.dueDate?1:!b.dueDate?-1:new Date(a.dueDate)-new Date(b.dueDate)));
+    else                               tasks.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+
+    const el = document.getElementById('tasksList');
+    if (!tasks.length) { el.innerHTML='<p style="color:var(--text-muted);">No tasks found.</p>'; return; }
+
+    el.innerHTML = tasks.map(t => {
+        const isOverdue = t.dueDate && t.status!=='completed' && new Date(t.dueDate) < now;
+        const toggleIcon = t.status==='completed' ? '✓' : t.status==='in_progress' ? '▶' : '';
+        const assigneeHtml = (t.assignedTo && t.assignedTo.length>0)
+            ? `<span style="font-size:0.72rem;color:var(--text-muted);">→ ${t.assignedTo.map(u=>typeof u==='object'?u.username:u).join(', ')}</span>`
+            : `<span style="font-size:0.72rem;color:var(--text-muted);">🌐 Team task</span>`;
+
+        let vodHtml = '';
+        if (t.vodType==='pracc' && t.linkedPraccId) {
+            const p = t.linkedPraccId;
+            vodHtml = `<a href="/player/pracc-match.html?id=${p._id}" class="vod-badge" target="_blank">🎬 Match VOD${p.mapName?' · '+p.mapName:''}</a>`;
+        } else if (t.vodType==='external' && t.externalVodUrl) {
+            const tsCnt = (t.vodTimestamps||[]).length;
+            vodHtml = `<span class="vod-badge" onclick="openVodModal('${t._id}')">🎬 Watch VOD${tsCnt?` (${tsCnt} 🕐)`:''}</span>`;
+        }
+
+        const uploads      = t.uploadedFiles||[];
+        const uploadedHtml = uploads.length ? `
+            <div class="uploaded-files">${uploads.map(f=>`
+                <div class="uploaded-item"><span>📎</span><a href="${f.url}" target="_blank">${f.caption||f.url.split('/').pop()}</a></div>`).join('')}
+            </div>` : '';
+        const commentCount = (t.comments||[]).length;
+
+        return `
+        <div class="task-card ${t.status==='completed'?'completed':''}" data-priority="${t.priority}">
+            <div class="task-card-top">
+                <div class="task-toggle" data-status="${t.status}" onclick="toggleStatus('${t._id}','${t.status}')">${toggleIcon}</div>
+                <div class="task-body">
+                    <div class="task-title" onclick="openViewModal('${t._id}')">${t.title}</div>
+                    ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+                    <div class="task-meta">
+                        <span class="badge badge-${t.priority}">${t.priority}</span>
+                        <span class="badge badge-${t.status==='completed'?'done':t.status==='in_progress'?'medium':'pending'}">${t.status.replace('_',' ')}</span>
+                        ${t.category && t.category!=='general' ? `<span class="badge-cat">${catLabel[t.category]}</span>` : ''}
+                        ${assigneeHtml}
+                        ${t.dueDate ? `<span style="font-size:0.72rem;color:var(--text-muted);">📅 ${formatDate(t.dueDate)}</span>` : ''}
+                        ${isOverdue ? `<span class="badge-overdue">⚠ Overdue</span>` : ''}
+                        ${t.requiresUpload ? `<span class="upload-badge">📎 Upload required</span>` : ''}
+                        ${vodHtml}
+                        <button class="task-view-btn" onclick="openViewModal('${t._id}')">👁 View</button>
+                    </div>
+                </div>
+            </div>
+
+            ${t.requiresUpload ? `
+            <div class="upload-area">
+                ${uploadedHtml}
+                <div class="upload-row">
+                    <input class="form-input" type="text" id="cap-${t._id}" placeholder="Caption (optional)" style="padding:6px 10px;font-size:0.8rem;flex:1;min-width:120px;">
+                    <input type="file" id="file-${t._id}" accept="image/*,video/*,.pdf" style="color:var(--text);flex:1.5;min-width:140px;font-size:0.8rem;">
+                    <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 12px;white-space:nowrap;" onclick="uploadFile('${t._id}')">📤 Upload</button>
+                </div>
+            </div>` : ''}
+
+            <div class="comments-section">
+                <button class="comments-toggle" onclick="toggleComments('${t._id}')">
+                    <span id="ctoggle-icon-${t._id}">▸</span>
+                    <span id="ctoggle-label-${t._id}">Comments${commentCount?` (${commentCount})`:''}</span>
+                </button>
+                <div class="comments-body" id="comments-body-${t._id}">
+                    <div id="comments-list-${t._id}">
+                        ${(t.comments||[]).map(c=>renderComment(c,t._id)).join('')}
+                    </div>
+                    <div class="comment-input-row">
+                        <input class="form-input" type="text" id="comment-input-${t._id}" placeholder="Add a comment…"
+                               style="padding:6px 10px;font-size:0.82rem;"
+                               onkeydown="if(event.key==='Enter') addComment('${t._id}')">
+                        <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 12px;" onclick="addComment('${t._id}')">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderComment(c, taskId) {
+    const isMine = currentUserId && (c.authorId===currentUserId || c.authorId?._id===currentUserId);
+    return `
+    <div class="comment-item" id="comment-${c._id}">
+        <div class="comment-avatar">${(c.authorName||'?').slice(0,2).toUpperCase()}</div>
+        <div class="comment-content">
+            <div class="comment-meta">
+                <strong>${c.authorName||'Unknown'}</strong>
+                ${c.createdAt?` · <span title="${new Date(c.createdAt).toLocaleString()}">${timeFromNow(c.createdAt)}</span>`:''}
+                ${isMine?`<button class="comment-del" onclick="delComment('${taskId}','${c._id}')">✕</button>`:''}
+            </div>
+            <div class="comment-text">${escHtml(c.text)}</div>
+        </div>
+    </div>`;
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toggleComments(taskId) {
+    const body = document.getElementById(`comments-body-${taskId}`);
+    const icon = document.getElementById(`ctoggle-icon-${taskId}`);
+    const open = body.classList.toggle('open');
+    if (icon) icon.textContent = open?'▾':'▸';
+}
+
+const nextStatus = {pending:'in_progress', in_progress:'completed', completed:'pending'};
+
+async function toggleStatus(id, current) {
+    const next = nextStatus[current]||'pending';
+    try {
+        await api(`/api/tasks/${id}/status`, {method:'PATCH', body:JSON.stringify({status:next})});
+        const labels = {pending:'Pending', in_progress:'In Progress ▶', completed:'✅ Completed!'};
+        toast(labels[next]||next, next==='completed'?'success':'info');
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function uploadFile(taskId) {
+    const fi  = document.getElementById(`file-${taskId}`);
+    const cap = document.getElementById(`cap-${taskId}`).value.trim();
+    if (!fi.files[0]) { toast('Select a file first.','error'); return; }
+    const btn = fi.nextElementSibling;
+    btn.disabled=true; btn.textContent='Uploading…';
+    const fd = new FormData();
+    fd.append('file', fi.files[0]);
+    if (cap) fd.append('caption', cap);
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch(`/api/tasks/${taskId}/upload`, {method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error||'Upload failed.');
+        toast('✅ Uploaded!','success');
+        load();
+    } catch (err) { toast(err.message,'error'); }
+    finally { btn.disabled=false; btn.textContent='📤 Upload'; }
+}
+
+async function addComment(taskId) {
+    const input = document.getElementById(`comment-input-${taskId}`);
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+        const comment = await api(`/api/tasks/${taskId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        const list = document.getElementById(`comments-list-${taskId}`);
+        if (list) list.insertAdjacentHTML('beforeend', renderComment(comment, taskId));
+        const t = allTasks.find(x=>x._id===taskId);
+        if (t) { t.comments=t.comments||[]; t.comments.push(comment); const lbl=document.getElementById(`ctoggle-label-${taskId}`); if(lbl) lbl.textContent=`Comments (${t.comments.length})`; }
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function delComment(taskId, commentId) {
+    try {
+        await api(`/api/tasks/${taskId}/comments/${commentId}`, {method:'DELETE'});
+        document.getElementById(`comment-${commentId}`)?.remove();
+        const t = allTasks.find(x=>x._id===taskId);
+        if (t) { t.comments=(t.comments||[]).filter(c=>c._id!==commentId); const lbl=document.getElementById(`ctoggle-label-${taskId}`); if(lbl) lbl.textContent=`Comments${t.comments.length?` (${t.comments.length})`:''}`; }
+    } catch (err) { toast(err.message,'error'); }
+}
+
+function openViewModal(taskId) {
+    const t = taskMap[taskId];
+    if (!t) return;
+
+    const now       = new Date();
+    const isOverdue = t.dueDate && t.status!=='completed' && new Date(t.dueDate) < now;
+    const assignees = (t.assignedTo||[]).map(a=>a.username||a).filter(Boolean).join(', ') || 'Team (everyone)';
+    const uploads   = t.uploadedFiles||[];
+    const comments  = t.comments||[];
+
+    let vodSection = '';
+    if (t.vodType==='pracc' && t.linkedPraccId) {
+        const p = t.linkedPraccId;
+        vodSection = `
+        <div class="view-section">
+            <div class="view-section-title">🎬 VOD Review</div>
+            <a href="/player/pracc-match.html?id=${p._id}" class="btn btn-secondary" target="_blank" style="font-size:0.78rem;">
+                📺 Open Match VOD${p.mapName?' · '+p.mapName:''} — vs ${p.opponent||''}
+            </a>
+        </div>`;
+    } else if (t.vodType==='external' && t.externalVodUrl) {
+        const tsCnt = (t.vodTimestamps||[]).length;
+        vodSection = `
+        <div class="view-section">
+            <div class="view-section-title">🎬 VOD Review</div>
+            <button class="btn btn-secondary" style="font-size:0.78rem;" onclick="closeViewModal();openVodModal('${t._id}')">
+                📺 Watch VOD${tsCnt?` (${tsCnt} timestamp${tsCnt!==1?'s':''})`:''}</button>
+        </div>`;
+    }
+
+    document.getElementById('viewModalContent').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                    <span class="badge badge-${t.priority}">${t.priority}</span>
+                    <span class="badge badge-${t.status==='completed'?'done':t.status==='in_progress'?'medium':'pending'}">${t.status.replace('_',' ')}</span>
+                    ${t.category&&t.category!=='general'?`<span class="badge-cat">${catLabel[t.category]||t.category}</span>`:''}
+                    ${isOverdue?`<span class="badge-overdue">⚠ Overdue</span>`:''}
+                </div>
+                <div style="font-size:1.05rem;font-weight:700;margin-bottom:8px;">${t.title}</div>
+                ${t.description?`<div style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">${t.description}</div>`:''}
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.75rem;color:var(--text-muted);">
+                    <span>👤 ${assignees}</span>
+                    ${t.dueDate?`<span style="color:${isOverdue?'var(--error)':'var(--text-muted)'};">📅 Due ${formatDate(t.dueDate)}</span>`:''}
+                    <span>🕓 ${timeFromNow(t.createdAt)}</span>
+                </div>
+            </div>
+            <button class="btn btn-secondary" style="padding:4px 10px;flex-shrink:0;" onclick="closeViewModal()">✕</button>
+        </div>
+
+        ${vodSection}
+
+        ${uploads.length ? `
+        <div class="view-section">
+            <div class="view-section-title">📎 Files (${uploads.length})</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${uploads.map(f=>`<div style="display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:4px 8px;font-size:0.78rem;">📎 <a href="${f.url}" target="_blank" style="color:var(--accent);text-decoration:none;">${f.caption||f.url.split('/').pop()}</a></div>`).join('')}
+            </div>
+        </div>` : ''}
+
+        ${t.requiresUpload ? `
+        <div class="view-section">
+            <div class="view-section-title">📤 Upload required</div>
+            <div class="upload-row">
+                <input class="form-input" type="text" id="view-cap" placeholder="Caption (optional)" style="padding:6px 10px;font-size:0.8rem;flex:1;min-width:120px;">
+                <input type="file" id="view-file" accept="image/*,video/*,.pdf" style="color:var(--text);font-size:0.8rem;">
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 12px;white-space:nowrap;" onclick="uploadFromView('${t._id}')">📤 Upload</button>
+            </div>
+        </div>` : ''}
+
+        <div class="view-section">
+            <div class="view-section-title">💬 Discussion (${comments.length})</div>
+            <div id="viewCommentsList">
+                ${comments.map(c=>`
+                <div class="view-comment-item" id="vc-${c._id}">
+                    <div class="view-comment-header">
+                        <span class="view-comment-author">${c.authorName||'?'}</span>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span class="view-comment-time">${timeFromNow(c.createdAt)}</span>
+                            ${(currentUserId&&(c.authorId===currentUserId||c.authorId?._id===currentUserId))?`<button class="view-comment-del" onclick="delViewComment('${t._id}','${c._id}')">×</button>`:''}
+                        </div>
+                    </div>
+                    <div class="view-comment-text">${escHtml(c.text)}</div>
+                </div>`).join('')}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+                <input class="form-input" type="text" id="view-ci" placeholder="Write a comment…" maxlength="500"
+                    style="flex:1;padding:6px 10px;font-size:0.82rem;"
+                    onkeydown="if(event.key==='Enter')addViewComment('${t._id}')">
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 12px;" onclick="addViewComment('${t._id}')">Send</button>
+            </div>
+        </div>`;
+
+    document.getElementById('viewModal').style.display = 'flex';
+    setTimeout(()=>document.getElementById('view-ci')?.focus(), 100);
+}
+
+window.addViewComment = async function(taskId) {
+    const input = document.getElementById('view-ci');
+    const text  = input?.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/tasks/${taskId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        document.getElementById('viewCommentsList')?.insertAdjacentHTML('beforeend', `
+            <div class="view-comment-item" id="vc-${c._id}">
+                <div class="view-comment-header">
+                    <span class="view-comment-author">${c.authorName||'?'}</span>
+                    <div><span class="view-comment-time">just now</span>
+                    <button class="view-comment-del" onclick="delViewComment('${taskId}','${c._id}')">×</button></div>
+                </div>
+                <div class="view-comment-text">${escHtml(c.text)}</div>
+            </div>`);
+        load();
+    } catch (err) { toast(err.message,'error'); }
+};
+
+window.delViewComment = async function(taskId, commentId) {
+    try {
+        await api(`/api/tasks/${taskId}/comments/${commentId}`, {method:'DELETE'});
+        document.getElementById(`vc-${commentId}`)?.remove();
+        load();
+    } catch (err) { toast(err.message,'error'); }
+};
+
+window.uploadFromView = async function(taskId) {
+    const fi  = document.getElementById('view-file');
+    const cap = document.getElementById('view-cap')?.value.trim();
+    if (!fi?.files[0]) { toast('Select a file first.','error'); return; }
+    const fd = new FormData();
+    fd.append('file', fi.files[0]);
+    if (cap) fd.append('caption', cap);
+    try {
+        const token = localStorage.getItem('lp_hub_token');
+        const res = await fetch(`/api/tasks/${taskId}/upload`, {method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error||'Upload failed.');
+        toast('✅ Uploaded!','success');
+        closeViewModal();
+        load();
+    } catch (err) { toast(err.message,'error'); }
+};
+
+function closeViewModal() { document.getElementById('viewModal').style.display='none'; }
+
+function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+function fmtSecs(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+
+function openVodModal(taskId) {
+    const t = taskMap[taskId];
+    if (!t || !t.externalVodUrl) return;
+    vodTaskId = taskId;
+    document.getElementById('vodModalTitle').textContent = t.title;
+    document.getElementById('vodModalSub').textContent   = `🎬 VOD Review • ${(t.vodTimestamps||[]).length} timestamp(s)`;
+
+    const wrap = document.getElementById('ytPlayerWrap');
+    wrap.innerHTML = '<div id="ytPlayerDiv"></div>';
+    ytPlayer = null;
+    const ytId = getYouTubeId(t.externalVodUrl);
+    if (ytId && window.YT && window.YT.Player) {
+        ytPlayer = new window.YT.Player('ytPlayerDiv', {
+            videoId: ytId,
+            width:   '100%',
+            height:  '100%',
+            playerVars: { rel:0, modestbranding:1 },
+        });
+    }
+
+    renderTimestamps(t.vodTimestamps||[]);
+    renderVodNotes(t.comments||[]);
+    document.getElementById('tsTimeInput').value  = '';
+    document.getElementById('tsLabelInput').value = '';
+    document.getElementById('tsNoteInput').value  = '';
+    document.getElementById('vodNoteInput').value = '';
+    document.getElementById('vodModal').style.display = 'flex';
+}
+
+function closeVodModal() {
+    if (ytPlayer && typeof ytPlayer.pauseVideo==='function') ytPlayer.pauseVideo();
+    document.getElementById('vodModal').style.display = 'none';
+    vodTaskId = null;
+}
+
+function getCurrentVideoTime() {
+    if (!ytPlayer || typeof ytPlayer.getCurrentTime!=='function') { toast('Video not ready yet','error'); return; }
+    const s = Math.floor(ytPlayer.getCurrentTime());
+    document.getElementById('tsTimeInput').value = fmtSecs(s);
+    document.getElementById('tsLabelInput').focus();
+}
+
+function seekTo(seconds) {
+    if (ytPlayer && typeof ytPlayer.seekTo==='function') {
+        ytPlayer.seekTo(seconds, true);
+        ytPlayer.playVideo();
+    }
+}
+
+function renderTimestamps(list) {
+    const canDel = (ts) => currentUserId && (ts.authorId===currentUserId || ts.authorId?._id===currentUserId);
+    const el = document.getElementById('tsList');
+    if (!list.length) { el.innerHTML='<p style="font-size:0.78rem;color:var(--text-muted);padding:4px 0;">No timestamps yet. Be the first to add one!</p>'; return; }
+    el.innerHTML = list.map(ts=>`
+        <div class="ts-item" id="ts-${ts._id}" style="align-items:flex-start;">
+            <span class="ts-time" onclick="seekTo(${ts.seconds})" style="margin-top:2px;">${fmtSecs(ts.seconds)}</span>
+            <div style="flex:1;min-width:0;">
+                <div class="ts-label">${ts.label||'—'} <small style="color:var(--text-muted);font-size:0.68rem;">— ${ts.authorName||''}</small></div>
+                ${ts.note ? `<div class="ts-note">${ts.note}</div>` : ''}
+            </div>
+            ${canDel(ts)?`<button class="ts-del" onclick="delTimestamp('${ts._id}')">×</button>`:''}
+        </div>`).join('');
+}
+
+async function addTimestamp() {
+    if (!vodTaskId) return;
+    const raw   = document.getElementById('tsTimeInput').value.trim();
+    const label = document.getElementById('tsLabelInput').value.trim();
+    const parts = raw.split(':').map(Number);
+    let seconds;
+    if (parts.length===2 && !parts.some(isNaN)) seconds = parts[0]*60+parts[1];
+    else if (parts.length===3 && !parts.some(isNaN)) seconds = parts[0]*3600+parts[1]*60+parts[2];
+    else { toast('Use MM:SS format (e.g. 1:35)','error'); return; }
+    try {
+        const note  = document.getElementById('tsNoteInput').value.trim();
+        await api(`/api/tasks/${vodTaskId}/timestamps`, {method:'POST', body:JSON.stringify({seconds, label, note})});
+        document.getElementById('tsTimeInput').value  = '';
+        document.getElementById('tsLabelInput').value = '';
+        document.getElementById('tsNoteInput').value  = '';
+        const { tasks } = await api('/api/tasks?limit=100');
+        tasks.forEach(t=>{ taskMap[t._id]=t; });
+        const updated = taskMap[vodTaskId];
+        if (updated) {
+            allTasks = allTasks.map(t=>t._id===vodTaskId?updated:t);
+            renderTimestamps(updated.vodTimestamps||[]);
+            document.getElementById('vodModalSub').textContent = `🎬 VOD Review • ${(updated.vodTimestamps||[]).length} timestamp(s)`;
+        }
+        toast('Timestamp added!','success');
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function delTimestamp(tsId) {
+    if (!vodTaskId) return;
+    try {
+        await api(`/api/tasks/${vodTaskId}/timestamps/${tsId}`, {method:'DELETE'});
+        document.getElementById(`ts-${tsId}`)?.remove();
+        const t = taskMap[vodTaskId];
+        if (t) { t.vodTimestamps=(t.vodTimestamps||[]).filter(ts=>ts._id!==tsId); document.getElementById('vodModalSub').textContent=`🎬 VOD Review • ${t.vodTimestamps.length} timestamp(s)`; }
+    } catch (err) { toast(err.message,'error'); }
+}
+
+function renderVodNotes(comments) {
+    const el = document.getElementById('vodNotesList');
+    if (!comments.length) {
+        el.innerHTML = '<p style="font-size:0.78rem;color:var(--text-muted);">No notes yet.</p>';
+        return;
+    }
+    el.innerHTML = comments.map(c => {
+        const isMine = currentUserId && (c.authorId===currentUserId || c.authorId?._id===currentUserId);
+        return `
+        <div style="background:var(--bg3);border-radius:var(--radius);padding:8px 10px;" id="vn-${c._id}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                <span style="font-size:0.71rem;font-weight:700;color:var(--accent);">${c.authorName||'?'}</span>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <span style="font-size:0.68rem;color:var(--text-muted);">${timeFromNow(c.createdAt)}</span>
+                    ${isMine?`<button class="comment-del" onclick="delVodNote('${c._id}')">×</button>`:''}
+                </div>
+            </div>
+            <div style="font-size:0.8rem;word-break:break-word;">${escHtml(c.text)}</div>
+        </div>`;
+    }).join('');
+}
+
+async function addVodNote() {
+    if (!vodTaskId) return;
+    const input = document.getElementById('vodNoteInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+        const c = await api(`/api/tasks/${vodTaskId}/comments`, {method:'POST', body:JSON.stringify({text})});
+        input.value = '';
+        const t = taskMap[vodTaskId];
+        if (t) { t.comments=t.comments||[]; t.comments.push(c); renderVodNotes(t.comments); }
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}
+
+async function delVodNote(commentId) {
+    if (!vodTaskId) return;
+    try {
+        await api(`/api/tasks/${vodTaskId}/comments/${commentId}`, {method:'DELETE'});
+        document.getElementById(`vn-${commentId}`)?.remove();
+        const t = taskMap[vodTaskId];
+        if (t) t.comments=(t.comments||[]).filter(c=>c._id!==commentId);
+        load();
+    } catch (err) { toast(err.message,'error'); }
+}</script>
+</body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Staff & Trophies</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+        .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-muted); padding:8px 20px; font-size:0.85rem; font-weight:600; cursor:pointer; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+        
+        .entry-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:border-color 0.15s; }
+        .entry-card.dragging  { opacity:0.4; }
+        .entry-card.drag-over { border-color:var(--accent); box-shadow:0 -2px 0 var(--accent); }
+        .entry-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; background:var(--bg3); border:1px solid var(--border); flex-shrink:0; }
+        .entry-avatar-ph { width:40px; height:40px; border-radius:50%; background:var(--bg3); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+        .entry-info { flex:1; min-width:0; }
+        .entry-name { font-weight:700; font-size:0.9rem; }
+        .entry-sub  { font-size:0.74rem; color:var(--text-muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .entry-actions { display:flex; gap:6px; flex-shrink:0; }
+        .drag-handle { cursor:grab; color:var(--text-muted); font-size:1rem; padding:4px 2px; user-select:none; flex-shrink:0; }
+        .drag-handle:active { cursor:grabbing; }
+
+        
+        .sort-bar { display:flex; align-items:center; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+        .sort-bar-label { font-size:0.72rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.07em; margin-right:4px; }
+        .sort-btn { background:var(--bg3); border:1px solid var(--border); color:var(--text-muted); border-radius:3px; padding:3px 10px; font-size:0.76rem; cursor:pointer; transition:all 0.15s; }
+        .sort-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(223,88,64,0.08); }
+        .sort-btn:hover:not(.active) { border-color:var(--text-muted); color:var(--text); }
+
+        
+        .trophy-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:border-color 0.15s; }
+        .trophy-card.dragging  { opacity:0.4; }
+        .trophy-card.drag-over { border-color:var(--accent); box-shadow:0 -2px 0 var(--accent); }
+        .trophy-icon { font-size:1.6rem; flex-shrink:0; }
+        .trophy-info { flex:1; }
+        .trophy-title-txt { font-weight:700; font-size:0.88rem; }
+        .trophy-meta  { font-size:0.73rem; color:var(--text-muted); margin-top:2px; }
+
+        
+        .history-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; display:flex; align-items:flex-start; gap:12px; transition:border-color 0.15s; }
+        .history-card.dragging  { opacity:0.4; }
+        .history-card.drag-over { border-color:var(--accent); box-shadow:0 -2px 0 var(--accent); }
+        .history-icon { font-size:1.3rem; flex-shrink:0; margin-top:2px; }
+        .history-info { flex:1; min-width:0; }
+        .history-team { font-weight:700; font-size:0.9rem; }
+        .history-period { font-size:0.74rem; color:var(--accent); margin-top:1px; }
+        .history-players { font-size:0.74rem; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:26px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:18px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        @media(max-width:540px){ .form-row-2 { grid-template-columns:1fr; } }
+
+        
+        .inline-player-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:220px; overflow-y:auto; }
+        .inline-player-row { display:flex; gap:6px; align-items:center; }
+        .inline-player-row input { flex:1; }
+        .btn-icon { background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:1rem; padding:2px 4px; }
+        .btn-icon:hover { color:var(--error); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>Staff & Trophies</h1>
+                <p>Manage public About page content</p>
+            </div>
+            <button class="btn btn-primary" id="addBtn" onclick="openAdd()">+ Add Entry</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setTab('staff')"    id="tab-staff">Staff</button>
+            <button class="tab-btn"        onclick="setTab('trophies')" id="tab-trophies">Trophies</button>
+            <button class="tab-btn"        onclick="setTab('history')"     id="tab-history">History</button>
+            <button class="tab-btn"        onclick="setTab('hall-of-fame')" id="tab-hall-of-fame">Hall of Fame</button>
+            <button class="tab-btn"        onclick="setTab('creators')"    id="tab-creators">Creators</button>
+        </div>
+
+        
+        <div class="sort-bar" id="sortBar" style="display:none;">
+            <span class="sort-bar-label">Sort:</span>
+            <button class="sort-btn active" data-sort="none"      onclick="setSort('none')">Manual</button>
+            <button class="sort-btn"        data-sort="date-desc" onclick="setSort('date-desc')">Newest</button>
+            <button class="sort-btn"        data-sort="date-asc"  onclick="setSort('date-asc')">Oldest</button>
+            <button class="sort-btn"        data-sort="team"      onclick="setSort('team')">Team A-Z</button>
+        </div>
+
+        <div id="entryList"><p style="color:var(--text-muted);">Loading…</p></div>
+
+        <div id="saveBar" style="display:none; margin-top:16px;">
+            <button class="btn btn-primary" style="min-width:140px;" onclick="saveAll()">💾 Save & Publish</button>
+            <button class="btn btn-secondary" style="margin-left:8px;" onclick="load()">Discard</button>
+        </div>
+        </div>
+    </main>
+</div>
+
+
+<div class="modal-overlay" id="entryModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="modalTitle">Add Entry</div>
+        <input type="hidden" id="editIdx" value="-1">
+
+        
+        <div id="staffFields">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" class="form-input" id="sName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role / Title</label>
+                    <input type="text" class="form-input" id="sRole" placeholder="Head Coach, CEO…">
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">Country</label>
+                    <select class="form-input" id="sCountry"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Avatar URL</label>
+                    <input type="text" class="form-input" id="sAvatar" placeholder="https://…">
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">Twitter / X URL</label>
+                    <input type="text" class="form-input" id="sTwitter" placeholder="https://x.com/…">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Discord Handle</label>
+                    <input type="text" class="form-input" id="sDiscord" placeholder="user#0000">
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="trophyFields" style="display:none;">
+            <div class="form-group">
+                <label class="form-label">Title *</label>
+                <input type="text" class="form-input" id="tTitle" placeholder="Regional Champions 2025">
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">Team</label>
+                    <input type="text" class="form-input" id="tTeam" placeholder="LP Tau">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Placement</label>
+                    <input type="text" class="form-input" id="tPlacement" placeholder="1st, Top 4…">
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="tDate">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image URL</label>
+                    <input type="text" class="form-input" id="tImage" placeholder="https://…">
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="historyFields" style="display:none;">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Team Name *</label>
+                    <input type="text" class="form-input" id="hTeam" placeholder="LP Tau">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Region</label>
+                    <input type="text" class="form-input" id="hRegion" placeholder="br, uk, eu…" maxlength="8">
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">From (Month)</label>
+                    <input type="month" class="form-input" id="hFrom">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">To (Month)</label>
+                    <input type="month" class="form-input" id="hTo">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label class="form-label">Players <span style="color:var(--text-muted);font-weight:400;">(one per line)</span></label>
+                <textarea class="form-input" id="hPlayers" rows="4" placeholder="Blastz&#10;LeeoLoos&#10;h1perZ" style="resize:vertical;"></textarea>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label class="form-label">Coaches <span style="color:var(--text-muted);font-weight:400;">(one per line)</span></label>
+                <textarea class="form-input" id="hCoaches" rows="2" placeholder="jarvixx" style="resize:vertical;"></textarea>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label class="form-label">Notes</label>
+                <input type="text" class="form-input" id="hNotes" placeholder="Split 1 roster, Qualifier run…">
+            </div>
+        </div>
+
+        
+        <div id="hofFields" style="display:none;">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" class="form-input" id="hofName" placeholder="PlayerName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Country</label>
+                    <select class="form-input" id="hofCountry"></select>
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-input" id="hofRole" placeholder="Player, Coach…">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Period</label>
+                    <input type="text" class="form-input" id="hofPeriod" placeholder="2023–2024">
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="creatorFields" style="display:none;">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" class="form-input" id="crName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Country</label>
+                    <select class="form-input" id="crCountry"></select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label class="form-label">Avatar URL</label>
+                <input type="text" class="form-input" id="crAvatar" placeholder="https://…">
+            </div>
+            <div style="margin-top:14px;">
+                <div class="form-label" style="margin-bottom:10px;">Social Networks <span style="color:var(--text-muted);font-weight:400;">(toggle to enable)</span></div>
+                <div style="display:flex;flex-direction:column;gap:8px;" id="crSocialsEditor"></div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary"   onclick="saveEntry()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'site-about');
+
+const PRIORITY_CODES = ['br','us','gb','ar','cl','co','mx','pt','es','fr','de','it','tr','kr','jp','au','ca','pl','se','dk','no','ru','cn','il','sa'];
+const HARDCODED_EXTRA = { 'gb-eng':'England','gb-wls':'Wales','gb-sct':'Scotland','gb-nir':'Northern Ireland' };
+let countryMap = {};
+
+async function loadCountries() {
+    try {
+        const r = await fetch('https://flagcdn.com/en/codes.json');
+        const data = await r.json();
+        const priority = PRIORITY_CODES.filter(c => data[c]).map(c => ({ code:c, name:data[c] }));
+        const rest = Object.entries(data).filter(([c]) => !PRIORITY_CODES.includes(c)).sort((a,b) => a[1].localeCompare(b[1])).map(([c,n]) => ({ code:c, name:n }));
+        const extra = Object.entries(HARDCODED_EXTRA).map(([c,n]) => ({ code:c, name:n }));
+        const gbIdx = priority.findIndex(c => c.code === 'gb');
+        if (gbIdx >= 0) priority.splice(gbIdx + 1, 0, ...extra);
+        const all = [...priority, ...rest];
+        countryMap = Object.fromEntries(all.map(c => [c.code, c.name]));
+        countryMap = { ...countryMap, ...HARDCODED_EXTRA };
+    } catch {
+        countryMap = Object.fromEntries([
+            ['br','Brazil'],['us','USA'],['gb','United Kingdom'],['gb-eng','England'],['gb-wls','Wales'],
+            ['gb-sct','Scotland'],['gb-nir','Northern Ireland'],['ar','Argentina'],['cl','Chile'],
+            ['co','Colombia'],['mx','Mexico'],['pt','Portugal'],['es','Spain'],['fr','France'],
+            ['de','Germany'],['it','Italy'],['tr','Turkey'],['kr','South Korea'],['jp','Japan'],
+            ['au','Australia'],['ca','Canada'],['pl','Poland'],['se','Sweden'],['dk','Denmark'],['no','Norway'],
+        ]);
+    }
+    ['sCountry','hofCountry','crCountry'].forEach(id => populateCountrySelect(id, 'br'));
+}
+
+function populateCountrySelect(id, val = 'br') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = Object.entries(countryMap).map(([code, name]) =>
+        `<option value="${code}" ${code === val ? 'selected' : ''}>${name}</option>`
+    ).join('');
+}
+
+let currentTab  = 'staff';
+let staffList   = [];
+let trophyList  = [];
+let historyList = [];
+let hofList      = [];
+let creatorList  = [];
+let dirty       = false;
+let trophySort  = 'none';
+let dragSrcIdx  = null;
+
+window.setTab = (tab) => {
+    currentTab = tab;
+    ['staff','trophies','history','hall-of-fame','creators'].forEach(t =>
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab));
+    const labels = { staff: '+ Add Staff', trophies: '+ Add Trophy', history: '+ Add History', 'hall-of-fame': '+ Add Member', creators: '+ Add Creator' };
+    document.getElementById('addBtn').textContent = labels[tab] || '+ Add';
+    document.getElementById('sortBar').style.display = tab === 'trophies' ? 'flex' : 'none';
+    render();
+};
+
+async function load() {
+    const [r1, r2, r3, r4, r5] = await Promise.allSettled([
+        api('/api/site/about/staff'),
+        api('/api/site/about/trophies'),
+        api('/api/site/about/history'),
+        api('/api/site/about/hall-of-fame'),
+        api('/api/site/about/creators'),
+    ]);
+    staffList   = r1.status === 'fulfilled' ? r1.value : [];
+    trophyList  = r2.status === 'fulfilled' ? r2.value : [];
+    historyList = r3.status === 'fulfilled' ? r3.value : [];
+    hofList     = r4.status === 'fulfilled' ? r4.value : [];
+    creatorList = r5.status === 'fulfilled' ? r5.value : [];
+    if (r1.status === 'rejected') toast('Could not load staff: '    + r1.reason?.message, 'error');
+    if (r2.status === 'rejected') toast('Could not load trophies: ' + r2.reason?.message, 'error');
+    dirty = false;
+    document.getElementById('saveBar').style.display = 'none';
+    render();
+}
+window.load = load;
+
+function setDirty() {
+    dirty = true;
+    document.getElementById('saveBar').style.display = 'block';
+}
+
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+function _parseDate(s) {
+    if (!s) return new Date(0);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s);
+    const p = s.split('/');
+    if (p.length === 3 && p[2].length === 4)
+        return new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`);
+    return new Date(s);
+}
+
+window.setSort = (s) => {
+    trophySort = s;
+    document.querySelectorAll('.sort-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.sort === s));
+    if (s !== 'none') {
+        const arr = [...trophyList];
+        if (s === 'date-desc') arr.sort((a,b) => _parseDate(b.date) - _parseDate(a.date));
+        if (s === 'date-asc')  arr.sort((a,b) => _parseDate(a.date) - _parseDate(b.date));
+        if (s === 'team')      arr.sort((a,b) => (a.team||'').localeCompare(b.team||''));
+        trophyList = arr;
+        setDirty();
+    }
+    render();
+};
+
+
+function render() {
+    const el = document.getElementById('entryList');
+    if (currentTab === 'staff') {
+        if (!staffList.length) { el.innerHTML = '<p style="color:var(--text-muted);">No staff members yet.</p>'; return; }
+        el.innerHTML = staffList.map((s,i) => `
+            <div class="entry-card" draggable="true" data-idx="${i}">
+                <span class="drag-handle" title="Drag to reorder">⠿</span>
+                ${s.avatar ? `<img class="entry-avatar" src="${esc(s.avatar)}" alt="">` : `<div class="entry-avatar-ph">👤</div>`}
+                <div class="entry-info">
+                    <div class="entry-name">${esc(s.name||'—')}</div>
+                    <div class="entry-sub">${esc(s.role||'')}${s.country?` · ${esc(s.country)}`:''}${s.twitter?` · <a href="${esc(s.twitter)}" target="_blank" style="color:var(--accent);">Twitter</a>`:''}</div>
+                </div>
+                <div class="entry-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="removeEntry(${i})">Remove</button>
+                </div>
+            </div>`).join('');
+        initDrag(el.querySelectorAll('.entry-card'), staffList);
+    } else if (currentTab === 'trophies') {
+        if (!trophyList.length) { el.innerHTML = '<p style="color:var(--text-muted);">No trophies yet.</p>'; return; }
+        el.innerHTML = trophyList.map((t,i) => `
+            <div class="trophy-card" draggable="true" data-idx="${i}">
+                <span class="drag-handle" title="Drag to reorder">⠿</span>
+                <div class="trophy-icon">🏆</div>
+                <div class="trophy-info">
+                    <div class="trophy-title-txt">${esc(t.title||'—')}</div>
+                    <div class="trophy-meta">${esc(t.team||'')}${t.placement?` · ${esc(t.placement)}`:''}${t.date?` · ${esc(t.date)}`:''}` +
+                    `</div>
+                </div>
+                <div class="entry-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="removeEntry(${i})">Remove</button>
+                </div>
+            </div>`).join('');
+        initDrag(el.querySelectorAll('.trophy-card'), trophyList);
+    } else if (currentTab === 'hall-of-fame') {
+        if (!hofList.length) { el.innerHTML = '<p style="color:var(--text-muted);">No hall of fame members yet.</p>'; return; }
+        el.innerHTML = hofList.map((h, i) => `
+            <div class="entry-card" draggable="true" data-idx="${i}">
+                <span class="drag-handle" title="Drag to reorder">⠿</span>
+                <div class="entry-avatar-ph" style="font-size:1.2rem;">🏅</div>
+                <div class="entry-info">
+                    <div class="entry-name">${esc(h.name || '—')}</div>
+                    <div class="entry-sub">${esc(h.role || '')}${h.period ? ` · ${esc(h.period)}` : ''}${h.country ? ` · ${esc(h.country)}` : ''}</div>
+                </div>
+                <div class="entry-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="removeEntry(${i})">Remove</button>
+                </div>
+            </div>`).join('');
+        initDrag(el.querySelectorAll('.entry-card'), hofList);
+    } else if (currentTab === 'creators') {
+        if (!creatorList.length) { el.innerHTML = '<p style="color:var(--text-muted);">No creators yet.</p>'; return; }
+        el.innerHTML = creatorList.map((c, i) => {
+            const activeSocials = Object.entries(c.socials || {})
+                .filter(([,v]) => v.enabled && v.url)
+                .map(([k]) => k).join(', ');
+            return `
+            <div class="entry-card" draggable="true" data-idx="${i}">
+                <span class="drag-handle" title="Drag to reorder">⠿</span>
+                ${c.avatar ? `<img class="entry-avatar" src="${esc(c.avatar)}" alt="">` : `<div class="entry-avatar-ph">🎥</div>`}
+                <div class="entry-info">
+                    <div class="entry-name">${esc(c.name || '—')}</div>
+                    <div class="entry-sub">${esc(c.country || '')}${activeSocials ? ` · ${esc(activeSocials)}` : ''}</div>
+                </div>
+                <div class="entry-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="removeEntry(${i})">Remove</button>
+                </div>
+            </div>`;
+        }).join('');
+        initDrag(el.querySelectorAll('.entry-card'), creatorList);
+    } else {
+        if (!historyList.length) { el.innerHTML = '<p style="color:var(--text-muted);">No history entries yet.</p>'; return; }
+        el.innerHTML = historyList.map((h,i) => {
+            const players = Array.isArray(h.players) ? h.players.join(', ') : '';
+            const period  = (h.from || '') + (h.to ? ` → ${h.to}` : '');
+            return `
+            <div class="history-card" draggable="true" data-idx="${i}">
+                <span class="drag-handle" title="Drag to reorder">⠿</span>
+                <div class="history-icon">📋</div>
+                <div class="history-info">
+                    <div class="history-team">${esc(h.team||'—')} ${h.region ? `<span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">(${esc(h.region)})</span>` : ''}</div>
+                    ${period ? `<div class="history-period">${esc(period)}</div>` : ''}
+                    <div class="history-players">${esc(players) || '<span style="color:var(--text-muted);">No players</span>'}</div>
+                    ${h.notes ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;font-style:italic;">${esc(h.notes)}</div>` : ''}
+                </div>
+                <div class="entry-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--error);border-color:var(--error);" onclick="removeEntry(${i})">Remove</button>
+                </div>
+            </div>`;
+        }).join('');
+        initDrag(el.querySelectorAll('.history-card'), historyList);
+    }
+}
+
+
+function initDrag(cards, arr) {
+    cards.forEach((card) => {
+        card.addEventListener('dragstart', e => {
+            dragSrcIdx = Number(card.dataset.idx);
+            setTimeout(() => card.classList.add('dragging'), 0);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+        card.addEventListener('dragenter', e => { e.preventDefault(); card.classList.add('drag-over'); });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', e => {
+            e.preventDefault();
+            card.classList.remove('drag-over');
+            const dropIdx = Number(card.dataset.idx);
+            if (dragSrcIdx === null || dragSrcIdx === dropIdx) return;
+            const moved = arr.splice(dragSrcIdx, 1)[0];
+            arr.splice(dropIdx, 0, moved);
+            dragSrcIdx = null;
+            setDirty();
+            render();
+        });
+    });
+}
+
+
+window.openAdd = () => {
+    document.getElementById('editIdx').value = -1;
+    document.getElementById('modalTitle').textContent =
+        currentTab === 'staff' ? 'Add Staff Member' : currentTab === 'trophies' ? 'Add Trophy' : 'Add History Entry';
+    clearForm();
+    showFields(currentTab);
+    document.getElementById('entryModal').style.display = 'flex';
+};
+
+window.openEdit = (idx) => {
+    document.getElementById('editIdx').value = idx;
+    document.getElementById('modalTitle').textContent =
+        currentTab === 'staff' ? 'Edit Staff Member' : currentTab === 'trophies' ? 'Edit Trophy' : 'Edit History Entry';
+    showFields(currentTab);
+    if (currentTab === 'staff') {
+        const s = staffList[idx];
+        document.getElementById('sName').value    = s.name    || '';
+        document.getElementById('sRole').value    = s.role    || '';
+        populateCountrySelect('sCountry', s.country || 'br');
+        document.getElementById('sAvatar').value  = s.avatar  || '';
+        document.getElementById('sTwitter').value = s.twitter || '';
+        document.getElementById('sDiscord').value = s.discord || '';
+    } else if (currentTab === 'trophies') {
+        const t = trophyList[idx];
+        document.getElementById('tTitle').value     = t.title     || '';
+        document.getElementById('tTeam').value      = t.team      || '';
+        document.getElementById('tPlacement').value = t.placement || '';
+        document.getElementById('tDate').value      = t.date      || '';
+        document.getElementById('tImage').value     = t.image     || '';
+    } else if (currentTab === 'hall-of-fame') {
+        const h = hofList[idx];
+        document.getElementById('hofName').value    = h.name    || '';
+        populateCountrySelect('hofCountry', h.country || 'br');
+        document.getElementById('hofRole').value    = h.role    || '';
+        document.getElementById('hofPeriod').value  = h.period  || '';
+    } else if (currentTab === 'creators') {
+        const c = creatorList[idx];
+        document.getElementById('crName').value    = c.name    || '';
+        populateCountrySelect('crCountry', c.country || 'br');
+        document.getElementById('crAvatar').value  = c.avatar  || '';
+        buildCreatorSocialsEditor(c);
+    } else {
+        const h = historyList[idx];
+        document.getElementById('hTeam').value    = h.team    || '';
+        document.getElementById('hRegion').value  = h.region  || '';
+        document.getElementById('hFrom').value    = h.from    || '';
+        document.getElementById('hTo').value      = h.to      || '';
+        document.getElementById('hPlayers').value = Array.isArray(h.players) ? h.players.join('\n') : '';
+        document.getElementById('hCoaches').value = Array.isArray(h.coaches) ? h.coaches.join('\n') : '';
+        document.getElementById('hNotes').value   = h.notes   || '';
+    }
+    document.getElementById('entryModal').style.display = 'flex';
+};
+
+window.closeModal = () => { document.getElementById('entryModal').style.display = 'none'; };
+
+function showFields(tab) {
+    document.getElementById('staffFields').style.display   = tab === 'staff'        ? 'block' : 'none';
+    document.getElementById('trophyFields').style.display  = tab === 'trophies'     ? 'block' : 'none';
+    document.getElementById('historyFields').style.display = tab === 'history'      ? 'block' : 'none';
+    document.getElementById('hofFields').style.display     = tab === 'hall-of-fame' ? 'block' : 'none';
+    document.getElementById('creatorFields').style.display = tab === 'creators'     ? 'block' : 'none';
+    if (tab === 'creators') buildCreatorSocialsEditor();
+}
+
+const CREATOR_NETWORKS = ['twitter','twitch','youtube','tiktok','instagram','kick'];
+
+function buildCreatorSocialsEditor(existingEntry = null) {
+    const container = document.getElementById('crSocialsEditor');
+    container.innerHTML = CREATOR_NETWORKS.map(net => {
+        const s = existingEntry?.socials?.[net] || { url: '', enabled: false };
+        return `
+        <div style="display:flex;gap:8px;align-items:center;" id="crSocial-${net}">
+            <button type="button"
+                class="btn btn-secondary btn-sm"
+                id="crToggle-${net}"
+                onclick="toggleCreatorNet('${net}')"
+                style="min-width:80px;${s.enabled ? 'border-color:var(--accent);color:var(--accent);' : ''}">
+                ${s.enabled ? '✓ ON' : 'OFF'}
+            </button>
+            <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);width:70px;flex-shrink:0;">${net}</span>
+            <input type="text" class="form-input" id="crUrl-${net}" placeholder="https://..." value="${esc(s.url)}" style="flex:1;">
+        </div>`;
+    }).join('');
+}
+
+window.toggleCreatorNet = (net) => {
+    const btn = document.getElementById(`crToggle-${net}`);
+    const isOn = btn.textContent.trim().startsWith('✓');
+    if (isOn) {
+        btn.textContent = 'OFF';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+    } else {
+        btn.textContent = '✓ ON';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+    }
+};
+
+function clearForm() {
+    ['sName','sRole','sAvatar','sTwitter','sDiscord',
+     'tTitle','tTeam','tPlacement','tDate','tImage',
+     'hTeam','hRegion','hFrom','hTo','hPlayers','hCoaches','hNotes',
+     'hofName','hofRole','hofPeriod',
+     'crName','crAvatar']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    populateCountrySelect('sCountry', 'br');
+    populateCountrySelect('hofCountry', 'br');
+    populateCountrySelect('crCountry', 'br');
+}
+
+
+window.saveEntry = () => {
+    const idx = Number(document.getElementById('editIdx').value);
+    if (currentTab === 'staff') {
+        const entry = {
+            name:    document.getElementById('sName').value.trim(),
+            role:    document.getElementById('sRole').value.trim(),
+            country: document.getElementById('sCountry').value.trim(),
+            avatar:  document.getElementById('sAvatar').value.trim(),
+            twitter: document.getElementById('sTwitter').value.trim(),
+            discord: document.getElementById('sDiscord').value.trim(),
+        };
+        if (!entry.name) { toast('Name is required.', 'error'); return; }
+        if (idx < 0) staffList.push(entry); else staffList[idx] = entry;
+    } else if (currentTab === 'trophies') {
+        const entry = {
+            title:     document.getElementById('tTitle').value.trim(),
+            team:      document.getElementById('tTeam').value.trim(),
+            placement: document.getElementById('tPlacement').value.trim(),
+            date:      document.getElementById('tDate').value.trim(),
+            image:     document.getElementById('tImage').value.trim(),
+        };
+        if (!entry.title) { toast('Title is required.', 'error'); return; }
+        if (idx < 0) trophyList.push(entry); else trophyList[idx] = entry;
+    } else if (currentTab === 'hall-of-fame') {
+        const entry = {
+            name:    document.getElementById('hofName').value.trim(),
+            country: document.getElementById('hofCountry').value.trim(),
+            role:    document.getElementById('hofRole').value.trim(),
+            period:  document.getElementById('hofPeriod').value.trim(),
+        };
+        if (!entry.name) { toast('Name is required.', 'error'); return; }
+        if (idx < 0) hofList.push(entry); else hofList[idx] = entry;
+    } else if (currentTab === 'creators') {
+        const socials = {};
+        for (const net of CREATOR_NETWORKS) {
+            const url     = (document.getElementById(`crUrl-${net}`)?.value || '').trim();
+            const enabled = document.getElementById(`crToggle-${net}`)?.textContent.trim().startsWith('✓') || false;
+            socials[net] = { url, enabled: enabled && !!url };
+        }
+        const entry = {
+            name:    document.getElementById('crName').value.trim(),
+            country: document.getElementById('crCountry').value.trim(),
+            avatar:  document.getElementById('crAvatar').value.trim(),
+            socials,
+        };
+        if (!entry.name) { toast('Name is required.', 'error'); return; }
+        if (idx < 0) creatorList.push(entry); else creatorList[idx] = entry;
+    } else {
+        const playersRaw = document.getElementById('hPlayers').value;
+        const coachesRaw = document.getElementById('hCoaches').value;
+        const entry = {
+            team:    document.getElementById('hTeam').value.trim(),
+            region:  document.getElementById('hRegion').value.trim().toLowerCase(),
+            from:    document.getElementById('hFrom').value.trim(),
+            to:      document.getElementById('hTo').value.trim(),
+            players: playersRaw.split('\n').map(s => s.trim()).filter(Boolean),
+            coaches: coachesRaw.split('\n').map(s => s.trim()).filter(Boolean),
+            notes:   document.getElementById('hNotes').value.trim(),
+        };
+        if (!entry.team) { toast('Team name is required.', 'error'); return; }
+        if (idx < 0) historyList.push(entry); else historyList[idx] = entry;
+    }
+    closeModal();
+    render();
+    setDirty();
+};
+
+
+window.removeEntry = (idx) => {
+    if      (currentTab === 'staff')        staffList.splice(idx, 1);
+    else if (currentTab === 'trophies')     trophyList.splice(idx, 1);
+    else if (currentTab === 'hall-of-fame') hofList.splice(idx, 1);
+    else if (currentTab === 'creators')     creatorList.splice(idx, 1);
+    else                                    historyList.splice(idx, 1);
+    render();
+    setDirty();
+};
+
+
+window.saveAll = async () => {
+    try {
+        if      (currentTab === 'staff')        await api('/api/site/about/staff',        { method: 'PUT', body: JSON.stringify({ data: staffList }) });
+        else if (currentTab === 'trophies')     await api('/api/site/about/trophies',     { method: 'PUT', body: JSON.stringify({ data: trophyList }) });
+        else if (currentTab === 'history')      await api('/api/site/about/history',      { method: 'PUT', body: JSON.stringify({ data: historyList }) });
+        else if (currentTab === 'hall-of-fame') await api('/api/site/about/hall-of-fame', { method: 'PUT', body: JSON.stringify({ data: hofList }) });
+        else if (currentTab === 'creators')     await api('/api/site/about/creators',     { method: 'PUT', body: JSON.stringify({ data: creatorList }) });
+        dirty = false;
+        document.getElementById('saveBar').style.display = 'none';
+        toast('Published to site!', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+loadCountries();
+load();</script>
+</body>
+</html>

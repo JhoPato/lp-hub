@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Landmark Editor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+#topbar {
+    display: flex; align-items: center; gap: 7px; padding: 7px 12px;
+    background: #1a1a24; border-bottom: 1px solid #2a2a3a; flex-shrink: 0; flex-wrap: wrap;
+}
+#topbar select, #topbar input[type=text] {
+    background: #252535; border: 1px solid #3a3a4a; color: #e0e0e0;
+    padding: 5px 9px; border-radius: 6px; font-size: 13px; outline: none;
+}
+#topbar select { cursor: pointer; }
+#label-input { width: 120px; }
+.sep { width: 1px; height: 24px; background: #2a2a3a; flex-shrink: 0; }
+
+.tool-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: #252535; border: 1px solid #3a3a4a; color: #aaa;
+    padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all .13s;
+}
+.tool-btn.active { background: #df5840; border-color: #df5840; color: #fff; }
+.tool-btn:hover:not(.active) { background: #3a3a4a; color: #e0e0e0; }
+
+.color-swatch {
+    width: 20px; height: 20px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; flex-shrink: 0; transition: transform .1s, border-color .1s;
+}
+.color-swatch:hover { transform: scale(1.2); }
+.color-swatch.active { border-color: #fff; transform: scale(1.2); }
+
+#opacity-wrap { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
+#opacity-slider { width: 65px; accent-color: #df5840; }
+
+#topbar button.action {
+    background: #2a2a3a; border: 1px solid #3a3a4a; color: #e0e0e0;
+    padding: 5px 11px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: background .13s;
+}
+#topbar button.action:hover { background: #3a3a4a; }
+#status { font-size: 11px; color: #888; margin-left: auto; white-space: nowrap; }
+
+#main { display: flex; flex: 1; overflow: hidden; }
+
+#map-wrap {
+    flex: 1; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; background: #0a0a12;
+    cursor: crosshair;
+}
+#map-canvas { max-width: 100%; max-height: 100%; display: block; user-select: none; pointer-events: none; }
+#svg-layer  { position: absolute; inset: 0; overflow: visible; }
+#map-coords {
+    position: absolute; bottom: 8px; right: 10px; font-size: 11px; color: #888;
+    background: rgba(0,0,0,.55); padding: 2px 8px; border-radius: 4px; pointer-events: none;
+}
+
+/* Hint bar for polygon mode */
+#hint-bar {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.7); border: 1px solid #3a3a4a; border-radius: 6px;
+    padding: 4px 12px; font-size: 11px; color: #aaa; pointer-events: none; display: none;
+}
+
+#sidebar {
+    width: 265px; background: #1a1a24; border-left: 1px solid #2a2a3a;
+    display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+#sidebar-head {
+    padding: 9px 12px; border-bottom: 1px solid #2a2a3a; font-size: 13px; font-weight: 600; color: #aaa;
+    display: flex; justify-content: space-between; align-items: center;
+}
+#sidebar-head span { font-size: 11px; color: #555; }
+#point-list { flex: 1; overflow-y: auto; padding: 5px; }
+.entry-item {
+    display: flex; align-items: center; gap: 7px; padding: 5px 7px;
+    border-radius: 6px; cursor: pointer; font-size: 12px; border: 1px solid transparent; transition: background .1s;
+}
+.entry-item:hover { background: #252535; }
+.entry-item.selected { background: #252535; border-color: #3a3a4a; }
+.entry-dot  { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.entry-rect { width: 14px; height: 9px;  border-radius: 2px; flex-shrink: 0; }
+.entry-poly { width: 14px; height: 11px; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); flex-shrink: 0; }
+.entry-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-kind  { font-size: 10px; color: #555; flex-shrink: 0; }
+.entry-del {
+    width: 17px; height: 17px; border-radius: 3px; border: none;
+    background: transparent; color: #555; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0;
+}
+.entry-del:hover { background: #df5840; color: #fff; }
+
+#export-panel { border-top: 1px solid #2a2a3a; padding: 9px; background: #141420; }
+#export-panel textarea {
+    width: 100%; height: 108px; background: #0f0f1a; border: 1px solid #2a2a3a;
+    color: #7ec8a0; font-family: monospace; font-size: 11px; padding: 6px; border-radius: 6px; resize: none; outline: none;
+}
+#export-panel .export-btns { display: flex; gap: 5px; margin-top: 6px; }
+#export-panel button {
+    flex: 1; background: #252535; border: 1px solid #3a3a4a; color: #e0e0e0;
+    padding: 5px; border-radius: 6px; font-size: 12px; cursor: pointer;
+}
+#export-panel button:hover { background: #3a3a4a; }
+</style>
+</head>
+<body>
+<div id="topbar">
+    <select id="map-select"><option>Loading…</option></select>
+    <div class="sep"></div>
+    <input id="label-input" type="text" placeholder="Label (e.g. a_site)" spellcheck="false">
+    <div class="sep"></div>
+    <button class="tool-btn active" id="btn-point"   onclick="setMode('point')">● Point</button>
+    <button class="tool-btn"        id="btn-polygon" onclick="setMode('polygon')">⬡ Polygon</button>
+    <div class="sep"></div>
+    <div id="color-row" style="display:flex;flex-direction:row;flex-wrap:wrap;gap:4px;align-items:center;max-width:220px"></div>
+    <div class="sep"></div>
+    <div id="opacity-wrap">
+        <span>Fill</span>
+        <input id="opacity-slider" type="range" min="0" max="100" value="25" oninput="updateOpacity(this.value)">
+        <span id="opacity-val">25%</span>
+    </div>
+    <div class="sep"></div>
+    <button class="action" onclick="clearMap()">Clear</button>
+    <button class="action" onclick="loadSaved()">Load local</button>
+    <button class="action" onclick="exportJSON()">⬇ JSON</button>
+    <label class="action" style="cursor:pointer;display:flex;align-items:center">⬆ JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(this)"></label>
+    <div id="status">Select a tool and click the map</div>
+</div>
+
+<div id="main">
+    <div id="map-wrap">
+        <canvas id="map-canvas"></canvas>
+        <svg id="svg-layer"></svg>
+        <div id="hint-bar"></div>
+        <div id="map-coords">0.00, 0.00</div>
+    </div>
+    <div id="sidebar">
+        <div id="sidebar-head">Entries <span id="entry-count">0 entries</span></div>
+        <div id="point-list"></div>
+        <div id="export-panel">
+            <textarea id="export-out" readonly placeholder="Export will appear here…"></textarea>
+            <div class="export-btns">
+                <button onclick="generateExport()">Generate JS</button>
+                <button onclick="copyExport()">Copy</button>
+                <button onclick="saveAll()">Save all</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────
+const MAP_ROTATION = {
+    'd960549e-485c-e861-8d71-aa9d1aed12a2':  90,
+    '7eaecc1b-4337-bbf6-6ab9-04b8f06b3319':  90,
+    '1c18ab1f-420d-0d8b-71d0-77ad3c439115':  90,
+    '2bee0dc9-4ffe-519b-1cbd-7fbe763a6047':  90,
+    'b529448b-4d60-346e-e89e-00a4c527a405': 180,
+    'e2ad5c54-4114-a870-9641-8ea21279579a': -90,
+    '224b0a95-48b9-f703-1bd8-67aca101a61f':  90,
+};
+const COLORS = [
+    '#ffdd57','#ff6fcf','#57c78a','#4a9eff','#df5840',
+    '#ff9f1c','#a78bfa','#34d399','#f87171','#60a5fa',
+    '#fbbf24','#e879f9','#aaaaaa','#ffffff',
+];
+const STORAGE_KEY = 'landmark_editor_v3';
+
+// ── State ────────────────────────────────────────────────────────────────
+let maps = [], currentMapUuid = '';
+let currentColor = COLORS[0];
+let currentMode  = 'point';
+let regionOpacity = 0.25;
+let allData = {};        // mapName → [ entry ]
+let selectedIdx = -1;
+
+// Polygon in-progress state
+let draftPoly = null;    // null | { pts: [{x,y}] }
+
+// Vertex drag state
+let vertexDrag = null;   // { entryIdx, vtxIdx, startNorm }
+
+// ── Init ─────────────────────────────────────────────────────────────────
+async function init() {
+    buildColorRow();
+    loadSaved();
+    await fetchMaps();
+    setupMapWrap();
+    document.getElementById('label-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && currentMode === 'polygon' && draftPoly) finishPoly();
+        else if (e.key === 'Escape' && draftPoly) cancelPoly();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape'  && draftPoly) { cancelPoly(); return; }
+        if ((e.key === 'Enter') && draftPoly) { finishPoly(); return; }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIdx >= 0 && !draftPoly) {
+            const focused = document.activeElement;
+            if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) return;
+            deleteEntry(null, selectedIdx);
+        }
+    });
+}
+
+// ── Colors ───────────────────────────────────────────────────────────────
+function buildColorRow() {
+    document.getElementById('color-row').innerHTML = COLORS.map(c =>
+        `<div class="color-swatch ${c === currentColor ? 'active' : ''}" style="background:${c}" data-color="${c}" onclick="pickColor('${c}')"></div>`
+    ).join('');
+}
+function pickColor(col) {
+    currentColor = col;
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === col));
+    // Update selected entry's color live
+    if (selectedIdx >= 0) {
+        const en = (allData[currentMapName()] || [])[selectedIdx];
+        if (en) { en.color = col; redraw(); generateExport(); }
+    }
+}
+
+// ── Mode ─────────────────────────────────────────────────────────────────
+function setMode(mode) {
+    if (draftPoly) cancelPoly();
+    currentMode = mode;
+    ['point','polygon'].forEach(m => document.getElementById(`btn-${m}`).classList.toggle('active', m === mode));
+    setStatus(mode === 'point' ? 'Click to place a point' : 'Click to add vertices · Enter/dbl-click to close · Esc to cancel');
+    showHint(mode === 'polygon' ? 'Click to add vertices • Enter or dbl-click to close • Esc to cancel' : '');
+}
+
+function updateOpacity(v) {
+    regionOpacity = v / 100;
+    document.getElementById('opacity-val').textContent = `${v}%`;
+    if (selectedIdx >= 0) {
+        const en = (allData[currentMapName()] || [])[selectedIdx];
+        if (en && en.kind === 'polygon') { en.opacity = regionOpacity; redraw(); generateExport(); }
+    }
+}
+
+function showHint(msg) {
+    const el = document.getElementById('hint-bar');
+    el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+// ── Maps ─────────────────────────────────────────────────────────────────
+async function fetchMaps() {
+    const sel = document.getElementById('map-select');
+    const load = async url => {
+        const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        return (j.data||[]).filter(m=>m.displayIcon&&m.tacticalDescription).sort((a,b)=>a.displayName.localeCompare(b.displayName));
+    };
+    try { maps = await load('https://valorant-api.com/v1/maps'); if (!maps.length) throw 0; }
+    catch { try { maps = await load('/api/vapi-proxy?url='+encodeURIComponent('https://valorant-api.com/v1/maps')); } catch(e) { sel.innerHTML='<option>Failed</option>'; setStatus(e.message,true); return; } }
+    sel.innerHTML = maps.map(m=>`<option value="${m.uuid}">${m.displayName}</option>`).join('');
+    sel.addEventListener('change', ()=>loadMap(sel.value));
+    loadMap(maps[0].uuid);
+}
+
+function loadMap(uuid) {
+    if (draftPoly) cancelPoly();
+    currentMapUuid = uuid; selectedIdx = -1;
+    document.getElementById('map-select').value = uuid;
+    renderList(); generateExport();
+    const map = maps.find(m=>m.uuid===uuid); if (!map) return;
+    const deg = MAP_ROTATION[uuid]||0, imgUrl = map.displayIcon||map.splash||'';
+    const tmp = new Image(); tmp.crossOrigin = 'anonymous';
+    tmp.onload = () => {
+        const canvas = document.getElementById('map-canvas');
+        const rad = deg*Math.PI/180, sin=Math.abs(Math.sin(rad)), cos=Math.abs(Math.cos(rad));
+        canvas.width  = Math.round(tmp.width*cos + tmp.height*sin);
+        canvas.height = Math.round(tmp.width*sin + tmp.height*cos);
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width/2, canvas.height/2); ctx.rotate(rad);
+        ctx.drawImage(tmp, -tmp.width/2, -tmp.height/2);
+        redraw();
+    };
+    tmp.onerror = ()=>{ tmp.onerror=null; tmp.src=`/api/vapi-proxy?url=${encodeURIComponent(imgUrl)}`; };
+    tmp.src = imgUrl;
+}
+
+// ── Coordinate helpers ───────────────────────────────────────────────────
+function getMapRect()  { return document.getElementById('map-canvas').getBoundingClientRect(); }
+function getWrapRect() { return document.getElementById('map-wrap').getBoundingClientRect(); }
+
+function clientToNorm(cx, cy) {
+    const r = getMapRect();
+    return { x: +Math.max(0,Math.min(1,(cx-r.left)/r.width)).toFixed(4),
+             y: +Math.max(0,Math.min(1,(cy-r.top)/r.height)).toFixed(4) };
+}
+function normToSvg(nx, ny) {
+    const r = getMapRect(), w = getWrapRect();
+    return { x: r.left-w.left + nx*r.width, y: r.top-w.top + ny*r.height };
+}
+
+// ── Map interaction ───────────────────────────────────────────────────────
+let lastClickTime = 0;
+
+function setupMapWrap() {
+    const wrap = document.getElementById('map-wrap');
+    wrap.addEventListener('mousedown', onDown);
+    wrap.addEventListener('mousemove', onMove);
+    wrap.addEventListener('mouseup',   onUp);
+    wrap.addEventListener('dblclick',  onDblClick);
+}
+
+function onDown(e) {
+    if (vertexDrag) return;
+
+    const wrap = getWrapRect();
+    const inside = e.clientX >= wrap.left && e.clientX <= wrap.right &&
+                   e.clientY >= wrap.top  && e.clientY <= wrap.bottom;
+    if (!inside) return;
+
+    // In polygon mode: ALWAYS capture the click for drawing — never let existing
+    // shapes intercept it (selection happens via point mode or sidebar)
+    if (currentMode === 'polygon') {
+        e.stopPropagation();
+        onPolyClick(e);
+    } else {
+        const label = document.getElementById('label-input').value.trim();
+        if (!label) { setStatus('Enter a label first!', true); return; }
+        const p = clientToNorm(e.clientX, e.clientY);
+        const mapName = currentMapName();
+        if (!allData[mapName]) allData[mapName] = [];
+        allData[mapName].push({ kind:'point', label, x:p.x, y:p.y, color:currentColor });
+        redraw(); renderList(); generateExport();
+        setStatus(`Point "${label}" at (${p.x.toFixed(3)},${p.y.toFixed(3)})`);
+    }
+}
+
+function onMove(e) {
+    const p = clientToNorm(e.clientX, e.clientY);
+    document.getElementById('map-coords').textContent = `${p.x.toFixed(3)}, ${p.y.toFixed(3)}`;
+    if (draftPoly) { draftPoly.cursor = p; redraw(); }
+    if (vertexDrag) {
+        const en = (allData[currentMapName()]||[])[vertexDrag.entryIdx];
+        if (en) { en.pts[vertexDrag.vtxIdx] = p; redraw(); generateExport(); }
+    }
+}
+
+function onUp() { if (vertexDrag) vertexDrag = null; }
+
+function onDblClick(e) {
+    if (currentMode === 'polygon' && draftPoly && draftPoly.pts.length >= 3) {
+        e.preventDefault(); finishPoly();
+    }
+}
+
+// ── Polygon drawing ───────────────────────────────────────────────────────
+function onPolyClick(e) {
+    // Ignore the second click of a double-click
+    const now = Date.now();
+    if (now - lastClickTime < 250) { lastClickTime = 0; return; }
+    lastClickTime = now;
+
+    const label = document.getElementById('label-input').value.trim();
+    if (!label) { setStatus('Enter a label first!', true); return; }
+
+    const p = clientToNorm(e.clientX, e.clientY);
+    if (!draftPoly) draftPoly = { pts: [] };
+
+    // Snap to first vertex to close
+    if (draftPoly.pts.length >= 3) {
+        const first = draftPoly.pts[0];
+        const r = getMapRect();
+        const dx = (p.x - first.x) * r.width, dy = (p.y - first.y) * r.height;
+        if (Math.sqrt(dx*dx + dy*dy) < 12) { finishPoly(); return; }
+    }
+
+    draftPoly.pts.push(p);
+    redraw();
+    setStatus(`${draftPoly.pts.length} vertices — Enter or dbl-click to close`);
+}
+
+function finishPoly() {
+    if (!draftPoly || draftPoly.pts.length < 3) { cancelPoly(); return; }
+    const label = document.getElementById('label-input').value.trim();
+    if (!label) { setStatus('Enter a label first!', true); return; }
+    const mapName = currentMapName();
+    if (!allData[mapName]) allData[mapName] = [];
+    allData[mapName].push({ kind:'polygon', label, pts:[...draftPoly.pts], color:currentColor, opacity:regionOpacity });
+    draftPoly = null;
+    redraw(); renderList(); generateExport();
+    setStatus(`Polygon "${label}" saved (${allData[mapName].slice(-1)[0].pts.length} pts)`);
+    showHint('Click to add vertices • Enter or dbl-click to close • Esc to cancel');
+}
+
+function cancelPoly() {
+    draftPoly = null; redraw();
+    setStatus('Cancelled');
+}
+
+// ── SVG rendering ─────────────────────────────────────────────────────────
+function redraw() {
+    const svg = document.getElementById('svg-layer');
+    const wrap = getWrapRect();
+    svg.setAttribute('viewBox', `0 0 ${wrap.width} ${wrap.height}`);
+    svg.innerHTML = '';
+
+    drawGrid(svg, wrap);
+
+    const entries = allData[currentMapName()] || [];
+
+    // Polygons first
+    entries.forEach((en, i) => {
+        if (en.kind !== 'polygon') return;
+        drawPolygon(svg, en, i, i === selectedIdx);
+    });
+
+    // Points on top
+    entries.forEach((en, i) => {
+        if (en.kind !== 'point') return;
+        drawPoint(svg, en, i, i === selectedIdx);
+    });
+
+    // Draft polygon (in-progress)
+    if (draftPoly) drawDraftPoly(svg, draftPoly);
+}
+
+function drawGrid(svg, wrap) {
+    const r = getMapRect();
+    [0.25, 0.5, 0.75].forEach(t => {
+        const vx = r.left-wrap.left + t*r.width;
+        const hy = r.top-wrap.top   + t*r.height;
+        svgEl(svg,'line',{x1:vx,y1:r.top-wrap.top,x2:vx,y2:r.top-wrap.top+r.height,stroke:'rgba(255,255,255,0.1)','stroke-width':1,'stroke-dasharray':'4 4'});
+        svgEl(svg,'line',{x1:r.left-wrap.left,y1:hy,x2:r.left-wrap.left+r.width,y2:hy,stroke:'rgba(255,255,255,0.1)','stroke-width':1,'stroke-dasharray':'4 4'});
+    });
+}
+
+function drawPolygon(svg, en, idx, selected) {
+    const pts = en.pts.map(p => normToSvg(p.x, p.y));
+    const pointsStr = pts.map(p=>`${p.x},${p.y}`).join(' ');
+    const op = en.opacity ?? 0.25;
+    const g = svgEl(svg, 'g', { style:'cursor:pointer' });
+    g.addEventListener('click', e => { if (currentMode === 'polygon') return; e.stopPropagation(); selectEntry(idx); });
+
+    svgEl(g, 'polygon', {
+        points: pointsStr,
+        fill: en.color, 'fill-opacity': op,
+        stroke: en.color, 'stroke-width': selected ? 2.5 : 1.5, 'stroke-opacity': 0.9,
+        ...(selected ? {'stroke-dasharray':'6 3'} : {}),
+    });
+
+    // Label at centroid
+    const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+    const cy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    const tw = en.label.length*6+8;
+    svgEl(g,'rect',{x:cx-tw/2,y:cy-8,width:tw,height:14,rx:3,fill:'rgba(0,0,0,0.75)'});
+    const t = svgEl(g,'text',{x:cx,y:cy+3,'text-anchor':'middle',fill:en.color,'font-size':10,'font-family':'monospace','font-weight':'bold'});
+    t.textContent = en.label;
+
+    // Vertex handles (only when selected)
+    if (selected) {
+        pts.forEach((p, vi) => {
+            const h = svgEl(g, 'circle', { cx:p.x, cy:p.y, r:6, fill:en.color, stroke:'#fff', 'stroke-width':1.5, style:'cursor:move' });
+            h.addEventListener('mousedown', e => {
+                e.stopPropagation();
+                vertexDrag = { entryIdx: idx, vtxIdx: vi };
+            });
+            // Delete vertex on right-click
+            h.addEventListener('contextmenu', e => {
+                e.preventDefault(); e.stopPropagation();
+                if (en.pts.length > 3) { en.pts.splice(vi, 1); redraw(); generateExport(); }
+            });
+        });
+
+        // "+" handle at midpoints to add vertices
+        pts.forEach((p, vi) => {
+            const next = pts[(vi+1) % pts.length];
+            const mx = (p.x+next.x)/2, my = (p.y+next.y)/2;
+            const mid = svgEl(g,'circle',{cx:mx,cy:my,r:4,fill:'rgba(255,255,255,0.3)',stroke:en.color,'stroke-width':1,style:'cursor:pointer'});
+            const plusTxt = svgEl(g,'text',{x:mx,y:my+3.5,'text-anchor':'middle',fill:'#fff','font-size':9,'font-weight':'bold',style:'pointer-events:none'});
+            plusTxt.textContent = '+';
+            mid.addEventListener('mousedown', e => {
+                e.stopPropagation();
+                const np = { x: +mx.toFixed ? parseFloat(((en.pts[vi].x+en.pts[(vi+1)%en.pts.length].x)/2).toFixed(4)) : 0,
+                             y: +parseFloat(((en.pts[vi].y+en.pts[(vi+1)%en.pts.length].y)/2).toFixed(4)) };
+                en.pts.splice(vi+1, 0, np);
+                vertexDrag = { entryIdx: idx, vtxIdx: vi+1 };
+                redraw(); generateExport();
+            });
+        });
+    }
+}
+
+function drawPoint(svg, en, idx, selected) {
+    const p = normToSvg(en.x, en.y);
+    const g = svgEl(svg,'g',{style:'cursor:pointer'});
+    g.addEventListener('click', e => { if (currentMode === 'polygon') return; e.stopPropagation(); selectEntry(idx); });
+
+    svgEl(g,'circle',{cx:p.x,cy:p.y+1.5,r:7,fill:'rgba(0,0,0,0.45)'});
+    svgEl(g,'circle',{cx:p.x,cy:p.y,r:selected?9:7,fill:en.color,stroke:selected?'#fff':'rgba(0,0,0,0.5)','stroke-width':selected?2:1});
+
+    const tw = en.label.length*6.5+10;
+    svgEl(g,'rect',{x:p.x-tw/2,y:p.y-25,width:tw,height:14,rx:3,fill:'rgba(0,0,0,0.75)'});
+    const t = svgEl(g,'text',{x:p.x,y:p.y-14,'text-anchor':'middle',fill:en.color,'font-size':11,'font-family':'monospace','font-weight':'bold'});
+    t.textContent = en.label;
+
+    // Drag handle when selected
+    if (selected) {
+        const dh = svgEl(g,'circle',{cx:p.x,cy:p.y,r:9,fill:'transparent',stroke:'#fff','stroke-width':1.5,'stroke-dasharray':'4 3',style:'cursor:move'});
+        dh.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            const moveH = ev => {
+                const np = clientToNorm(ev.clientX, ev.clientY);
+                en.x = np.x; en.y = np.y;
+                redraw(); generateExport();
+            };
+            const upH = () => { window.removeEventListener('mousemove',moveH); window.removeEventListener('mouseup',upH); };
+            window.addEventListener('mousemove',moveH); window.addEventListener('mouseup',upH);
+        });
+    }
+}
+
+function drawDraftPoly(svg, draft) {
+    if (!draft.pts.length) return;
+    const pts = draft.pts.map(p=>normToSvg(p.x,p.y));
+    const cur = draft.cursor ? normToSvg(draft.cursor.x, draft.cursor.y) : pts[pts.length-1];
+
+    // Lines
+    for (let i=0;i<pts.length-1;i++) {
+        svgEl(svg,'line',{x1:pts[i].x,y1:pts[i].y,x2:pts[i+1].x,y2:pts[i+1].y,stroke:currentColor,'stroke-width':1.5,'stroke-dasharray':'5 3'});
+    }
+    // Line to cursor
+    svgEl(svg,'line',{x1:pts[pts.length-1].x,y1:pts[pts.length-1].y,x2:cur.x,y2:cur.y,stroke:currentColor,'stroke-width':1,'stroke-dasharray':'3 3','stroke-opacity':0.6});
+
+    // Close hint line
+    if (draft.pts.length >= 3) {
+        svgEl(svg,'line',{x1:cur.x,y1:cur.y,x2:pts[0].x,y2:pts[0].y,stroke:currentColor,'stroke-width':1,'stroke-dasharray':'2 4','stroke-opacity':0.3});
+    }
+
+    // Vertices
+    pts.forEach((p,i) => {
+        const isFirst = i===0 && draft.pts.length >= 3;
+        svgEl(svg,'circle',{cx:p.x,cy:p.y,r:isFirst?8:5,fill:isFirst?currentColor:'rgba(0,0,0,0.5)',stroke:currentColor,'stroke-width':isFirst?2:1.5});
+        if (isFirst) {
+            const t = svgEl(svg,'text',{x:p.x,y:p.y+3.5,'text-anchor':'middle',fill:'#fff','font-size':8,'font-weight':'bold',style:'pointer-events:none'});
+            t.textContent = '×';
+        }
+    });
+}
+
+// ── SVG helper ────────────────────────────────────────────────────────────
+function svgEl(parent, tag, attrs={}) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+    parent.appendChild(el);
+    return el;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function renderList() {
+    const entries = allData[currentMapName()] || [];
+    document.getElementById('entry-count').textContent = `${entries.length} entr${entries.length!==1?'ies':'y'}`;
+
+    document.getElementById('point-list').innerHTML = entries.map((en,i) => {
+        let icon;
+        if (en.kind==='point')   icon = `<div class="entry-dot" style="background:${en.color}"></div>`;
+        else                     icon = `<div class="entry-poly" style="background:${en.color};opacity:.85"></div>`;
+        const pts = en.kind==='polygon' ? `${en.pts.length}pts` : `(${en.x.toFixed(2)},${en.y.toFixed(2)})`;
+        return `<div class="entry-item ${i===selectedIdx?'selected':''}" onclick="selectEntry(${i})">
+            ${icon}
+            <div class="entry-label">${en.label}</div>
+            <div class="entry-kind">${en.kind==='point'?'●':'⬡'}</div>
+            <div class="entry-kind" style="font-size:9px">${pts}</div>
+            <button class="entry-del" onclick="deleteEntry(event,${i})">×</button>
+        </div>`;
+    }).join('');
+}
+
+function selectEntry(i) {
+    selectedIdx = i;
+    const en = (allData[currentMapName()]||[])[i];
+    if (en) {
+        document.getElementById('label-input').value = en.label;
+        pickColor(en.color);
+        setMode(en.kind === 'point' ? 'point' : 'polygon');
+        if (en.kind==='polygon') {
+            const pct = Math.round((en.opacity??0.25)*100);
+            document.getElementById('opacity-slider').value = pct;
+            updateOpacity(pct);
+        }
+    }
+    redraw(); renderList();
+}
+
+function deleteEntry(e, i) {
+    if (e) e.stopPropagation();
+    const mapName = currentMapName();
+    allData[mapName].splice(i,1);
+    if (selectedIdx >= (allData[mapName]||[]).length) selectedIdx = -1;
+    redraw(); renderList(); generateExport();
+}
+
+function clearMap() {
+    if (!confirm(`Clear all entries for ${currentMapName()}?`)) return;
+    allData[currentMapName()] = []; selectedIdx = -1;
+    redraw(); renderList(); generateExport();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function generateExport() {
+    const lines = Object.entries(allData).filter(([,es])=>es.length).map(([name,es]) => {
+        const entries = es.map(en => {
+            if (en.kind==='point') return `${en.label}:{x:${en.x},y:${en.y}}`;
+            // Polygon: export centroid as {x,y} + full pts array
+            const cx = +(en.pts.reduce((s,p)=>s+p.x,0)/en.pts.length).toFixed(4);
+            const cy = +(en.pts.reduce((s,p)=>s+p.y,0)/en.pts.length).toFixed(4);
+            const ptsStr = en.pts.map(p=>`[${p.x},${p.y}]`).join(',');
+            return `${en.label}:{x:${cx},y:${cy},pts:[${ptsStr}]}`;
+        }).join(', ');
+        return `    '${name}': { ${entries} },`;
+    });
+    const out = lines.length ? `const _AI_MAP_LANDMARKS = {\n${lines.join('\n')}\n};` : '// No entries yet';
+    document.getElementById('export-out').value = out;
+    return out;
+}
+
+function copyExport() { navigator.clipboard.writeText(generateExport()).then(()=>setStatus('Copied!')); }
+function saveAll()    { localStorage.setItem(STORAGE_KEY, JSON.stringify(allData)); setStatus('Saved to localStorage!'); }
+function loadSaved()  { try { const r=localStorage.getItem(STORAGE_KEY); if(r){ allData=JSON.parse(r); redraw(); renderList(); generateExport(); setStatus('Loaded from localStorage'); } } catch{} }
+
+function exportJSON() {
+    const mapName = currentMapName();
+    const dataToExport = mapName && allData[mapName]
+        ? { [mapName]: allData[mapName] }
+        : allData;
+    const filename = mapName ? `landmarks_${mapName.toLowerCase().replace(/\s+/g,'_')}.json` : 'landmarks.json';
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus(`Downloaded ${filename}`);
+}
+
+function importJSON(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            allData = JSON.parse(e.target.result);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+            redraw(); renderList(); generateExport();
+            setStatus(`Imported ${file.name} — also saved to localStorage`);
+        } catch { setStatus('Invalid JSON file', true); }
+    };
+    reader.readAsText(file);
+    input.value = ''; // reset so same file can be re-imported
+}
+
+function currentMapName() { return maps.find(m=>m.uuid===currentMapUuid)?.displayName || currentMapUuid; }
+function setStatus(msg,warn=false) { const el=document.getElementById('status'); el.textContent=msg; el.style.color=warn?'#df5840':'#888'; }
+
+window.addEventListener('resize', redraw);
+window.addEventListener('mouseup', ()=>{ vertexDrag=null; });
+init();
+</script>
+</body>
+</html>

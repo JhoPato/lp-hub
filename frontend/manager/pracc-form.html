@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc Form</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.back-btn { display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-muted); margin-bottom:20px; cursor:pointer; background:none; border:none; padding:0; }
+        .back-btn:hover { color:var(--text); }
+        .section-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+        .section-title { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:14px; }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .form-row-3 { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end; }
+        .map-entry { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; }
+        .map-row-inner { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 28px; gap:8px; align-items:end; }
+        .remove-btn { background:none; border:none; color:var(--error); cursor:pointer; font-size:1rem; padding:8px 4px; }
+        .screenshot-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:8px; margin-top:12px; }
+        .screenshot-item { position:relative; border-radius:var(--radius); overflow:hidden; aspect-ratio:16/9; background:var(--bg3); }
+        .screenshot-item img { width:100%; height:100%; object-fit:cover; }
+        .screenshot-del { position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.7); border:none; color:var(--error); cursor:pointer; border-radius:2px; padding:2px 6px; font-size:0.7rem; }
+        .vod-note { font-size:0.75rem; color:var(--text-muted); margin-top:4px; }
+        @media(max-width:600px){ .form-row-2 { grid-template-columns:1fr; } .map-row-inner { grid-template-columns:1fr 1fr; } }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <button class="back-btn" onclick="history.back()">← Back to Pracc History</button>
+        <div class="page-header">
+            <h1 id="pageTitle">Add Pracc Entry</h1>
+        </div>
+        <input type="hidden" id="editId">
+
+        <div class="section-card">
+            <div class="section-title">Match Info</div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Opponent *</label>
+                    <input class="form-input" id="fieldOpponent" type="text" placeholder="Team name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date *</label>
+                    <input class="form-input" id="fieldDate" type="date">
+                </div>
+            </div>
+            <div class="form-row-2" style="margin-top:12px;">
+                <div class="form-group">
+                    <label class="form-label">Overall Result *</label>
+                    <select class="form-input" id="fieldResult">
+                        <option value="win">Win</option>
+                        <option value="loss">Loss</option>
+                        <option value="draw">Draw</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">VOD URL (YouTube)</label>
+                    <input class="form-input" id="fieldVod" type="url" placeholder="https://youtu.be/...">
+                    <div class="vod-note">Unlisted YouTube links only</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">Maps Played</div>
+            <div id="mapsList"></div>
+            <button type="button" class="btn btn-secondary" style="margin-top:8px;" onclick="addMap()">+ Add Map</button>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">Notes</div>
+            <div class="form-group">
+                <textarea class="form-input" id="fieldNotes" rows="4" placeholder="Post-match notes, key moments, areas to improve..."></textarea>
+            </div>
+        </div>
+
+        <div class="section-card" id="screenshotsSection" style="display:none;">
+            <div class="section-title">Screenshots</div>
+            <div id="screenshotGrid" class="screenshot-grid"></div>
+            <div style="margin-top:12px;">
+                <label class="form-label">Upload Screenshot</label>
+                <input type="file" id="screenshotFile" accept="image/*" style="display:none">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input class="form-input" id="screenshotCaption" type="text" placeholder="Caption (optional)" style="max-width:240px;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('screenshotFile').click()">📎 Choose File</button>
+                    <button class="btn btn-primary" id="uploadBtn" onclick="uploadScreenshot()" style="display:none;">Upload</button>
+                </div>
+                <div id="selectedFileName" style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;"></div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:4px;">
+            <button class="btn btn-primary" id="saveBtn" onclick="save()">Save Entry</button>
+            <button class="btn btn-secondary" onclick="history.back()">Cancel</button>
+        </div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['manager','captain']);
+const editId = new URLSearchParams(location.search).get('id');
+let maps = [];
+
+const MAPS = [
+    'Abyss','Ascent','Bind','Breeze','Fracture',
+    'Haven','Icebox','Lotus','Pearl','Split','Sunset'
+];
+
+window.addMap = () => {
+    maps.push({ mapName: MAPS[0], result: 'win', scoreUs: 0, scoreThem: 0 });
+    renderMaps();
+};
+window.removeMap = (i) => { maps.splice(i, 1); renderMaps(); };
+window.updateMap = (i, key, val) => { maps[i][key] = val; };
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role === 'captain' ? 'player' : 'manager', 'pracc');
+    initTeamName();
+    document.getElementById('fieldDate').value = new Date().toISOString().split('T')[0];
+
+    if (editId) {
+        document.getElementById('pageTitle').textContent = 'Edit Pracc Entry';
+        document.getElementById('editId').value = editId;
+        document.getElementById('screenshotsSection').style.display = 'block';
+        loadEdit();
+    } else {
+        addMap();
+    }
+
+    document.getElementById('screenshotFile').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            document.getElementById('selectedFileName').textContent = `Selected: ${file.name}`;
+            document.getElementById('uploadBtn').style.display = '';
+        }
+    });
+}
+
+async function initTeamName() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    } catch {}
+}
+
+async function loadEdit() {
+    try {
+        const e = await api(`/api/pracc/${editId}`);
+        document.getElementById('fieldOpponent').value = e.opponent;
+        document.getElementById('fieldDate').value = e.date.split('T')[0];
+        document.getElementById('fieldResult').value = e.overallResult;
+        document.getElementById('fieldVod').value = e.vodUrl || '';
+        document.getElementById('fieldNotes').value = e.notes || '';
+        maps = e.maps.map(m => ({ ...m }));
+        renderMaps();
+        renderScreenshots(e.screenshots || []);
+    } catch (err) { toast(err.message, 'error'); }
+}
+
+function renderMaps() {
+    const el = document.getElementById('mapsList');
+    if (!maps.length) { el.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);">No maps added yet.</p>'; return; }
+    el.innerHTML = maps.map((m, i) => `
+        <div class="map-entry">
+            <div class="map-row-inner">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Map</label>
+                    <select class="form-input" onchange="updateMap(${i},'mapName',this.value)">
+                        ${MAPS.map(name => `<option value="${name}" ${m.mapName===name?'selected':''}>${name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Our Score</label>
+                    <input class="form-input" type="number" min="0" max="30" value="${m.scoreUs||0}" onchange="updateMap(${i},'scoreUs',+this.value)">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Their Score</label>
+                    <input class="form-input" type="number" min="0" max="30" value="${m.scoreThem||0}" onchange="updateMap(${i},'scoreThem',+this.value)">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Result</label>
+                    <select class="form-input" onchange="updateMap(${i},'result',this.value)">
+                        <option value="win" ${m.result==='win'?'selected':''}>Win</option>
+                        <option value="loss" ${m.result==='loss'?'selected':''}>Loss</option>
+                        <option value="draw" ${m.result==='draw'?'selected':''}>Draw</option>
+                    </select>
+                </div>
+                <button class="remove-btn" onclick="removeMap(${i})" title="Remove">✕</button>
+            </div>
+        </div>`).join('');
+}
+
+function renderScreenshots(shots) {
+    const el = document.getElementById('screenshotGrid');
+    if (!shots.length) { el.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);">No screenshots yet.</p>'; return; }
+    el.innerHTML = shots.map(s => `
+        <div class="screenshot-item">
+            <img src="${s.url}" alt="${s.caption||'screenshot'}">
+            <button class="screenshot-del" onclick="delScreenshot('${s._id}')">✕</button>
+        </div>`).join('');
+}
+
+window.delScreenshot = async (sid) => {
+    if (!confirm('Delete this screenshot?')) return;
+    try {
+        await api(`/api/pracc/${editId}/screenshots/${sid}`, { method: 'DELETE' });
+        toast('Screenshot deleted.', 'success');
+        const e = await api(`/api/pracc/${editId}`);
+        renderScreenshots(e.screenshots || []);
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+window.uploadScreenshot = async () => {
+    const file = document.getElementById('screenshotFile').files[0];
+    if (!file) return;
+    const caption = document.getElementById('screenshotCaption').value.trim();
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+
+    const formData = new FormData();
+    formData.append('screenshot', file);
+    if (caption) formData.append('caption', caption);
+
+    const token = localStorage.getItem('lp_hub_token');
+    try {
+        const res = await fetch(`/api/pracc/${editId}/screenshots`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed.');
+        toast('Screenshot uploaded!', 'success');
+        document.getElementById('screenshotFile').value = '';
+        document.getElementById('screenshotCaption').value = '';
+        document.getElementById('selectedFileName').textContent = '';
+        btn.style.display = 'none';
+        const e = await api(`/api/pracc/${editId}`);
+        renderScreenshots(e.screenshots || []);
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Upload'; }
+};
+
+window.save = async () => {
+    const opponent      = document.getElementById('fieldOpponent').value.trim();
+    const date          = document.getElementById('fieldDate').value;
+    const overallResult = document.getElementById('fieldResult').value;
+    const vodUrl        = document.getElementById('fieldVod').value.trim();
+    const notes         = document.getElementById('fieldNotes').value.trim();
+    const id            = document.getElementById('editId').value;
+
+    if (!opponent || !date) { toast('Opponent and date are required.', 'error'); return; }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    const body = { opponent, date, overallResult, maps, notes, vodUrl };
+    try {
+        if (id) {
+            await api(`/api/pracc/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+            toast('Entry updated!', 'success');
+        } else {
+            const created = await api('/api/pracc', { method: 'POST', body: JSON.stringify(body) });
+            toast('Entry created!', 'success');
+            window.location.href = `/manager/pracc-form.html?id=${created._id}`;
+            return;
+        }
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; }
+};</script>
+</body>
+</html>

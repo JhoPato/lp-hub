@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Manage Teams</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.team-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .team-table th { text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; border-bottom:1px solid var(--border); }
+        .team-table td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .team-table tr:last-child td { border-bottom:none; }
+        .team-table tr:hover td { background:var(--bg3); }
+
+        .detail-panel { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-top:20px; }
+        .detail-panel h3 { font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:14px; }
+
+        .player-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem; }
+        .player-row:last-child { border-bottom:none; }
+        .player-avatar { width:32px; height:32px; border-radius:50%; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; color:var(--accent); flex-shrink:0; }
+        .player-info { flex:1; }
+        .player-name { font-weight:600; }
+        .player-meta { font-size:0.72rem; color:var(--text-muted); }
+
+        .invite-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.83rem; }
+        .invite-row:last-child { border-bottom:none; }
+        .invite-code { font-family:monospace; font-size:0.9rem; font-weight:700; color:var(--accent); letter-spacing:0.1em; flex:1; }
+
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; align-items:center; justify-content:center; }
+        .modal-overlay.open { display:flex; }
+        .modal { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:360px; max-width:90vw; }
+        .modal h2 { font-size:1rem; font-weight:700; margin-bottom:18px; }
+        .player-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+        .btn-icon { background:none; border:1px solid var(--border); border-radius:var(--radius); padding:3px 8px; cursor:pointer; font-size:0.75rem; color:var(--text-muted); transition:all 0.15s; }
+        .btn-icon:hover { border-color:var(--accent); color:var(--accent); }
+        .btn-icon.danger:hover { border-color:var(--error); color:var(--error); }
+        .inactive-row { opacity:0.5; }
+        .inactive-badge { font-size:0.65rem; background:rgba(255,68,68,0.12); color:var(--error); padding:2px 6px; border-radius:3px; font-weight:700; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <h1>All Teams</h1>
+                <p>Manage teams, players and invite codes</p>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal()">+ New Team</button>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div id="teamsTableWrap"><p style="color:var(--text-muted);font-size:0.85rem;">Loading...</p></div>
+        </div>
+
+        <div id="teamDetail" style="display:none;">
+            <div class="detail-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <h3 id="detailTitle">Team Detail</h3>
+                    <button class="btn btn-secondary" style="font-size:0.78rem;" onclick="closeDetail()">← Back</button>
+                </div>
+
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:18px;align-items:flex-end;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Name</label>
+                        <input class="form-input" id="editName" type="text" style="margin-top:4px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Tag</label>
+                        <input class="form-input" id="editTag" type="text" maxlength="6" style="margin-top:4px;text-transform:uppercase;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Region</label>
+                        <input class="form-input" id="editRegion" type="text" maxlength="4" style="margin-top:4px;text-transform:uppercase;">
+                    </div>
+                    <button class="btn btn-primary" style="font-size:0.8rem;white-space:nowrap;" onclick="saveTeam()">Save</button>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                    <button class="btn btn-primary" style="font-size:0.8rem;" onclick="genInvite('manager')">+ Manager Invite</button>
+                    <button class="btn btn-secondary" style="font-size:0.8rem;" onclick="genInvite('captain')">+ Captain Invite</button>
+                    <button class="btn btn-secondary" style="font-size:0.8rem;" onclick="genInvite('player')">+ Player Invite</button>
+                    <button class="btn btn-secondary" style="font-size:0.8rem;margin-left:auto;color:var(--error);border-color:rgba(255,68,68,0.3);" onclick="deleteTeam()">🗑 Delete Team</button>
+                </div>
+
+                <div style="margin-bottom:18px;padding:12px 14px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div>
+                        <div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;">Multi-Region Data Gathering</div>
+                        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">Allows players to link a second Riot account from a different region. Stats are combined in the performance view.</div>
+                    </div>
+                    <button id="multiRegionBtn" onclick="toggleMultiRegion()"
+                        style="flex-shrink:0;font-size:0.75rem;padding:6px 14px;border-radius:6px;border:1px solid;cursor:pointer;white-space:nowrap;transition:all .15s;">
+                    </button>
+                </div>
+
+                <h3>Players</h3>
+                <div id="detailPlayers"></div>
+
+                <h3 style="margin-top:20px;">Active Invites</h3>
+                <div id="detailInvites"></div>
+            </div>
+        </div>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="createModal">
+    <div class="modal">
+        <h2>Create New Team</h2>
+        <div class="form-group">
+            <label>Team Name</label>
+            <input type="text" id="newName" placeholder="LP Sigma">
+        </div>
+        <div class="form-group">
+            <label>Tag (short)</label>
+            <input type="text" id="newTag" placeholder="SIG" maxlength="6">
+        </div>
+        <div class="form-group">
+            <label>Region</label>
+            <input type="text" id="newRegion" placeholder="BR, UK, FR...">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="createTeam()">Create</button>
+            <button class="btn btn-secondary" style="flex:1;" onclick="closeCreateModal()">Cancel</button>
+        </div>
+        <div id="createError" class="alert" style="margin-top:10px;"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="inviteCodeModal">
+    <div class="modal" style="max-width:360px;">
+        <h2>Invite Code</h2>
+        <div style="text-align:center;margin:16px 0;">
+            <div style="font-family:monospace;font-size:1.8rem;font-weight:900;letter-spacing:0.2em;color:var(--accent);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px 20px;" id="inviteCodeDisplay">——</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;" id="inviteCodeRole"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="btn btn-primary" onclick="copyInviteCode()">Copy Code</button>
+            <button class="btn btn-secondary" onclick="closeInviteCodeModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['owner']);
+if (!user) throw new Error('Not authorised');
+
+document.getElementById('sidebar').innerHTML = buildSidebar('owner', 'teams');
+
+let teams = [];
+let selectedTeamId = null;
+
+async function loadTeams() {
+    try {
+        teams = await api('/api/admin/teams');
+        renderTable();
+    } catch {
+        document.getElementById('teamsTableWrap').innerHTML = '<p style="color:var(--error);">Failed to load.</p>';
+    }
+}
+
+function renderTable() {
+    const el = document.getElementById('teamsTableWrap');
+    if (!teams.length) { el.innerHTML = '<p style="color:var(--text-muted);padding:12px;">No teams yet.</p>'; return; }
+    el.innerHTML = `<table class="team-table">
+        <thead><tr>
+            <th>Name</th><th>Tag</th><th>Region</th><th>Players</th><th>Manager</th><th></th>
+        </tr></thead>
+        <tbody>${teams.map(t => `
+            <tr>
+                <td style="font-weight:600;">${t.name}</td>
+                <td><span class="badge badge-medium">${t.tag}</span></td>
+                <td style="color:var(--text-muted);">${t.region}</td>
+                <td>${t.playerCount}</td>
+                <td>${t.managerName ? t.managerName : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td style="display:flex;gap:6px;">
+                    <button class="btn btn-secondary" style="font-size:0.75rem;padding:4px 10px;" onclick="openDetail('${t._id}')">Edit</button>
+                    <a href="/manager/team-gallery.html?team=${t._id}" class="btn btn-secondary" style="font-size:0.75rem;padding:4px 10px;">Gallery →</a>
+                    <button class="btn btn-primary" style="font-size:0.75rem;padding:4px 10px;" onclick="enterManagerView('${t._id}')">Manager View</button>
+                </td>
+            </tr>`).join('')}
+        </tbody>
+    </table>`;
+}
+
+function renderMultiRegionBtn(enabled) {
+    const btn = document.getElementById('multiRegionBtn');
+    if (!btn) return;
+    if (enabled) {
+        btn.textContent = '● Active — Deactivate';
+        btn.style.background    = 'rgba(34,197,94,0.12)';
+        btn.style.color         = '#22c55e';
+        btn.style.borderColor   = 'rgba(34,197,94,0.4)';
+    } else {
+        btn.textContent = '○ Inactive — Activate';
+        btn.style.background    = 'transparent';
+        btn.style.color         = 'var(--text-muted)';
+        btn.style.borderColor   = 'var(--border)';
+    }
+}
+
+window.toggleMultiRegion = async () => {
+    const t = teams.find(x => x._id === selectedTeamId);
+    if (!t) return;
+    const newVal = !t.multiRegionEnabled;
+    try {
+        await api(`/api/admin/teams/${selectedTeamId}/features`, {
+            method: 'PATCH',
+            body: JSON.stringify({ multiRegionEnabled: newVal }),
+        });
+        t.multiRegionEnabled = newVal;
+        renderMultiRegionBtn(newVal);
+        toast(`Multi-Region ${newVal ? 'enabled' : 'disabled'} for ${t.name}.`, 'success');
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.openDetail = async (teamId) => {
+    selectedTeamId = teamId;
+    const t = teams.find(x => x._id === teamId);
+    document.getElementById('detailTitle').textContent = t?.name || 'Team';
+    document.getElementById('editName').value   = t?.name   || '';
+    document.getElementById('editTag').value    = t?.tag    || '';
+    document.getElementById('editRegion').value = t?.region || '';
+    renderMultiRegionBtn(!!t?.multiRegionEnabled);
+    document.getElementById('teamDetail').style.display = 'block';
+    document.getElementById('teamDetail').scrollIntoView({ behavior: 'smooth' });
+    await Promise.all([loadDetailPlayers(), loadDetailInvites()]);
+};
+
+window.closeDetail = () => {
+    document.getElementById('teamDetail').style.display = 'none';
+    selectedTeamId = null;
+};
+
+async function loadDetailPlayers() {
+    const el = document.getElementById('detailPlayers');
+    try {
+        const players = await api(`/api/admin/teams/${selectedTeamId}/players`);
+        if (!players.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No players yet.</p>'; return; }
+        el.innerHTML = players.map(p => `
+            <div class="player-row ${p.isActive ? '' : 'inactive-row'}" id="prow-${p._id}">
+                <div class="player-avatar">${p.username.slice(0,2).toUpperCase()}</div>
+                <div class="player-info">
+                    <div class="player-name">${p.username} ${p.isActive ? '' : '<span class="inactive-badge">INACTIVE</span>'}</div>
+                    <div class="player-meta">${p.email}</div>
+                </div>
+                <span class="badge badge-${p.role === 'manager' ? 'high' : p.role === 'captain' ? 'medium' : 'low'}">${p.role}</span>
+                <div class="player-actions">
+                    <select style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 6px;font-size:0.75rem;" onchange="changeRole('${p._id}', this.value)">
+                        <option value="">Role…</option>
+                        <option value="player">player</option>
+                        <option value="captain">captain</option>
+                        <option value="manager">manager</option>
+                    </select>
+                    <button class="btn-icon" title="${p.isActive ? 'Deactivate' : 'Reactivate'}" onclick="toggleActive('${p._id}', ${!p.isActive})">
+                        ${p.isActive ? '🔒' : '🔓'}
+                    </button>
+                    <button class="btn-icon danger" title="Delete account permanently" onclick="deleteUser('${p._id}', '${p.username.replace(/'/g,'')}')">🗑</button>
+                </div>
+            </div>`).join('');
+    } catch {
+        el.innerHTML = '<p style="color:var(--error);font-size:0.85rem;">Failed to load players.</p>';
+    }
+}
+
+async function loadDetailInvites() {
+    const el = document.getElementById('detailInvites');
+    try {
+        const invites = await api(`/api/admin/teams/${selectedTeamId}/invites`);
+        const active = invites.filter(i => !i.isUsed && new Date(i.expiresAt) > new Date());
+        if (!active.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No active invites.</p>'; return; }
+        el.innerHTML = active.map(i => `
+            <div class="invite-row">
+                <span class="invite-code">${i.code}</span>
+                <span class="badge badge-${i.role === 'manager' ? 'high' : i.role === 'captain' ? 'medium' : 'low'}">${i.role}</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">exp ${new Date(i.expiresAt).toLocaleDateString()}</span>
+                <button onclick="revokeInvite('${i._id}')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.8rem;">✕</button>
+            </div>`).join('');
+    } catch {
+        el.innerHTML = '<p style="color:var(--error);font-size:0.85rem;">Failed to load invites.</p>';
+    }
+}
+
+window.genInvite = async (role) => {
+    if (!selectedTeamId) return;
+    try {
+        const inv = await api(`/api/admin/teams/${selectedTeamId}/invite`, {
+            method: 'POST',
+            body: JSON.stringify({ role, expiresInDays: 30 }),
+        });
+        document.getElementById('inviteCodeDisplay').textContent = inv.code;
+        document.getElementById('inviteCodeRole').textContent = role.toUpperCase() + ' · 30 days';
+        document.getElementById('inviteCodeModal').classList.add('open');
+        await loadDetailInvites();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.copyInviteCode = () => {
+    const code = document.getElementById('inviteCodeDisplay').textContent;
+    navigator.clipboard.writeText(code).then(() => toast('Copied!', 'success'));
+};
+
+window.closeInviteCodeModal = () => {
+    document.getElementById('inviteCodeModal').classList.remove('open');
+};
+
+window.revokeInvite = async (inviteId) => {
+    try {
+        await api(`/api/admin/invites/${inviteId}`, { method: 'DELETE' });
+        await loadDetailInvites();
+        toast('Invite revoked.', 'success');
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.changeRole = async (userId, role) => {
+    if (!role || !selectedTeamId) return;
+    try {
+        await api(`/api/admin/teams/${selectedTeamId}/players/${userId}/role`, {
+            method: 'PATCH',
+            body: JSON.stringify({ role }),
+        });
+        toast('Role updated.', 'success');
+        await loadDetailPlayers();
+        await loadTeams();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.toggleActive = async (userId, makeActive) => {
+    try {
+        await api(`/api/admin/teams/${selectedTeamId}/players/${userId}/active`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive: makeActive }),
+        });
+        toast(makeActive ? 'Account reactivated.' : 'Account deactivated.', 'success');
+        await loadDetailPlayers();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.deleteUser = async (userId, username) => {
+    if (!confirm(`⚠️ Permanently delete account "${username}"?\n\nThis cannot be undone.`)) return;
+    try {
+        await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
+        toast(`Account "${username}" deleted.`, 'success');
+        await loadDetailPlayers();
+        await loadTeams();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.saveTeam = async () => {
+    if (!selectedTeamId) return;
+    const name   = document.getElementById('editName').value.trim();
+    const tag    = document.getElementById('editTag').value.trim().toUpperCase();
+    const region = document.getElementById('editRegion').value.trim().toUpperCase();
+    if (!name || !tag || !region) { toast('Name, tag and region are required.', 'error'); return; }
+    try {
+        await api(`/api/admin/teams/${selectedTeamId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name, tag, region }),
+        });
+        toast('Team updated.', 'success');
+        document.getElementById('detailTitle').textContent = name;
+        await loadTeams();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.deleteTeam = async () => {
+    const t = teams.find(x => x._id === selectedTeamId);
+    if (!confirm(`⚠️ Delete team "${t?.name}"?\n\nThis removes the team but does NOT delete player accounts.`)) return;
+    try {
+        await api(`/api/admin/teams/${selectedTeamId}`, { method: 'DELETE' });
+        toast('Team deleted.', 'success');
+        closeDetail();
+        await loadTeams();
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.enterManagerView = async (teamId) => {
+    try {
+        const { token, teamName } = await api(`/api/admin/impersonate/${teamId}`, { method: 'POST' });
+        localStorage.setItem('lp_hub_owner_token', localStorage.getItem('lp_hub_token'));
+        localStorage.setItem('lp_hub_owner_user',  localStorage.getItem('lp_hub_user'));
+        localStorage.setItem('lp_hub_token', token);
+        localStorage.setItem('lp_hub_user', JSON.stringify({ ...user, role: 'manager', teamId }));
+        window.location.href = '/manager/dashboard.html';
+    } catch (err) {
+        toast('Error: ' + err.message, 'error');
+    }
+};
+
+window.openCreateModal = () => {
+    document.getElementById('createModal').classList.add('open');
+    document.getElementById('newName').focus();
+};
+window.closeCreateModal = () => {
+    document.getElementById('createModal').classList.remove('open');
+    document.getElementById('createError').textContent = '';
+};
+
+window.createTeam = async () => {
+    const name   = document.getElementById('newName').value.trim();
+    const tag    = document.getElementById('newTag').value.trim().toUpperCase();
+    const region = document.getElementById('newRegion').value.trim().toUpperCase();
+    const errEl  = document.getElementById('createError');
+    if (!name || !tag || !region) { errEl.textContent = 'All fields required.'; errEl.className = 'alert alert-error show'; return; }
+    try {
+        await api('/api/admin/teams', { method: 'POST', body: JSON.stringify({ name, tag, region }) });
+        closeCreateModal();
+        await loadTeams();
+        toast('Team created!', 'success');
+    } catch (err) {
+        errEl.textContent = err.message;
+        errEl.className = 'alert alert-error show';
+    }
+};
+
+await loadTeams();
+
+const params = new URLSearchParams(location.search);
+const teamParam = params.get('team');
+if (teamParam) window.openDetail(teamParam);</script>
+</body>
+</html>

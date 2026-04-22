@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Cobblemon</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>
+        .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+        .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-muted); padding:8px 20px; font-size:0.85rem; font-weight:600; cursor:pointer; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+        .section-header { display:flex; align-items:center; justify-content:space-between; margin:24px 0 12px; }
+        .section-title  { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding-bottom:8px; border-bottom:1px solid var(--border); flex:1; }
+
+        .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+        @media(max-width:620px){ .form-grid-2,.form-grid-3 { grid-template-columns:1fr; } }
+
+        /* Rules */
+        .rule-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; display:flex; align-items:flex-start; gap:10px; }
+        .rule-icon { font-size:1.3rem; flex-shrink:0; margin-top:2px; }
+        .rule-info { flex:1; min-width:0; }
+        .rule-title { font-weight:700; font-size:0.88rem; }
+        .rule-content { font-size:0.76rem; color:var(--text-muted); margin-top:3px; white-space:pre-wrap; word-break:break-word; }
+        .rule-actions { display:flex; gap:6px; flex-shrink:0; }
+
+        /* VIP Tiers */
+        .tier-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+        .tier-badge { font-size:1.4rem; flex-shrink:0; }
+        .tier-info { flex:1; min-width:0; }
+        .tier-name { font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; }
+        .tier-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .tier-price { font-size:0.78rem; color:var(--accent); margin-top:2px; }
+        .tier-perks { font-size:0.73rem; color:var(--text-muted); margin-top:3px; }
+        .tier-featured { font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; padding:2px 7px; border-radius:3px; background:rgba(223,88,64,0.15); color:var(--accent); border:1px solid rgba(223,88,64,0.3); }
+        .tier-actions { display:flex; gap:6px; flex-shrink:0; }
+
+        /* Bracket */
+        .round-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:12px; overflow:hidden; }
+        .round-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--bg3); }
+        .round-header-left { display:flex; align-items:center; gap:10px; }
+        .round-label-badge { font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); background:rgba(223,88,64,0.12); padding:3px 8px; border-radius:3px; }
+        .round-label-input { background:none; border:none; border-bottom:1px solid var(--border); color:var(--text); font-size:0.88rem; font-weight:600; padding:2px 4px; width:140px; outline:none; }
+        .round-label-input:focus { border-bottom-color:var(--accent); }
+        .round-matches { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+        .round-empty { padding:12px 16px; color:var(--text-muted); font-size:0.8rem; }
+
+        .match-edit-card { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:12px; }
+        .match-edit-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+        .match-num { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); }
+        .match-player-row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:4px; transition:background 0.15s; }
+        .match-player-row.winner-row { background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); }
+        .match-player-row.loser-row  { opacity:0.55; }
+        .match-vs-divider { text-align:center; font-size:0.7rem; font-weight:700; color:var(--text-muted); letter-spacing:0.1em; margin:2px 0; }
+        .btn-winner { background:none; border:1px solid var(--border); border-radius:4px; padding:3px 6px; cursor:pointer; font-size:0.85rem; color:var(--text-muted); flex-shrink:0; transition:all 0.15s; }
+        .btn-winner:hover { border-color:var(--accent); color:var(--accent); }
+        .btn-winner.active { background:rgba(34,197,94,0.15); border-color:#22c55e; color:#22c55e; }
+        .score-input { width:52px; text-align:center; font-weight:700; }
+
+        /* Standings */
+        .standings-edit-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .standings-edit-table th { padding:8px 10px; text-align:left; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); border-bottom:1px solid var(--border); }
+        .standings-edit-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .standings-edit-table tr:last-child td { border-bottom:none; }
+        .rank-num { font-weight:700; color:var(--text-muted); width:32px; }
+        .rank-num.top1 { color:#ffd700; }
+        .rank-num.top2 { color:#c0c0c0; }
+        .rank-num.top3 { color:#cd7f32; }
+
+        /* Shared */
+        .btn-icon { background:none; border:none; cursor:pointer; color:var(--text-muted); padding:4px 6px; border-radius:4px; display:flex; align-items:center; }
+        .btn-icon:hover { background:var(--bg3); color:var(--text); }
+        .btn-icon.danger:hover { color:var(--error,#ef4444); }
+
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:26px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; }
+        .modal-title { font-size:1rem; font-weight:700; margin-bottom:20px; }
+        .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+        .perk-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+        .perk-row input { flex:1; }
+
+        .save-bar { position:sticky; bottom:0; background:var(--bg); border-top:1px solid var(--border); padding:12px 0; display:flex; justify-content:flex-end; gap:10px; margin-top:28px; }
+    </style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>Cobblemon</h1>
+                <p>Manage cobblemon.lostpuppies.org content</p>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setTab('league')"    id="tab-league">League</button>
+            <button class="tab-btn"        onclick="setTab('bracket')"   id="tab-bracket">Bracket</button>
+            <button class="tab-btn"        onclick="setTab('standings')" id="tab-standings">Standings</button>
+            <button class="tab-btn"        onclick="setTab('vip')"       id="tab-vip">VIP</button>
+        </div>
+
+        <!-- ── LEAGUE TAB ────────────────────────────────────────────────── -->
+        <div id="panel-league">
+            <div class="section-title">General Info</div>
+            <div style="height:16px;"></div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">League Name</label>
+                    <input type="text" class="form-input" id="lName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Season</label>
+                    <input type="number" class="form-input" id="lSeason" min="1">
+                </div>
+            </div>
+            <div class="form-grid-3" style="margin-top:12px;">
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-input" id="lStatus">
+                        <option value="em_breve">Coming Soon</option>
+                        <option value="open">Open Registration</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status Label (badge)</label>
+                    <input type="text" class="form-input" id="lStatusLabel" placeholder="e.g. COMING SOON">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="text" class="form-input" id="lStartDate" placeholder="e.g. May 15, 2025">
+                </div>
+            </div>
+            <div class="form-grid-2" style="margin-top:12px;">
+                <div class="form-group">
+                    <label class="form-label">Format</label>
+                    <input type="text" class="form-input" id="lFormat" placeholder="e.g. VGC · Best of 3 · Swiss">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Logo URL</label>
+                    <input type="text" class="form-input" id="lLogo" placeholder="https://…">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+                <label class="form-label">Description</label>
+                <textarea class="form-input" id="lDescription" rows="3" style="resize:vertical;"></textarea>
+            </div>
+
+            <div class="section-header" style="margin-top:28px;">
+                <div class="section-title">Registration</div>
+            </div>
+            <div class="form-grid-3" style="margin-top:12px;">
+                <div class="form-group">
+                    <label class="form-label">Registration Status</label>
+                    <select class="form-input" id="regStatus">
+                        <option value="coming_soon">Coming Soon</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Slots</label>
+                    <input type="number" class="form-input" id="regMax" min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Current Participants</label>
+                    <input type="number" class="form-input" id="regCurrent" min="0">
+                </div>
+            </div>
+            <div class="form-grid-2" style="margin-top:12px;">
+                <div class="form-group">
+                    <label class="form-label">Discord Link</label>
+                    <input type="url" class="form-input" id="regDiscord" placeholder="https://discord.gg/…">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Form Link</label>
+                    <input type="url" class="form-input" id="regForm" placeholder="https://…">
+                </div>
+            </div>
+
+            <div class="section-header" style="margin-top:28px;">
+                <div class="section-title">Rules</div>
+                <button class="btn btn-primary" style="margin-left:16px;flex-shrink:0;" onclick="openRuleModal()">+ Rule</button>
+            </div>
+            <div id="rulesList" style="margin-top:12px;"></div>
+
+            <div class="save-bar">
+                <button class="btn" onclick="loadLeague()">Discard</button>
+                <button class="btn btn-primary" onclick="saveLeague()">Save League</button>
+            </div>
+        </div>
+
+        <!-- ── BRACKET TAB ───────────────────────────────────────────────── -->
+        <div id="panel-bracket" style="display:none;">
+            <div class="section-header" style="margin-top:4px;">
+                <div class="section-title">Rounds &amp; Matches</div>
+                <div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0;">
+                    <button class="btn" onclick="addRound()">+ Empty Round</button>
+                    <button class="btn btn-primary" onclick="autoPairNextRound()" title="Swiss pairing: pairs players by current W/L from Standings">🤝 Auto-pair next round</button>
+                </div>
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin:0 0 16px;">
+                <strong>Auto-pair</strong> reads players from the Standings tab, groups by wins, and creates matches automatically (Swiss format).
+                Add players in Standings first, then click Auto-pair after each round to generate the next one.
+                Click 🏆 to mark the winner of each match.
+            </p>
+            <div id="roundsList"></div>
+            <div class="save-bar">
+                <button class="btn" onclick="loadLeague()">Discard</button>
+                <button class="btn btn-primary" onclick="saveBracket()">Save Bracket</button>
+            </div>
+        </div>
+
+        <!-- ── STANDINGS TAB ─────────────────────────────────────────────── -->
+        <div id="panel-standings" style="display:none;">
+            <div class="section-header" style="margin-top:4px;">
+                <div class="section-title">Player Standings</div>
+                <div style="display:flex;gap:8px;margin-left:16px;flex-shrink:0;">
+                    <button class="btn" onclick="sortStandings()">↕ Sort by PTS</button>
+                    <button class="btn btn-primary" onclick="addStandingRow()">+ Player</button>
+                </div>
+            </div>
+            <div id="standingsTable" style="margin-top:4px;"></div>
+            <div class="save-bar">
+                <button class="btn" onclick="loadLeague()">Discard</button>
+                <button class="btn btn-primary" onclick="saveStandings()">Save Standings</button>
+            </div>
+        </div>
+
+        <!-- ── VIP TAB ──────────────────────────────────────────────────── -->
+        <div id="panel-vip" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div class="section-title" style="border:none;padding:0;">VIP Tiers</div>
+                <button class="btn btn-primary" style="font-size:0.8rem;" onclick="openTierModal()">+ Tier</button>
+            </div>
+            <div id="tiersList"></div>
+
+            <div class="save-bar">
+                <button class="btn" onclick="loadVip()">Discard</button>
+                <button class="btn btn-primary" onclick="saveVip()">Save VIP</button>
+            </div>
+        </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- Rule Modal -->
+<div class="modal-overlay" id="ruleModal" style="display:none;" onclick="if(event.target===this)closeRuleModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="ruleMTitle">Nova Regra</div>
+        <input type="hidden" id="ruleEditIdx">
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label class="form-label">ID (único)</label>
+                <input type="text" class="form-input" id="rId" placeholder="ex: banlist">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ícone (emoji)</label>
+                <input type="text" class="form-input" id="rIcon" placeholder="🚫">
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Título</label>
+            <input type="text" class="form-input" id="rTitle">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Conteúdo</label>
+            <textarea class="form-input" id="rContent" rows="4" style="resize:vertical;"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeRuleModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveRule()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Tier Modal -->
+<div class="modal-overlay" id="tierModal" style="display:none;" onclick="if(event.target===this)closeTierModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-title" id="tierMTitle">Novo Tier</div>
+        <input type="hidden" id="tierEditIdx">
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label class="form-label">ID</label>
+                <input type="text" class="form-input" id="tId" placeholder="ex: gold">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Nome</label>
+                <input type="text" class="form-input" id="tName" placeholder="ex: Gold">
+            </div>
+        </div>
+        <div class="form-grid-3" style="margin-top:12px;">
+            <div class="form-group">
+                <label class="form-label">Preço</label>
+                <input type="text" class="form-input" id="tPrice" placeholder="€ 5,00">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Período</label>
+                <input type="text" class="form-input" id="tPeriod" placeholder="/ month">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ícone (emoji)</label>
+                <input type="text" class="form-input" id="tBadge" placeholder="⭐">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Imagem do badge (URL)</label>
+                <input type="url" class="form-input" id="tBadgeImg" placeholder="https://cdn.jsdelivr.net/gh/PokeAPI/sprites/sprites/items/great-ball.png">
+            </div>
+        </div>
+        <div class="form-grid-2" style="margin-top:12px;">
+            <div class="form-group">
+                <label class="form-label">Cor (hex)</label>
+                <input type="text" class="form-input" id="tColor" placeholder="#ffaa00">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;padding-bottom:2px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.82rem;color:var(--text-muted);">
+                    <input type="checkbox" id="tFeatured"> Destaque (featured)
+                </label>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">Stripe Link</label>
+            <input type="url" class="form-input" id="tStripe" placeholder="https://buy.stripe.com/…">
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label class="form-label" style="margin:0;">Perks</label>
+                <button type="button" class="btn" style="font-size:0.75rem;padding:4px 10px;" onclick="addPerkRow()">+ Perk</button>
+            </div>
+            <div id="perksContainer"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeTierModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveTier()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['social', 'owner']);
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'cobblemon');
+    init();
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let leagueData = null;
+let vipData    = null;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+    await Promise.all([loadLeague(), loadVip()]);
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+window.setTab = function(tab) {
+    ['league','bracket','standings','vip'].forEach(t => {
+        document.getElementById(`panel-${t}`).style.display = t === tab ? '' : 'none';
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    });
+};
+
+// ── LEAGUE ───────────────────────────────────────────────────────────────────
+async function loadLeague() {
+    try {
+        leagueData = await api('/api/cobblemon/league');
+        renderLeagueForm();
+        renderRoundsList();
+        renderStandingsTable();
+    } catch (err) {
+        toast('Erro ao carregar Liga: ' + err.message, 'error');
+    }
+}
+
+function renderLeagueForm() {
+    const d = leagueData;
+    document.getElementById('lName').value        = d.name        || '';
+    document.getElementById('lSeason').value      = d.season      || 1;
+    document.getElementById('lStatus').value      = d.status      || 'em_breve';
+    document.getElementById('lStatusLabel').value = d.statusLabel || '';
+    document.getElementById('lStartDate').value   = d.startDate   || '';
+    document.getElementById('lFormat').value      = d.format      || '';
+    document.getElementById('lLogo').value        = d.logo        || '';
+    document.getElementById('lDescription').value = d.description || '';
+
+    const reg = d.registration || {};
+    document.getElementById('regStatus').value  = reg.status             || 'coming_soon';
+    document.getElementById('regMax').value     = reg.maxParticipants    || 16;
+    document.getElementById('regCurrent').value = reg.currentParticipants|| 0;
+    document.getElementById('regDiscord').value = reg.discordLink        || '';
+    document.getElementById('regForm').value    = reg.formLink           || '';
+
+    renderRulesList();
+}
+
+function buildLeaguePayload() {
+    return {
+        name:        document.getElementById('lName').value.trim(),
+        season:      parseInt(document.getElementById('lSeason').value) || 1,
+        logo:        document.getElementById('lLogo').value.trim(),
+        status:      document.getElementById('lStatus').value,
+        statusLabel: document.getElementById('lStatusLabel').value.trim(),
+        startDate:   document.getElementById('lStartDate').value.trim(),
+        format:      document.getElementById('lFormat').value.trim(),
+        description: document.getElementById('lDescription').value.trim(),
+        rules:       leagueData.rules    || [],
+        registration: {
+            status:              document.getElementById('regStatus').value,
+            maxParticipants:     parseInt(document.getElementById('regMax').value)     || 16,
+            currentParticipants: parseInt(document.getElementById('regCurrent').value) || 0,
+            discordLink:         document.getElementById('regDiscord').value.trim(),
+            formLink:            document.getElementById('regForm').value.trim(),
+        },
+        rounds:    leagueData.rounds    || [],
+        standings: leagueData.standings || [],
+    };
+}
+
+async function savePayload(payload, successMsg) {
+    try {
+        const res = await api('/api/cobblemon/league', { method: 'PUT', body: JSON.stringify(payload) });
+        leagueData = res.data;
+        toast(successMsg, 'success');
+    } catch (err) {
+        toast('Erro: ' + err.message, 'error');
+    }
+}
+
+window.saveLeague = async function() {
+    await savePayload(buildLeaguePayload(), 'Liga guardada!');
+    renderRoundsList();
+    renderStandingsTable();
+};
+
+// ── Rules list ────────────────────────────────────────────────────────────────
+function renderRulesList() {
+    const rules = leagueData.rules || [];
+    const el = document.getElementById('rulesList');
+    if (!rules.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">Sem regras. Adiciona uma acima.</p>';
+        return;
+    }
+    el.innerHTML = rules.map((r, i) => `
+        <div class="rule-card">
+            <div class="rule-icon">${r.icon || '📌'}</div>
+            <div class="rule-info">
+                <div class="rule-title">${esc(r.title)}</div>
+                <div class="rule-content">${esc(r.content)}</div>
+            </div>
+            <div class="rule-actions">
+                <button class="btn-icon" onclick="editRule(${i})" title="Editar">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                </button>
+                <button class="btn-icon danger" onclick="deleteRule(${i})" title="Remover">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                </button>
+            </div>
+        </div>`).join('');
+}
+
+// ── Rules modal ───────────────────────────────────────────────────────────────
+window.openRuleModal = function() {
+    document.getElementById('ruleMTitle').textContent = 'Nova Regra';
+    document.getElementById('ruleEditIdx').value = '';
+    ['rId','rIcon','rTitle','rContent'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ruleModal').style.display = 'flex';
+};
+
+window.editRule = function(i) {
+    const r = leagueData.rules[i];
+    document.getElementById('ruleMTitle').textContent = 'Editar Regra';
+    document.getElementById('ruleEditIdx').value = i;
+    document.getElementById('rId').value      = r.id      || '';
+    document.getElementById('rIcon').value    = r.icon    || '';
+    document.getElementById('rTitle').value   = r.title   || '';
+    document.getElementById('rContent').value = r.content || '';
+    document.getElementById('ruleModal').style.display = 'flex';
+};
+
+window.closeRuleModal = function() {
+    document.getElementById('ruleModal').style.display = 'none';
+};
+
+window.saveRule = function() {
+    const idx = document.getElementById('ruleEditIdx').value;
+    const rule = {
+        id:      document.getElementById('rId').value.trim(),
+        icon:    document.getElementById('rIcon').value.trim() || '📌',
+        title:   document.getElementById('rTitle').value.trim(),
+        content: document.getElementById('rContent').value.trim(),
+    };
+    if (!rule.title) { toast('Título obrigatório.', 'error'); return; }
+    if (!leagueData.rules) leagueData.rules = [];
+    if (idx !== '') {
+        leagueData.rules[parseInt(idx)] = rule;
+    } else {
+        leagueData.rules.push(rule);
+    }
+    renderRulesList();
+    closeRuleModal();
+};
+
+window.deleteRule = function(i) {
+    if (!confirm('Remover esta regra?')) return;
+    leagueData.rules.splice(i, 1);
+    renderRulesList();
+};
+
+// ── BRACKET ───────────────────────────────────────────────────────────────────
+function renderRoundsList() {
+    const rounds = leagueData?.rounds || [];
+    const el = document.getElementById('roundsList');
+    if (!el) return;
+
+    if (!rounds.length) {
+        el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;">
+            No rounds yet. Click <strong>⚙ Auto-generate</strong> to create rounds based on Max Slots, or <strong>+ Round</strong> to add one manually.
+        </div>`;
+        return;
+    }
+
+    el.innerHTML = rounds.map((r, ri) => `
+        <div class="round-card">
+            <div class="round-header">
+                <div class="round-header-left">
+                    <span class="round-label-badge">R${r.round}</span>
+                    <input class="round-label-input" value="${esc(r.label || '')}"
+                        oninput="leagueData.rounds[${ri}].label = this.value"
+                        placeholder="Round label…">
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button class="btn" style="font-size:0.75rem;padding:4px 10px;" onclick="addMatch(${ri})">+ Match</button>
+                    <button class="btn-icon danger" onclick="deleteRound(${ri})" title="Remove round">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                    </button>
+                </div>
+            </div>
+            ${r.matches?.length
+                ? `<div class="round-matches">${r.matches.map((m, mi) => renderMatchCard(ri, mi, m)).join('')}</div>`
+                : `<div class="round-empty">No matches. Click <strong>+ Match</strong> to add one.</div>`
+            }
+        </div>
+    `).join('');
+}
+
+function renderMatchCard(ri, mi, m) {
+    const w = m.winner;
+    return `
+        <div class="match-edit-card">
+            <div class="match-edit-header">
+                <span class="match-num">Match ${mi + 1}</span>
+                <button class="btn-icon danger" onclick="deleteMatch(${ri},${mi})" title="Remove match">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="match-player-row ${w === 1 ? 'winner-row' : w === 2 ? 'loser-row' : ''}">
+                <button class="btn-winner ${w === 1 ? 'active' : ''}" onclick="setWinner(${ri},${mi},1)" title="Mark Player 1 as winner">🏆</button>
+                <input class="form-input" style="flex:1;" value="${esc(m.player1?.name || '')}"
+                    oninput="leagueData.rounds[${ri}].matches[${mi}].player1.name = this.value"
+                    placeholder="Player 1">
+                <input class="form-input score-input" type="number" min="0"
+                    value="${m.player1?.score ?? ''}"
+                    oninput="leagueData.rounds[${ri}].matches[${mi}].player1.score = this.value === '' ? null : parseInt(this.value)"
+                    placeholder="—">
+            </div>
+            <div class="match-vs-divider">VS</div>
+            <div class="match-player-row ${w === 2 ? 'winner-row' : w === 1 ? 'loser-row' : ''}">
+                <button class="btn-winner ${w === 2 ? 'active' : ''}" onclick="setWinner(${ri},${mi},2)" title="Mark Player 2 as winner">🏆</button>
+                <input class="form-input" style="flex:1;" value="${esc(m.player2?.name || '')}"
+                    oninput="leagueData.rounds[${ri}].matches[${mi}].player2.name = this.value"
+                    placeholder="Player 2">
+                <input class="form-input score-input" type="number" min="0"
+                    value="${m.player2?.score ?? ''}"
+                    oninput="leagueData.rounds[${ri}].matches[${mi}].player2.score = this.value === '' ? null : parseInt(this.value)"
+                    placeholder="—">
+            </div>
+        </div>
+    `;
+}
+
+window.setWinner = function(ri, mi, player) {
+    const m = leagueData.rounds[ri].matches[mi];
+    m.winner = m.winner === player ? null : player;
+    renderRoundsList();
+};
+
+window.addRound = function() {
+    if (!leagueData.rounds) leagueData.rounds = [];
+    const n = leagueData.rounds.length + 1;
+    leagueData.rounds.push({ round: n, label: `Round ${n}`, matches: [] });
+    renderRoundsList();
+};
+
+window.deleteRound = function(ri) {
+    if (!confirm('Remove this round and all its matches?')) return;
+    leagueData.rounds.splice(ri, 1);
+    leagueData.rounds.forEach((r, i) => r.round = i + 1);
+    renderRoundsList();
+};
+
+window.addMatch = function(ri) {
+    const mi = leagueData.rounds[ri].matches.length;
+    leagueData.rounds[ri].matches.push({
+        id: `r${ri + 1}m${mi + 1}`,
+        player1: { name: '', score: null },
+        player2: { name: '', score: null },
+        winner: null
+    });
+    renderRoundsList();
+};
+
+window.deleteMatch = function(ri, mi) {
+    leagueData.rounds[ri].matches.splice(mi, 1);
+    renderRoundsList();
+};
+
+window.autoPairNextRound = function() {
+    const standings = leagueData.standings || [];
+    if (standings.length < 2) {
+        toast('Add at least 2 players in the Standings tab first.', 'error');
+        return;
+    }
+
+    // Sort players: most wins first, then buchholz, then pts as tiebreakers
+    const sorted = [...standings].sort((a, b) =>
+        (b.wins - a.wins) || (b.buchholz - a.buchholz) || (b.pts - a.pts)
+    );
+
+    // Group by wins count
+    const groups = {};
+    sorted.forEach(p => {
+        const key = p.wins ?? 0;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(p);
+    });
+
+    // Pair within each group (top W group first), carry odd player down to next group
+    const pairs = [];
+    let carry = null;
+    const winKeys = Object.keys(groups).map(Number).sort((a, b) => b - a);
+
+    for (const key of winKeys) {
+        const players = carry ? [carry, ...groups[key]] : [...groups[key]];
+        carry = null;
+        for (let i = 0; i + 1 < players.length; i += 2) {
+            pairs.push([players[i], players[i + 1]]);
+        }
+        if (players.length % 2 !== 0) {
+            carry = players[players.length - 1];
+        }
+    }
+    // Odd total players → last one gets a BYE (auto-win)
+    if (carry) {
+        pairs.push([carry, { player: 'BYE' }]);
+        toast('Odd number of players — last player receives a BYE (auto-win).', 'success');
+    }
+
+    if (!leagueData.rounds) leagueData.rounds = [];
+    const ri = leagueData.rounds.length;
+    const totalRounds = Math.ceil(Math.log2(standings.length)) + 1;
+    const isFinals = ri === totalRounds - 1;
+    const label = isFinals ? 'Finals' : `Round ${ri + 1}`;
+
+    const matches = pairs.map((pair, mi) => ({
+        id: `r${ri + 1}m${mi + 1}`,
+        player1: { name: pair[0].player, score: null },
+        player2: { name: pair[1].player, score: null },
+        winner: null
+    }));
+
+    leagueData.rounds.push({ round: ri + 1, label, matches });
+    renderRoundsList();
+    toast(`${label} created — ${matches.length} match(es), Swiss pairings by W/L.`, 'success');
+};
+
+window.saveBracket = async function() {
+    const payload = { ...buildLeaguePayload(), rounds: leagueData.rounds || [] };
+    await savePayload(payload, 'Bracket saved!');
+};
+
+// ── STANDINGS ─────────────────────────────────────────────────────────────────
+function renderStandingsTable() {
+    const standings = leagueData?.standings || [];
+    const el = document.getElementById('standingsTable');
+    if (!el) return;
+
+    if (!standings.length) {
+        el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;">
+            No players yet. Click <strong>+ Player</strong> to add one.
+        </div>`;
+        return;
+    }
+
+    const rankClass = i => i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+
+    el.innerHTML = `
+        <table class="standings-edit-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Player</th>
+                    <th style="width:65px;">W</th>
+                    <th style="width:65px;">L</th>
+                    <th style="width:65px;">PTS</th>
+                    <th style="width:80px;">Buchholz</th>
+                    <th style="width:40px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${standings.map((s, i) => `
+                    <tr>
+                        <td><span class="rank-num ${rankClass(i)}">#${i + 1}</span></td>
+                        <td>
+                            <input class="form-input" value="${esc(s.player || '')}"
+                                oninput="leagueData.standings[${i}].player = this.value"
+                                placeholder="Player name" style="width:100%;min-width:120px;">
+                        </td>
+                        <td>
+                            <input class="form-input" type="number" min="0" value="${s.wins || 0}"
+                                oninput="leagueData.standings[${i}].wins = parseInt(this.value)||0"
+                                style="width:55px;text-align:center;">
+                        </td>
+                        <td>
+                            <input class="form-input" type="number" min="0" value="${s.losses || 0}"
+                                oninput="leagueData.standings[${i}].losses = parseInt(this.value)||0"
+                                style="width:55px;text-align:center;">
+                        </td>
+                        <td>
+                            <input class="form-input" type="number" min="0" value="${s.pts || 0}"
+                                oninput="leagueData.standings[${i}].pts = parseInt(this.value)||0"
+                                style="width:55px;text-align:center;">
+                        </td>
+                        <td>
+                            <input class="form-input" type="number" min="0" value="${s.buchholz || 0}"
+                                oninput="leagueData.standings[${i}].buchholz = parseInt(this.value)||0"
+                                style="width:65px;text-align:center;">
+                        </td>
+                        <td>
+                            <button class="btn-icon danger" onclick="deleteStanding(${i})" title="Remove player">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+window.addStandingRow = function() {
+    if (!leagueData.standings) leagueData.standings = [];
+    leagueData.standings.push({ rank: leagueData.standings.length + 1, player: '', wins: 0, losses: 0, pts: 0, buchholz: 0 });
+    renderStandingsTable();
+};
+
+window.deleteStanding = function(i) {
+    leagueData.standings.splice(i, 1);
+    leagueData.standings.forEach((s, idx) => s.rank = idx + 1);
+    renderStandingsTable();
+};
+
+window.sortStandings = function() {
+    leagueData.standings = (leagueData.standings || []).sort((a, b) =>
+        (b.pts - a.pts) || (b.buchholz - a.buchholz) || (b.wins - a.wins)
+    );
+    leagueData.standings.forEach((s, i) => s.rank = i + 1);
+    renderStandingsTable();
+    toast('Sorted by PTS → Buchholz → Wins', 'success');
+};
+
+window.saveStandings = async function() {
+    const payload = { ...buildLeaguePayload(), standings: leagueData.standings || [] };
+    await savePayload(payload, 'Standings saved!');
+};
+
+// ── VIP ──────────────────────────────────────────────────────────────────────
+async function loadVip() {
+    try {
+        vipData = await api('/api/cobblemon/vip');
+        renderTiersList();
+    } catch (err) {
+        toast('Erro ao carregar VIP: ' + err.message, 'error');
+    }
+}
+
+function renderTiersList() {
+    const tiers = vipData?.tiers || [];
+    const el = document.getElementById('tiersList');
+    if (!el) return;
+    if (!tiers.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">Sem tiers. Adiciona um acima.</p>';
+        return;
+    }
+    el.innerHTML = tiers.map((t, i) => `
+        <div class="tier-card">
+            <div class="tier-badge">${t.badgeImg ? `<img src="${esc(t.badgeImg)}" style="width:32px;height:32px;object-fit:contain;image-rendering:pixelated;">` : (t.badge || '⭐')}</div>
+            <div class="tier-info">
+                <div class="tier-name">
+                    <span class="tier-dot" style="background:${esc(t.color||'#888')};"></span>
+                    ${esc(t.name)}
+                    ${t.featured ? '<span class="tier-featured">Featured</span>' : ''}
+                </div>
+                <div class="tier-price">${esc(t.price)} <span style="color:var(--text-muted);font-size:0.72rem;">${esc(t.period)}</span></div>
+                <div class="tier-perks">${(t.perks||[]).slice(0,2).map(p => '• ' + esc(p)).join(' &nbsp;')}${t.perks?.length > 2 ? ` <span style="color:var(--accent);">+${t.perks.length-2}</span>` : ''}</div>
+            </div>
+            <div class="tier-actions">
+                <button class="btn-icon" onclick="editTier(${i})" title="Editar">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+                </button>
+                <button class="btn-icon danger" onclick="deleteTier(${i})" title="Remover">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                </button>
+            </div>
+        </div>`).join('');
+}
+
+window.saveVip = async function() {
+    try {
+        const res = await api('/api/cobblemon/vip', { method: 'PUT', body: JSON.stringify(vipData) });
+        vipData = res.data;
+        renderTiersList();
+        toast('VIP guardado!', 'success');
+    } catch (err) {
+        toast('Erro: ' + err.message, 'error');
+    }
+};
+
+// ── Tier modal ────────────────────────────────────────────────────────────────
+window.openTierModal = function() {
+    document.getElementById('tierMTitle').textContent = 'Novo Tier';
+    document.getElementById('tierEditIdx').value = '';
+    document.getElementById('tId').value      = '';
+    document.getElementById('tName').value    = '';
+    document.getElementById('tPrice').value   = '';
+    document.getElementById('tPeriod').value  = '/ month';
+    document.getElementById('tBadge').value   = '';
+    document.getElementById('tColor').value   = '#888888';
+    document.getElementById('tStripe').value  = '';
+    document.getElementById('tFeatured').checked = false;
+    document.getElementById('perksContainer').innerHTML = '';
+    addPerkRow();
+    document.getElementById('tierModal').style.display = 'flex';
+};
+
+window.editTier = function(i) {
+    const t = vipData.tiers[i];
+    document.getElementById('tierMTitle').textContent = 'Editar Tier';
+    document.getElementById('tierEditIdx').value = i;
+    document.getElementById('tId').value      = t.id      || '';
+    document.getElementById('tName').value    = t.name    || '';
+    document.getElementById('tPrice').value   = t.price   || '';
+    document.getElementById('tPeriod').value  = t.period  || '';
+    document.getElementById('tBadge').value    = t.badge    || '';
+    document.getElementById('tBadgeImg').value = t.badgeImg || '';
+    document.getElementById('tColor').value   = t.color   || '#888888';
+    document.getElementById('tStripe').value  = t.stripeLink || '';
+    document.getElementById('tFeatured').checked = !!t.featured;
+    const pc = document.getElementById('perksContainer');
+    pc.innerHTML = '';
+    (t.perks || []).forEach(p => addPerkRow(p));
+    if (!(t.perks?.length)) addPerkRow();
+    document.getElementById('tierModal').style.display = 'flex';
+};
+
+window.closeTierModal = function() {
+    document.getElementById('tierModal').style.display = 'none';
+};
+
+window.addPerkRow = function(val = '') {
+    const row = document.createElement('div');
+    row.className = 'perk-row';
+    row.innerHTML = `<input type="text" class="form-input" value="${esc(val)}" placeholder="Perk…">
+        <button type="button" class="btn-icon danger" onclick="this.parentElement.remove()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>`;
+    document.getElementById('perksContainer').appendChild(row);
+};
+
+window.saveTier = function() {
+    const idx  = document.getElementById('tierEditIdx').value;
+    const perks = [...document.querySelectorAll('#perksContainer .perk-row input')]
+        .map(i => i.value.trim()).filter(Boolean);
+
+    const tier = {
+        id:         document.getElementById('tId').value.trim(),
+        name:       document.getElementById('tName').value.trim(),
+        color:      document.getElementById('tColor').value.trim() || '#888888',
+        price:      document.getElementById('tPrice').value.trim(),
+        period:     document.getElementById('tPeriod').value.trim(),
+        stripeLink: document.getElementById('tStripe').value.trim(),
+        badge:      document.getElementById('tBadge').value.trim() || '⭐',
+        badgeImg:   document.getElementById('tBadgeImg').value.trim(),
+        featured:   document.getElementById('tFeatured').checked,
+        perks,
+    };
+    if (!tier.name) { toast('Nome obrigatório.', 'error'); return; }
+    if (!vipData.tiers) vipData.tiers = [];
+
+    if (idx !== '') {
+        vipData.tiers[parseInt(idx)] = tier;
+    } else {
+        vipData.tiers.push(tier);
+    }
+    renderTiersList();
+    closeTierModal();
+};
+
+window.deleteTier = function(i) {
+    if (!confirm('Remover este tier?')) return;
+    vipData.tiers.splice(i, 1);
+    renderTiersList();
+};
+
+// ── Util ──────────────────────────────────────────────────────────────────────
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

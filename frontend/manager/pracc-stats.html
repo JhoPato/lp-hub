@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc Stats</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+        .tab-btn { padding:10px 20px; background:none; border:none; border-bottom:2px solid transparent;
+            color:var(--text-muted); font-size:0.82rem; font-weight:600; text-transform:uppercase;
+            letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; margin-bottom:-1px; }
+        .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-pane { display:none; } .tab-pane.active { display:block; }
+
+        
+        .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:24px; }
+        .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+        .stat-value { font-size:2rem; font-weight:900; color:var(--accent); line-height:1; }
+        .stat-label { font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+        .stat-value.win-color  { color:var(--success); }
+        .stat-value.loss-color { color:var(--error); }
+        .stat-value.draw-color { color:var(--text-muted); }
+
+        .map-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .map-name { font-size:0.8rem; font-weight:600; width:100px; flex-shrink:0; color:var(--text); }
+        .map-bar-track { flex:1; height:14px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+        .map-bar-fill { height:100%; border-radius:2px; transition:width 0.6s ease; }
+        .map-bar-fill.good { background:var(--success); }
+        .map-bar-fill.mid  { background:#f0a500; }
+        .map-bar-fill.bad  { background:var(--error); }
+        .map-pct { font-size:0.75rem; font-weight:700; width:38px; text-align:right; flex-shrink:0; }
+        .map-record { font-size:0.7rem; color:var(--text-muted); width:54px; flex-shrink:0; }
+
+        .trend-grid { display:flex; flex-wrap:wrap; gap:5px; padding:4px 0; }
+        .trend-dot { width:22px; height:22px; border-radius:3px; flex-shrink:0; display:flex;
+            align-items:center; justify-content:center; font-size:0.6rem; font-weight:900; cursor:default; }
+        .trend-dot.W { background:rgba(87,242,135,0.2); color:var(--success); }
+        .trend-dot.L { background:rgba(255,68,68,0.15); color:var(--error); }
+        .trend-dot.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+
+        .opp-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:0.83rem; }
+        .opp-name { flex:1; font-weight:600; }
+
+        .side-bar-wrap { display:flex; gap:20px; }
+        .side-bar { flex:1; }
+        .side-label { font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; }
+        .side-bar-track { height:10px; background:var(--bg3); border-radius:5px; overflow:hidden; }
+        .side-bar-fill { height:100%; border-radius:5px; }
+
+        
+        .player-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .player-table th { font-size:0.65rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; text-align:right;
+            border-bottom:1px solid var(--border); white-space:nowrap; }
+        .player-table th:first-child { text-align:left; }
+        .player-table td { padding:10px 10px; border-bottom:1px solid rgba(255,255,255,0.04);
+            text-align:right; vertical-align:middle; }
+        .player-table td:first-child { text-align:left; }
+        .player-table tr:hover td { background:var(--bg2); }
+        .player-name-cell { display:flex; align-items:center; gap:8px; font-weight:600; }
+        .tag-muted { font-size:0.72rem; color:var(--text-muted); font-weight:400; }
+        .acs-val { font-weight:700; color:var(--accent); }
+        .kast-val { color:var(--success); }
+        .hs-val   { color:#f0a500; }
+        .mk-pill { display:inline-block; padding:1px 5px; border-radius:2px; font-size:0.68rem;
+            font-weight:700; margin-right:2px; }
+        .mk2 { background:rgba(255,255,255,0.06); }
+        .mk3 { background:rgba(240,165,0,0.15); color:#f0a500; }
+        .mk4 { background:rgba(87,242,135,0.12); color:var(--success); }
+        .mk5 { background:rgba(229,57,53,0.15); color:var(--error); }
+
+        
+        .mh-table { width:100%; border-collapse:collapse; font-size:0.83rem; }
+        .mh-table th { font-size:0.65rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:0.08em; color:var(--text-muted); padding:8px 10px; text-align:left;
+            border-bottom:1px solid var(--border); }
+        .mh-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .mh-table tr:hover td { background:var(--bg2); }
+        .result-chip { display:inline-block; padding:2px 8px; border-radius:3px;
+            font-size:0.72rem; font-weight:700; }
+        .result-chip.W { background:rgba(87,242,135,0.15); color:var(--success); }
+        .result-chip.L { background:rgba(255,68,68,0.12); color:var(--error); }
+        .result-chip.D { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .side-mini { font-size:0.72rem; color:var(--text-muted); }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header" style="display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;">
+                <h1>Pracc Stats</h1>
+                <p id="statsSubtitle" style="color:var(--text-muted);">Loading...</p>
+            </div>
+            <button class="btn btn-secondary" onclick="openMergeModal()" style="font-size:0.8rem;">Merge Accounts</button>
+            <a href="/manager/pracc-upload.html" class="btn btn-primary" style="text-decoration:none;">⬆ Import Match</a>
+        </div>
+
+        <!-- Merge player accounts modal -->
+        <div id="mergeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000;align-items:center;justify-content:center;">
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;position:relative;">
+                <button onclick="closeMergeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">×</button>
+                <h2 style="margin:0 0 6px;font-size:1.05rem;">Merge Player Accounts</h2>
+                <p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 20px;">Rewrite alt account names to match the primary account across all imported matches. Stats will consolidate automatically.</p>
+
+                <label style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Primary Account</label>
+                <div style="display:flex;gap:8px;margin-top:6px;margin-bottom:18px;">
+                    <input id="mergeGN" placeholder="GameName" style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;" />
+                    <input id="mergeTL" placeholder="TAG" style="width:90px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;" />
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Alt Accounts to Merge</label>
+                    <button onclick="addAltRow()" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--accent);font-size:0.78rem;padding:2px 10px;cursor:pointer;">+ Add</button>
+                </div>
+                <div id="altRows"></div>
+
+                <div id="mergeResult" style="font-size:0.82rem;margin-top:14px;min-height:20px;"></div>
+
+                <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+                    <button onclick="closeMergeModal()" class="btn btn-secondary">Cancel</button>
+                    <button onclick="submitMerge()" class="btn btn-primary" id="mergeSendBtn">Merge</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="overview"    onclick="showTab('overview',this)">Overview</button>
+            <button class="tab-btn"        data-tab="players"     onclick="showTab('players',this)">Player Stats</button>
+            <button class="tab-btn"        data-tab="maps"        onclick="showTab('maps',this)">Maps</button>
+            <button class="tab-btn"        data-tab="history"     onclick="showTab('history',this)">Match History</button>
+        </div>
+
+        <div id="tab-overview" class="tab-pane active">
+            <div id="overviewContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+        <div id="tab-players" class="tab-pane">
+            <div id="playersContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            <div id="playerDetail" style="display:none;margin-top:20px;"></div>
+        </div>
+        <div id="tab-maps" class="tab-pane">
+            <div id="mapsContent"><p style="color:var(--text-muted);">Loading...</p></div>
+            <div id="mapDetail" style="display:none;margin-top:20px;"></div>
+        </div>
+        <div id="tab-history" class="tab-pane">
+            <div id="historyContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar } from '/js/utils.js';
+
+const user = requireAuth(['manager']);
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar('manager', 'pracc-stats');
+    api('/api/auth/me').then(me => {
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+    }).catch(() => {});
+    loadAllStats();
+}
+
+window.showTab = function(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    ['playerDetail','mapDetail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+};
+
+async function loadAllStats() {
+    try {
+        const data = await api('/api/pracc/matches/stats');
+        const { total, matches, playerStats, econStats } = data;
+
+        document.getElementById('statsSubtitle').textContent =
+            total ? `Based on ${total} ScrimSense imported match${total > 1 ? 'es' : ''}` : 'No matches imported yet';
+
+        if (!total) {
+            const empty = '<p style="color:var(--text-muted);">No ScrimSense matches imported yet. <a href="/manager/pracc-upload.html" style="color:var(--accent);">Import your first match →</a></p>';
+            document.getElementById('overviewContent').innerHTML = empty;
+            document.getElementById('playersContent').innerHTML  = empty;
+            document.getElementById('historyContent').innerHTML  = empty;
+            return;
+        }
+
+        renderOverview(matches, total, econStats || {});
+        renderPlayers(playerStats, matches);
+        renderMaps(matches, playerStats);
+        renderHistory(matches);
+    } catch (e) {
+        const err = '<p style="color:var(--error);">Failed to load stats.</p>';
+        ['overviewContent','playersContent','historyContent'].forEach(id => {
+            document.getElementById(id).innerHTML = err;
+        });
+    }
+}
+
+function renderOverview(matches, total, econStats) {
+    const wins   = matches.filter(m => m.result === 'W').length;
+    const losses = matches.filter(m => m.result === 'L').length;
+    const draws  = matches.filter(m => m.result === 'D').length;
+    const wr     = total ? Math.round((wins / total) * 100) : 0;
+
+    const atkPlayed = matches.reduce((s, m) => s + (m.ourAttackRoundsPlayed || 0), 0);
+    const atkWon    = matches.reduce((s, m) => s + (m.ourAttackRoundsWon    || 0), 0);
+    const defPlayed = matches.reduce((s, m) => s + (m.ourDefenseRoundsPlayed|| 0), 0);
+    const defWon    = matches.reduce((s, m) => s + (m.ourDefenseRoundsWon   || 0), 0);
+    const atkWR     = atkPlayed ? Math.round((atkWon / atkPlayed) * 100) : 0;
+    const defWR     = defPlayed ? Math.round((defWon / defPlayed) * 100) : 0;
+
+    const mapStats = {};
+    matches.forEach(m => {
+        const k = m.mapName || 'Unknown';
+        if (!mapStats[k]) mapStats[k] = { w:0, l:0, d:0 };
+        mapStats[k][m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd']++;
+    });
+    const mapRows = Object.entries(mapStats)
+        .map(([name, s]) => ({ name, ...s, total: s.w + s.l + s.d }))
+        .sort((a, b) => b.total - a.total);
+
+    const oppStats = {};
+    matches.forEach(m => {
+        const k = m.opponent || 'Unknown';
+        if (!oppStats[k]) oppStats[k] = { w:0, l:0, d:0 };
+        oppStats[k][m.result === 'W' ? 'w' : m.result === 'L' ? 'l' : 'd']++;
+    });
+    const oppRows = Object.entries(oppStats)
+        .map(([name, s]) => ({ name, ...s, total: s.w + s.l + s.d }))
+        .sort((a, b) => b.total - a.total).slice(0, 10);
+
+    const recent = [...matches].slice(0, 20).reverse();
+
+    const siteStats = { A: 0, B: 0, C: 0 };
+    matches.forEach(m => {
+        if (m.plantSiteCount) Object.entries(m.plantSiteCount).forEach(([s, c]) => { siteStats[s] = (siteStats[s]||0) + c; });
+    });
+
+    document.getElementById('overviewContent').innerHTML = `
+        <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Matches</div></div>
+            <div class="stat-card"><div class="stat-value win-color">${wins}</div><div class="stat-label">Wins</div></div>
+            <div class="stat-card"><div class="stat-value loss-color">${losses}</div><div class="stat-label">Losses</div></div>
+            <div class="stat-card"><div class="stat-value draw-color">${draws}</div><div class="stat-label">Draws</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${wr>=50?'var(--success)':'var(--error)'}">${wr}%</div><div class="stat-label">Win Rate</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${atkWR>=50?'var(--success)':'var(--error)'}">${atkWR}%</div><div class="stat-label">Attack WR</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${defWR>=50?'var(--success)':'var(--error)'}">${defWR}%</div><div class="stat-label">Defense WR</div></div>
+        </div>
+        <div class="stat-grid">
+            ${econStats.pistolWR !== null && econStats.pistolWR !== undefined ? `<div class="stat-card"><div class="stat-value" style="color:${econStats.pistolWR>=50?'var(--success)':'var(--error)'}">${econStats.pistolWR}%</div><div class="stat-label">Pistol WR <span style="font-weight:400;opacity:.6;">${econStats.pistolWon}/${econStats.pistolPlayed}</span></div></div>` : ''}
+            ${econStats.bonusWR !== null && econStats.bonusWR !== undefined ? `<div class="stat-card"><div class="stat-value" style="color:${econStats.bonusWR>=50?'var(--success)':'var(--error)'}">${econStats.bonusWR}%</div><div class="stat-label">Bonus WR <span style="font-weight:400;opacity:.6;">${econStats.bonusWon}/${econStats.bonusPlayed}</span></div></div>` : ''}
+            ${econStats.ecoWR !== null && econStats.ecoWR !== undefined ? `<div class="stat-card"><div class="stat-value" style="color:${econStats.ecoWR>=50?'var(--success)':'var(--error)'}">${econStats.ecoWR}%</div><div class="stat-label">Eco WR <span style="font-weight:400;opacity:.6;">${econStats.ecoWon}/${econStats.ecoPlayed}</span></div></div>` : ''}
+            ${econStats.halfBuyWR !== null && econStats.halfBuyWR !== undefined ? `<div class="stat-card"><div class="stat-value" style="color:${econStats.halfBuyWR>=50?'var(--success)':'var(--error)'}">${econStats.halfBuyWR}%</div><div class="stat-label">Half Buy WR <span style="font-weight:400;opacity:.6;">${econStats.halfBuyWon}/${econStats.halfBuyPlayed}</span></div></div>` : ''}
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header"><span class="card-title">Recent Form (last 20)</span></div>
+            <div class="trend-grid">
+                ${recent.map(m => `<div class="trend-dot ${m.result}" title="${escHtml(m.opponent||'')} · ${m.scoreUs}–${m.scoreThem}">${m.result}</div>`).join('')}
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header"><span class="card-title">Map Win Rates</span></div>
+                ${mapRows.length ? mapRows.map(m => {
+                    const pct = m.total ? Math.round((m.w / m.total) * 100) : 0;
+                    const cls = pct >= 60 ? 'good' : pct >= 40 ? 'mid' : 'bad';
+                    return `<div class="map-bar-row">
+                        <span class="map-name">${escHtml(m.name)}</span>
+                        <div class="map-bar-track"><div class="map-bar-fill ${cls}" style="width:${pct}%"></div></div>
+                        <span class="map-pct" style="color:${pct>=60?'var(--success)':pct>=40?'#f0a500':'var(--error)'}">${pct}%</span>
+                        <span class="map-record">${m.w}-${m.l}${m.d?'-'+m.d:''}</span>
+                    </div>`;
+                }).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;">No map data yet — fill in map names after importing.</p>'}
+            </div>
+
+            <div class="card">
+                <div class="card-header"><span class="card-title">Record vs Opponents</span></div>
+                ${oppRows.map(o => {
+                    const pct = o.total ? Math.round((o.w / o.total) * 100) : 0;
+                    return `<div class="opp-row">
+                        <span class="opp-name">${escHtml(o.name)}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted);">${o.w}W-${o.l}L${o.d?'-'+o.d+'D':''}</span>
+                        <span style="font-size:0.72rem;color:${pct>=50?'var(--success)':'var(--error)'};">${pct}%</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header"><span class="card-title">Side Win Rates</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:4px 0;">
+                ${[['Attack', atkWon, atkPlayed, atkWR], ['Defense', defWon, defPlayed, defWR]].map(([label, won, played, wr2]) => `
+                <div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:0.8rem;font-weight:600;">${label}</span>
+                        <span style="font-size:0.8rem;color:${wr2>=50?'var(--success)':'var(--error)'};">${won}/${played} · ${wr2}%</span>
+                    </div>
+                    <div class="map-bar-track">
+                        <div class="map-bar-fill ${wr2>=60?'good':wr2>=40?'mid':'bad'}" style="width:${wr2}%"></div>
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>`;
+}
+
+function renderPlayers(playerStats, matches) {
+    if (!playerStats.length) {
+        document.getElementById('playersContent').innerHTML = '<p style="color:var(--text-muted);">No player data yet.</p>';
+        return;
+    }
+
+    document.getElementById('playersContent').innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Our Team — Aggregated Stats</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">Click a player for detailed breakdown</span>
+            </div>
+            <div style="overflow-x:auto;">
+            <table class="player-table">
+                <thead><tr>
+                    <th>Player</th><th>Matches</th><th>ACS</th><th>K/D/A</th>
+                    <th>K/D</th><th>DMG/R</th><th>HS%</th><th>KAST</th>
+                    <th>FK</th><th>FD</th><th>Multi-kills</th><th>Clutches</th>
+                </tr></thead>
+                <tbody>
+                ${playerStats.map((p, i) => {
+                    const mkStr = [
+                        p.mk2 ? `<span class="mk-pill mk2">2K×${p.mk2}</span>` : '',
+                        p.mk3 ? `<span class="mk-pill mk3">3K×${p.mk3}</span>` : '',
+                        p.mk4 ? `<span class="mk-pill mk4">4K×${p.mk4}</span>` : '',
+                        p.mk5 ? `<span class="mk-pill mk5">ACE×${p.mk5}</span>` : '',
+                    ].filter(Boolean).join('') || '<span style="color:var(--text-muted);">—</span>';
+                    const clutchStr = p.clutchesAttempted
+                        ? `${p.clutchesWon}/${p.clutchesAttempted} (${p.clutchRate}%)`
+                        : '—';
+                    return `<tr style="cursor:pointer;" onclick="openPlayerDetail(${i})" title="Click for breakdown">
+                        <td><div class="player-name-cell">
+                            <span style="font-size:0.65rem;color:var(--accent);margin-right:4px;">▶</span>
+                            ${escHtml(p.gameName)}<span class="tag-muted">#${escHtml(p.tagLine)}</span>
+                        </div></td>
+                        <td>${p.matchCount}</td>
+                        <td class="acs-val">${p.acs}</td>
+                        <td>${p.kills}/${p.deaths}/${p.assists}</td>
+                        <td style="color:${p.kd>=1?'var(--success)':'var(--error)'};">${p.kd}</td>
+                        <td>${p.damagePerRound}</td>
+                        <td class="hs-val">${p.headshotPercent}%</td>
+                        <td class="kast-val">${p.kastPercent}%</td>
+                        <td style="color:var(--success);">${p.firstKills}</td>
+                        <td style="color:var(--error);">${p.firstDeaths}</td>
+                        <td>${mkStr}</td>
+                        <td style="font-size:0.78rem;">${clutchStr}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+
+    window._playerStats = playerStats;
+    window._allMatches  = matches;
+}
+
+window.openPlayerDetail = function(idx) {
+    const p   = window._playerStats[idx];
+    const det = document.getElementById('playerDetail');
+    if (det.dataset.openIdx === String(idx) && det.style.display !== 'none') {
+        det.style.display = 'none';
+        det.dataset.openIdx = '';
+        return;
+    }
+    det.dataset.openIdx = String(idx);
+    det.style.display = 'block';
+    det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const winRate = p.matchCount ? Math.round((p.matchResults?.filter(r => r.result === 'W').length / p.matchCount) * 100) : 0;
+    const mkStr = [
+        p.mk2 ? `<span class="mk-pill mk2" style="font-size:0.75rem;padding:2px 8px;">Double Kill ×${p.mk2}</span>` : '',
+        p.mk3 ? `<span class="mk-pill mk3" style="font-size:0.75rem;padding:2px 8px;">Triple Kill ×${p.mk3}</span>` : '',
+        p.mk4 ? `<span class="mk-pill mk4" style="font-size:0.75rem;padding:2px 8px;">Quad Kill ×${p.mk4}</span>` : '',
+        p.mk5 ? `<span class="mk-pill mk5" style="font-size:0.75rem;padding:2px 8px;">ACE ×${p.mk5}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const recentForm = (p.matchResults || []).slice(-15).map(r =>
+        `<div class="trend-dot ${r.result}" title="${escHtml(r.mapName||'')} · ${r.scoreUs}–${r.scoreThem}">${r.result}</div>`
+    ).join('');
+
+    const mapRows = (p.mapBreakdown || []).map(m => {
+        const wr = m.winRate;
+        const cls = wr >= 60 ? 'good' : wr >= 40 ? 'mid' : 'bad';
+        return `<tr>
+            <td style="font-weight:600;">${escHtml(m.mapName)}</td>
+            <td>${m.matchCount}</td>
+            <td style="color:var(--success);">${m.wins}W</td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="map-bar-track" style="width:80px;">
+                        <div class="map-bar-fill ${cls}" style="width:${wr}%;"></div>
+                    </div>
+                    <span style="font-size:0.75rem;color:${wr>=60?'var(--success)':wr>=40?'#f0a500':'var(--error)'};">${wr}%</span>
+                </div>
+            </td>
+            <td class="acs-val">${m.acs}</td>
+            <td style="color:${m.kd>=1?'var(--success)':'var(--error)'};">${m.kd}</td>
+            <td>${m.kills}/${m.deaths}/${m.assists}</td>
+            <td class="hs-val">${m.headshotPercent}%</td>
+            <td>${m.damagePerRound}</td>
+        </tr>`;
+    }).join('');
+
+    det.innerHTML = `
+        <div class="card" style="border-top:3px solid var(--accent);">
+            <div class="card-header">
+                <span class="card-title" style="font-size:1rem;">
+                    ${escHtml(p.gameName)} <span style="color:var(--text-muted);font-weight:400;font-size:0.82rem;">#${escHtml(p.tagLine)}</span>
+                </span>
+                <button onclick="document.getElementById('playerDetail').style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;">✕</button>
+            </div>
+
+            
+            <div class="stat-grid" style="margin-bottom:20px;">
+                <div class="stat-card"><div class="stat-value">${p.matchCount}</div><div class="stat-label">Matches</div></div>
+                <div class="stat-card"><div class="stat-value acs-val">${p.acs}</div><div class="stat-label">ACS</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${p.kd>=1?'var(--success)':'var(--error)'};">${p.kd}</div><div class="stat-label">K/D</div></div>
+                <div class="stat-card"><div class="stat-value kast-val">${p.kastPercent}%</div><div class="stat-label">KAST</div></div>
+                <div class="stat-card"><div class="stat-value hs-val">${p.headshotPercent}%</div><div class="stat-label">HS%</div></div>
+                <div class="stat-card"><div class="stat-value">${p.damagePerRound}</div><div class="stat-label">DMG/R</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${winRate>=50?'var(--success)':'var(--error)'};">${winRate}%</div><div class="stat-label">Win Rate</div></div>
+                <div class="stat-card"><div class="stat-value">${p.firstKills}</div><div class="stat-label">First Kills</div></div>
+            </div>
+
+            <div class="grid-2" style="gap:20px;">
+                
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Recent Form</div>
+                    ${recentForm ? `<div class="trend-grid">${recentForm}</div>` : '<p style="color:var(--text-muted);font-size:0.82rem;">No recent matches.</p>'}
+                </div>
+
+                
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Multi-kills</div>
+                    ${mkStr ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${mkStr}</div>` : '<p style="color:var(--text-muted);font-size:0.82rem;">None recorded.</p>'}
+                    ${p.clutchesAttempted ? `<div style="margin-top:10px;font-size:0.82rem;">Clutches: <strong>${p.clutchesWon}/${p.clutchesAttempted}</strong> <span style="color:var(--success);">(${p.clutchRate}%)</span></div>` : ''}
+                </div>
+            </div>
+
+            
+            ${mapRows ? `
+            <div style="margin-top:20px;">
+                <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Performance by Map</div>
+                <div style="overflow-x:auto;">
+                <table class="player-table">
+                    <thead><tr>
+                        <th>Map</th><th>GP</th><th>W</th><th>Win Rate</th>
+                        <th>ACS</th><th>K/D</th><th>K/D/A</th><th>HS%</th><th>DMG/R</th>
+                    </tr></thead>
+                    <tbody>${mapRows}</tbody>
+                </table>
+                </div>
+            </div>` : ''}
+        </div>`;
+}
+
+function renderIndividual(playerStats) {
+    if (!playerStats.length) {
+        document.getElementById('individualContent').innerHTML = '<p style="color:var(--text-muted);">No player data yet.</p>';
+        return;
+    }
+
+    const cards = playerStats.map(p => {
+        const winRate = p.matchCount && p.matchResults?.length
+            ? Math.round((p.matchResults.filter(r => r.result === 'W').length / p.matchCount) * 100)
+            : 0;
+        const recentForm = (p.matchResults || []).slice(-10).map(r =>
+            `<div class="trend-dot ${r.result}" title="${escHtml(r.mapName||'')} · ${r.scoreUs}–${r.scoreThem}" style="width:18px;height:18px;font-size:0.52rem;">${r.result}</div>`
+        ).join('');
+        const mkStr = [
+            p.mk2 ? `<span class="mk-pill mk2">2K×${p.mk2}</span>` : '',
+            p.mk3 ? `<span class="mk-pill mk3">3K×${p.mk3}</span>` : '',
+            p.mk4 ? `<span class="mk-pill mk4">4K×${p.mk4}</span>` : '',
+            p.mk5 ? `<span class="mk-pill mk5">ACE×${p.mk5}</span>` : '',
+        ].filter(Boolean).join('') || '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
+
+        const statRow = (label, val, color) =>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <span style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">${label}</span>
+                <span style="font-size:0.82rem;font-weight:700;color:${color||'var(--text)'};">${val}</span>
+            </div>`;
+
+        return `<div class="card" style="display:flex;flex-direction:column;gap:0;">
+            <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);">
+                <div style="font-size:0.95rem;font-weight:800;">${escHtml(p.gameName)} <span style="color:var(--text-muted);font-weight:400;font-size:0.78rem;">#${escHtml(p.tagLine)}</span></div>
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${p.matchCount} match${p.matchCount!==1?'es':''}</div>
+            </div>
+            <div style="padding:10px 16px;">
+                ${statRow('ACS',       p.acs,                'var(--accent)')}
+                ${statRow('K/D',       p.kd,                 p.kd>=1?'var(--success)':'var(--error)')}
+                ${statRow('K/D/A',     p.kda,                'var(--text)')}
+                ${statRow('DMG/R',     p.damagePerRound,     'var(--text)')}
+                ${statRow('HS%',       p.headshotPercent+'%','#f0a500')}
+                ${statRow('KAST',      p.kastPercent+'%',    'var(--success)')}
+                ${statRow('FK / FD',   `${p.firstKills} / ${p.firstDeaths}`, p.firstKills>=p.firstDeaths?'var(--success)':'var(--error)')}
+                ${statRow('Win Rate',  winRate+'%',          winRate>=50?'var(--success)':'var(--error)')}
+            </div>
+            <div style="padding:8px 16px;border-top:1px solid var(--border);">
+                <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Multi-kills</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">${mkStr}</div>
+            </div>
+            ${recentForm ? `<div style="padding:8px 16px 12px;border-top:1px solid var(--border);">
+                <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Recent Form</div>
+                <div class="trend-grid" style="gap:3px;">${recentForm}</div>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+
+    document.getElementById('individualContent').innerHTML =
+        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;">${cards}</div>`;
+}
+
+function renderMaps(matches, playerStats) {
+    if (!matches.length) {
+        document.getElementById('mapsContent').innerHTML = '<p style="color:var(--text-muted);">No match data yet.</p>';
+        return;
+    }
+
+    const mapData = {};
+    matches.forEach(m => {
+        const k = m.mapName || 'Unknown';
+        if (!mapData[k]) mapData[k] = { wins:0, losses:0, draws:0, matches:[] };
+        mapData[k][m.result === 'W' ? 'wins' : m.result === 'L' ? 'losses' : 'draws']++;
+        mapData[k].matches.push(m);
+    });
+
+    const maps = Object.entries(mapData)
+        .map(([name, d]) => ({ name, ...d, total: d.wins + d.losses + d.draws }))
+        .sort((a, b) => b.total - a.total);
+
+    window._mapData     = mapData;
+    window._playerStats = playerStats;
+    window._allMatches  = matches;
+
+    document.getElementById('mapsContent').innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:8px;">
+            ${maps.map(m => {
+                const wr = m.total ? Math.round((m.wins / m.total) * 100) : 0;
+                const cls = wr >= 60 ? 'good' : wr >= 40 ? 'mid' : 'bad';
+                return `<div class="stat-card" style="cursor:pointer;text-align:left;transition:border-color 0.15s;" onclick="openMapDetail('${escHtml(m.name)}')"
+                    onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <div style="font-size:0.85rem;font-weight:700;">${escHtml(m.name)}</div>
+                        <span style="font-size:0.65rem;color:var(--accent);">▶ Details</span>
+                    </div>
+                    <div style="display:flex;gap:10px;font-size:0.8rem;margin-bottom:8px;">
+                        <span style="color:var(--success);">${m.wins}W</span>
+                        <span style="color:var(--error);">${m.losses}L</span>
+                        ${m.draws ? `<span style="color:var(--text-muted);">${m.draws}D</span>` : ''}
+                    </div>
+                    <div class="map-bar-track"><div class="map-bar-fill ${cls}" style="width:${wr}%;"></div></div>
+                    <div style="font-size:0.75rem;font-weight:700;margin-top:4px;color:${wr>=60?'var(--success)':wr>=40?'#f0a500':'var(--error)'};">${wr}% win rate · ${m.total} matches</div>
+                </div>`;
+            }).join('')}
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Click a map card to see detailed stats</p>`;
+}
+
+window.openMapDetail = function(mapName) {
+    const det  = document.getElementById('mapDetail');
+    if (det.dataset.openMap === mapName && det.style.display !== 'none') {
+        det.style.display = 'none'; det.dataset.openMap = ''; return;
+    }
+    det.dataset.openMap = mapName;
+    det.style.display   = 'block';
+    det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const d = window._mapData[mapName];
+    if (!d) return;
+    const total = d.wins + d.losses + d.draws;
+    const wr    = total ? Math.round((d.wins / total) * 100) : 0;
+
+    const atkWon    = d.matches.reduce((s, m) => s + (m.ourAttackRoundsWon  || 0), 0);
+    const atkPlayed = d.matches.reduce((s, m) => s + (m.ourAttackRoundsPlayed || 0), 0);
+    const defWon    = d.matches.reduce((s, m) => s + (m.ourDefenseRoundsWon  || 0), 0);
+    const defPlayed = d.matches.reduce((s, m) => s + (m.ourDefenseRoundsPlayed || 0), 0);
+    const atkWR     = atkPlayed ? Math.round((atkWon / atkPlayed) * 100) : 0;
+    const defWR     = defPlayed ? Math.round((defWon / defPlayed) * 100) : 0;
+    const avgUs   = total ? (d.matches.reduce((s, m) => s + m.scoreUs, 0) / total).toFixed(1) : '—';
+    const avgThem = total ? (d.matches.reduce((s, m) => s + m.scoreThem, 0) / total).toFixed(1) : '—';
+
+    const form = [...d.matches].reverse().slice(-15).map(m =>
+        `<div class="trend-dot ${m.result}" title="${escHtml(m.opponent||'')} · ${m.scoreUs}–${m.scoreThem}">${m.result}</div>`
+    ).join('');
+
+    const playerRows = (window._playerStats || [])
+        .map(p => ({ p, mb: (p.mapBreakdown || []).find(mb => mb.mapName === mapName) }))
+        .filter(({ mb }) => mb)
+        .sort((a, b) => b.mb.acs - a.mb.acs)
+        .map(({ p, mb }) => `<tr>
+            <td><div class="player-name-cell">${escHtml(p.gameName)}<span class="tag-muted">#${escHtml(p.tagLine)}</span></div></td>
+            <td>${mb.matchCount}</td>
+            <td style="color:var(--success);">${mb.wins}W</td>
+            <td style="color:${mb.winRate>=50?'var(--success)':'var(--error)'};">${mb.winRate}%</td>
+            <td class="acs-val">${mb.acs}</td>
+            <td style="color:${mb.kd>=1?'var(--success)':'var(--error)'};">${mb.kd}</td>
+            <td>${mb.kills}/${mb.deaths}/${mb.assists}</td>
+            <td class="hs-val">${mb.headshotPercent}%</td>
+            <td>${mb.damagePerRound}</td>
+        </tr>`).join('');
+
+    const histRows = [...d.matches].reverse().slice(0, 10).map(m => {
+        const dt = new Date(m.date).toLocaleDateString();
+        return `<tr>
+            <td>${dt}</td>
+            <td><span class="result-chip ${m.result}">${m.result}</span></td>
+            <td style="font-weight:700;">${m.scoreUs}–${m.scoreThem}</td>
+            <td>${escHtml(m.opponent || '—')}</td>
+        </tr>`;
+    }).join('');
+
+    det.innerHTML = `
+        <div class="card" style="border-top:3px solid var(--accent);">
+            <div class="card-header">
+                <span class="card-title" style="font-size:1rem;">${escHtml(mapName)} — Map Deep Dive</span>
+                <button onclick="document.getElementById('mapDetail').style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;">✕</button>
+            </div>
+
+            <div class="stat-grid" style="margin-bottom:20px;">
+                <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Matches</div></div>
+                <div class="stat-card"><div class="stat-value win-color">${d.wins}</div><div class="stat-label">Wins</div></div>
+                <div class="stat-card"><div class="stat-value loss-color">${d.losses}</div><div class="stat-label">Losses</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${wr>=50?'var(--success)':'var(--error)'};">${wr}%</div><div class="stat-label">Win Rate</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${atkWR>=50?'var(--success)':'var(--error)'};">${atkWR}%</div><div class="stat-label">Attack WR</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${defWR>=50?'var(--success)':'var(--error)'};">${defWR}%</div><div class="stat-label">Defense WR</div></div>
+                <div class="stat-card"><div class="stat-value">${avgUs}</div><div class="stat-label">Avg Score (Us)</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:var(--text-muted);">${avgThem}</div><div class="stat-label">Avg Score (Them)</div></div>
+            </div>
+
+            <div class="grid-2" style="gap:20px;margin-bottom:20px;">
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Form on ${escHtml(mapName)}</div>
+                    ${form ? `<div class="trend-grid">${form}</div>` : '<p style="color:var(--text-muted);font-size:0.82rem;">—</p>'}
+                </div>
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Side Win Rates</div>
+                    ${[['Attack', atkWon, atkPlayed, atkWR], ['Defense', defWon, defPlayed, defWR]].map(([label, won, played, wr2]) => `
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:0.8rem;font-weight:600;">${label}</span>
+                            <span style="font-size:0.8rem;color:${wr2>=50?'var(--success)':'var(--error)'};">${won}/${played} · ${wr2}%</span>
+                        </div>
+                        <div class="map-bar-track"><div class="map-bar-fill ${wr2>=60?'good':wr2>=40?'mid':'bad'}" style="width:${wr2}%;"></div></div>
+                    </div>`).join('')}
+                </div>
+            </div>
+
+            ${playerRows ? `
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Player Performance on ${escHtml(mapName)}</div>
+                <div style="overflow-x:auto;">
+                <table class="player-table">
+                    <thead><tr>
+                        <th>Player</th><th>GP</th><th>W</th><th>WR</th>
+                        <th>ACS</th><th>K/D</th><th>K/D/A</th><th>HS%</th><th>DMG/R</th>
+                    </tr></thead>
+                    <tbody>${playerRows}</tbody>
+                </table>
+                </div>
+            </div>` : ''}
+
+            ${histRows ? `
+            <div>
+                <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">Recent Matches on ${escHtml(mapName)}</div>
+                <div style="overflow-x:auto;">
+                <table class="mh-table">
+                    <thead><tr><th>Date</th><th>Result</th><th>Score</th><th>Opponent</th></tr></thead>
+                    <tbody>${histRows}</tbody>
+                </table>
+                </div>
+            </div>` : ''}
+        </div>`;
+}
+
+function renderHistory(matches) {
+    document.getElementById('historyContent').innerHTML = `
+        <div class="card">
+        <div style="overflow-x:auto;">
+        <table class="mh-table">
+            <thead><tr>
+                <th>Date</th><th>Result</th><th>Score</th><th>Map</th>
+                <th>Opponent</th><th>ATK</th><th>DEF</th><th>Duration</th>
+            </tr></thead>
+            <tbody>
+            ${matches.map(m => {
+                const dt  = new Date(m.date).toLocaleDateString();
+                const dur = Math.round((m.gameLengthMillis || 0) / 60000);
+                const atkWR = m.ourAttackRoundsPlayed  ? Math.round((m.ourAttackRoundsWon  / m.ourAttackRoundsPlayed)  * 100) : 0;
+                const defWR = m.ourDefenseRoundsPlayed ? Math.round((m.ourDefenseRoundsWon / m.ourDefenseRoundsPlayed) * 100) : 0;
+                return `<tr>
+                    <td>${dt}</td>
+                    <td><span class="result-chip ${m.result}">${m.result}</span></td>
+                    <td style="font-weight:700;">${m.scoreUs}–${m.scoreThem}</td>
+                    <td>${escHtml(m.mapName || '—')}</td>
+                    <td>${escHtml(m.opponent || '—')}</td>
+                    <td class="side-mini" style="color:${atkWR>=50?'var(--success)':'var(--error)'};">
+                        ${m.ourAttackRoundsWon}/${m.ourAttackRoundsPlayed} (${atkWR}%)</td>
+                    <td class="side-mini" style="color:${defWR>=50?'var(--success)':'var(--error)'};">
+                        ${m.ourDefenseRoundsWon}/${m.ourDefenseRoundsPlayed} (${defWR}%)</td>
+                    <td>${dur ? dur + ' min' : '—'}</td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>
+        </div>
+        </div>`;
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Merge Accounts modal ────────────────────────────────────────────────
+window.openMergeModal = function() {
+    document.getElementById('altRows').innerHTML = '';
+    document.getElementById('mergeGN').value = '';
+    document.getElementById('mergeTL').value = '';
+    document.getElementById('mergeResult').textContent = '';
+    document.getElementById('mergeModal').style.display = 'flex';
+    addAltRow();
+};
+
+window.closeMergeModal = function() {
+    document.getElementById('mergeModal').style.display = 'none';
+};
+
+window.addAltRow = function() {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;align-items:center;';
+    row.innerHTML = `
+        <input placeholder="GameName" style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;" class="alt-gn" />
+        <input placeholder="TAG" style="width:90px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.88rem;" class="alt-tl" />
+        <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--text-muted);font-size:1rem;cursor:pointer;padding:4px 6px;flex-shrink:0;">×</button>`;
+    document.getElementById('altRows').appendChild(row);
+};
+
+window.submitMerge = async function() {
+    const primaryGameName = document.getElementById('mergeGN').value.trim();
+    const primaryTagLine  = document.getElementById('mergeTL').value.trim();
+    const resultEl = document.getElementById('mergeResult');
+
+    if (!primaryGameName || !primaryTagLine) {
+        resultEl.style.color = 'var(--error)';
+        resultEl.textContent = 'Primary account name and tag are required.';
+        return;
+    }
+
+    const altAccounts = [...document.querySelectorAll('#altRows > div')].map(row => ({
+        gameName: row.querySelector('.alt-gn').value.trim(),
+        tagLine:  row.querySelector('.alt-tl').value.trim(),
+    })).filter(a => a.gameName && a.tagLine);
+
+    if (!altAccounts.length) {
+        resultEl.style.color = 'var(--error)';
+        resultEl.textContent = 'Add at least one alt account.';
+        return;
+    }
+
+    const btn = document.getElementById('mergeSendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Merging...';
+    resultEl.style.color = 'var(--text-muted)';
+    resultEl.textContent = 'Working...';
+
+    try {
+        const data = await api('/api/pracc/matches/merge-player', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ primaryGameName, primaryTagLine, altAccounts }),
+        });
+        resultEl.style.color = 'var(--success)';
+        resultEl.textContent = data.message;
+        if (data.matchesUpdated > 0) loadAllStats();
+    } catch (e) {
+        resultEl.style.color = 'var(--error)';
+        resultEl.textContent = e?.message || 'Request failed.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Merge';
+    }
+};
+
+document.getElementById('mergeModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('mergeModal')) closeMergeModal();
+});</script>
+</body>
+</html>

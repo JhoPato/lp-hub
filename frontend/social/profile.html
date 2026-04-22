@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — My Profile</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.profile-hero { display:flex; gap:24px; align-items:center; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:24px; }
+        .profile-avatar-wrap { position:relative; flex-shrink:0; }
+        .profile-avatar { width:80px; height:80px; border-radius:50%; object-fit:cover; background:var(--bg3); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:900; color:var(--accent); }
+        .profile-avatar img { width:80px; height:80px; border-radius:50%; object-fit:cover; }
+        .avatar-edit-btn { position:absolute; bottom:0; right:0; width:26px; height:26px; background:var(--accent); border:none; border-radius:50%; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:center; }
+        .profile-info { flex:1; }
+        .profile-username { font-size:1.4rem; font-weight:900; margin-bottom:4px; }
+        .profile-sub { font-size:0.82rem; color:var(--text-muted); }
+        .section-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:16px; }
+        .section-title { font-size:0.78rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:16px; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        @media(max-width:600px){ .form-row { grid-template-columns:1fr; } .profile-hero { flex-direction:column; text-align:center; } }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <h1>My Profile</h1>
+            <p>Manage your account information</p>
+        </div>
+
+        <div class="profile-hero">
+            <div class="profile-avatar-wrap">
+                <div class="profile-avatar" id="avatarDisplay">?</div>
+                <button class="avatar-edit-btn" title="Change photo" onclick="document.getElementById('avatarInput').click()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="13" height="13" style="color:#fff;"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg></button>
+                <input type="file" id="avatarInput" accept="image/*" style="display:none">
+            </div>
+            <div class="profile-info">
+                <div class="profile-username" id="profileUsername">—</div>
+                <div class="profile-sub" id="profileSub">—</div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">Account Information</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input class="form-input" id="fieldUsername" type="text" placeholder="Your username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input" id="fieldEmail" type="email" placeholder="your@email.com">
+                </div>
+            </div>
+            <div style="margin-top:16px;">
+                <button class="btn btn-primary" id="saveInfoBtn" onclick="saveInfo()">Save Changes</button>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">Change Password</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Current Password</label>
+                    <input class="form-input" id="currentPw" type="password" placeholder="Current password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input class="form-input" id="newPw" type="password" placeholder="New password (min 6 chars)">
+                </div>
+            </div>
+            <div style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+            </div>
+        </div>
+        <div class="section-card" id="discordCard">
+            <div class="section-title">Discord Account</div>
+            <div id="discordLinked" style="display:none;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <svg width="22" height="17" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#5865f2;flex-shrink:0;"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.5.4a.2.2 0 0 0-.2.1 40.7 40.7 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0A37.5 37.5 0 0 0 25.5.5a.2.2 0 0 0-.2-.1 58.4 58.4 0 0 0-14.6 4.5.2.2 0 0 0-.1.1C1.6 18.7-.9 32.2.3 45.5a.2.2 0 0 0 .1.2 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .3-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.8a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.3 0a.2.2 0 0 1 .3 0l1 .9a.2.2 0 0 1 0 .4 36 36 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .3.1 58.6 58.6 0 0 0 17.8-8.9.2.2 0 0 0 .1-.2c1.5-15.3-2.5-28.7-10.5-40.5a.2.2 0 0 0-.1-.1ZM23.7 37.7c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="currentColor"/></svg>
+                    <div>
+                        <div style="font-weight:700;font-size:0.9rem;" id="discordName">—</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">Connected</div>
+                    </div>
+                </div>
+                <button class="btn btn-danger" id="btnUnlinkDiscord">Unlink Discord</button>
+            </div>
+            <div id="discordUnlinked" style="display:none;">
+                <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">Link your Discord account to enable Discord login.</p>
+                <button class="btn btn-discord" id="btnLinkDiscord">
+                    <svg width="18" height="14" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M60.1 4.9A58.5 58.5 0 0 0 45.5.4a.2.2 0 0 0-.2.1 40.7 40.7 0 0 0-1.8 3.7 54 54 0 0 0-16.2 0A37.5 37.5 0 0 0 25.5.5a.2.2 0 0 0-.2-.1 58.4 58.4 0 0 0-14.6 4.5.2.2 0 0 0-.1.1C1.6 18.7-.9 32.2.3 45.5a.2.2 0 0 0 .1.2 58.8 58.8 0 0 0 17.7 8.9.2.2 0 0 0 .3-.1 42 42 0 0 0 3.6-5.9.2.2 0 0 0-.1-.3 38.7 38.7 0 0 1-5.5-2.6.2.2 0 0 1 0-.4c.4-.3.7-.6 1.1-.8a.2.2 0 0 1 .2 0c11.5 5.3 24 5.3 35.3 0a.2.2 0 0 1 .3 0l1 .9a.2.2 0 0 1 0 .4 36 36 0 0 1-5.5 2.6.2.2 0 0 0-.1.3c1 2 2.2 4 3.6 5.9a.2.2 0 0 0 .3.1 58.6 58.6 0 0 0 17.8-8.9.2.2 0 0 0 .1-.2c1.5-15.3-2.5-28.7-10.5-40.5a.2.2 0 0 0-.1-.1ZM23.7 37.7c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Zm23.7 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.6 0 6.5 3.3 6.4 7.2 0 4-2.8 7.2-6.4 7.2Z" fill="currentColor"/></svg>
+                    Link Discord
+                </button>
+            </div>
+            <div id="discordMsg" style="display:none;margin-top:12px;font-size:0.82rem;border-radius:var(--radius);padding:8px 12px;"></div>
+        </div>
+
+        </div>
+    </main>
+</div>
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['social', 'owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role === 'owner' ? 'owner' : 'social', 'profile');
+
+async function loadProfile() {
+    try {
+        const me = await api('/api/auth/me');
+        document.getElementById('profileUsername').textContent = me.username;
+        document.getElementById('profileSub').textContent = `${me.role} · ${me.email}`;
+        document.getElementById('fieldUsername').value = me.username;
+        document.getElementById('fieldEmail').value = me.email;
+
+        const avatarEl = document.getElementById('avatarDisplay');
+        if (me.profilePhotoUrl) {
+            avatarEl.innerHTML = `<img src="${me.profilePhotoUrl}" alt="avatar">`;
+        } else if (me.discordAvatar) {
+            avatarEl.innerHTML = `<img src="${me.discordAvatar}" alt="avatar">`;
+        } else {
+            avatarEl.textContent = (me.username || 'U').slice(0, 2).toUpperCase();
+        }
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+}
+
+window.saveInfo = async () => {
+    const btn = document.getElementById('saveInfoBtn');
+    btn.disabled = true;
+    try {
+        const username = document.getElementById('fieldUsername').value.trim();
+        const email    = document.getElementById('fieldEmail').value.trim();
+        if (!username || !email) { toast('Username and email are required.', 'error'); return; }
+        await api('/api/auth/me', { method: 'PATCH', body: JSON.stringify({ username, email }) });
+        const stored = JSON.parse(localStorage.getItem('lp_hub_user') || '{}');
+        stored.username = username;
+        localStorage.setItem('lp_hub_user', JSON.stringify(stored));
+        toast('Profile updated!', 'success');
+        loadProfile();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { btn.disabled = false; }
+};
+
+window.changePassword = async () => {
+    const current = document.getElementById('currentPw').value;
+    const next    = document.getElementById('newPw').value;
+    if (!current || !next) { toast('Both fields are required.', 'error'); return; }
+    if (next.length < 6)   { toast('New password must be at least 6 characters.', 'error'); return; }
+    try {
+        await api('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: current, newPassword: next }) });
+        toast('Password updated!', 'success');
+        document.getElementById('currentPw').value = '';
+        document.getElementById('newPw').value = '';
+    } catch (err) { toast(err.message, 'error'); }
+};
+
+document.getElementById('avatarInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('photo', file);
+    const token = localStorage.getItem('lp_hub_token');
+    try {
+        const res = await fetch('/api/profile/photo', {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed.');
+        toast('Photo updated!', 'success');
+        loadProfile();
+    } catch (err) { toast(err.message, 'error'); }
+});
+
+loadProfile();</script>
+<script type="module">
+import { api } from '/js/api.js';
+import { toast } from '/js/utils.js';
+
+const TOKEN = localStorage.getItem('lp_hub_token');
+
+async function loadDiscord() {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('discord_linked') === '1') {
+        toast('Discord linked successfully!', 'success');
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    const discordError = params.get('discord_error');
+    if (discordError) {
+        const msgs = {
+            discord_taken:  'This Discord account is already linked to another user.',
+            user_not_found: 'User not found.',
+            server_error:   'Server error. Try again.',
+            access_denied:  'Discord authorization cancelled.',
+        };
+        toast(msgs[discordError] || 'Discord link failed.', 'error');
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    try {
+        const me = await api('/api/auth/me');
+        const linked   = document.getElementById('discordLinked');
+        const unlinked = document.getElementById('discordUnlinked');
+        if (me.discordId) {
+            document.getElementById('discordName').textContent = me.discordUsername || me.discordId;
+            linked.style.display   = '';
+            unlinked.style.display = 'none';
+        } else {
+            linked.style.display   = 'none';
+            unlinked.style.display = '';
+        }
+    } catch { }
+}
+
+document.getElementById('btnLinkDiscord').addEventListener('click', () => {
+    if (!TOKEN) return;
+    window.location.href = '/api/auth/discord?action=link&token=' + encodeURIComponent(TOKEN);
+});
+
+document.getElementById('btnUnlinkDiscord').addEventListener('click', async () => {
+    const btn = document.getElementById('btnUnlinkDiscord');
+    btn.disabled = true;
+    btn.textContent = 'Unlinking…';
+    try {
+        await api('/api/auth/discord/unlink', { method: 'POST' });
+        toast('Discord unlinked.', 'success');
+        loadDiscord();
+    } catch (err) {
+        toast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Unlink Discord';
+    }
+});
+
+loadDiscord();
+</script>
+</body>
+</html>

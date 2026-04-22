@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Pracc Detail</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.back-btn { display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-muted); margin-bottom:20px; cursor:pointer; background:none; border:none; padding:0; }
+        .back-btn:hover { color:var(--text); }
+        .detail-hero { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:20px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+        .result-badge { width:64px; height:64px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:900; flex-shrink:0; }
+        .result-badge.win  { background:rgba(87,242,135,0.12); color:var(--success); }
+        .result-badge.loss { background:rgba(255,68,68,0.12);  color:var(--error); }
+        .result-badge.draw { background:rgba(255,255,255,0.06); color:var(--text-muted); }
+        .detail-main { flex:1; }
+        .detail-opponent { font-size:1.4rem; font-weight:900; margin-bottom:4px; }
+        .detail-meta { font-size:0.82rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap; }
+        .section-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+        .section-title { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:14px; }
+        .map-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+        .map-row:last-child { border-bottom:none; }
+        .map-name { font-weight:600; font-size:0.9rem; flex:1; }
+        .map-score { font-size:1rem; font-weight:700; min-width:60px; text-align:center; }
+        .score-win  { color:var(--success); }
+        .score-loss { color:var(--error); }
+        .score-draw { color:var(--text-muted); }
+        .vod-wrapper { position:relative; padding-bottom:56.25%; height:0; border-radius:var(--radius); overflow:hidden; }
+        .vod-wrapper iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
+        .screenshot-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+        .screenshot-item { border-radius:var(--radius); overflow:hidden; aspect-ratio:16/9; background:var(--bg3); }
+        .screenshot-item img { width:100%; height:100%; object-fit:cover; cursor:pointer; transition:opacity 0.2s; }
+        .screenshot-item img:hover { opacity:0.85; }
+        .notes-text { font-size:0.88rem; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
+
+        .lightbox { position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+        .lightbox.open { display:flex; }
+        .lightbox img { max-width:100%; max-height:90vh; border-radius:var(--radius); }
+        .lightbox-close { position:fixed; top:16px; right:20px; font-size:1.5rem; cursor:pointer; color:#fff; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <button class="back-btn" onclick="history.back()">← Back to Pracc History</button>
+        <div id="detailContent"><p style="color:var(--text-muted);">Loading...</p></div>
+        </div>
+    </main>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <span class="lightbox-close">✕</span>
+    <img id="lightboxImg" src="" alt="">
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, formatDate, toast } from '/js/utils.js';
+
+const user = requireAuth();
+const id   = new URLSearchParams(location.search).get('id');
+
+if (user) {
+    document.getElementById('sidebar').innerHTML = buildSidebar(user.role, 'pracc');
+    if (!id) { document.getElementById('detailContent').innerHTML = '<p style="color:var(--error);">No entry ID provided.</p>'; }
+    else load();
+}
+
+async function load() {
+    try {
+        const me = await api('/api/auth/me');
+        const tn = document.getElementById('sidebarTeamName');
+        if (tn) tn.textContent = me.teamId?.name || '';
+
+        const e = await api(`/api/pracc/${id}`);
+
+        const ytId = getYouTubeId(e.vodUrl);
+        const resultLabel = { win:'W', loss:'L', draw:'D' };
+
+        document.getElementById('detailContent').innerHTML = `
+            <div class="detail-hero">
+                <div class="result-badge ${e.overallResult}">${resultLabel[e.overallResult]||'?'}</div>
+                <div class="detail-main">
+                    <div class="detail-opponent">vs ${e.opponent}</div>
+                    <div class="detail-meta">
+                        <span>📅 ${formatDate(e.date)}</span>
+                        <span>👤 ${e.createdBy?.username || '?'}</span>
+                        <span class="badge badge-${e.overallResult}">${e.overallResult.toUpperCase()}</span>
+                        ${e.maps.length ? `<span>🗺️ ${e.maps.length} map${e.maps.length>1?'s':''}</span>` : ''}
+                        ${ytId ? `<span>🎬 VOD available</span>` : ''}
+                    </div>
+                </div>
+                ${(user.role === 'manager' || user.role === 'captain')
+                    ? `<a href="/manager/pracc-form.html?id=${e._id}" class="btn btn-secondary" style="font-size:0.75rem;padding:6px 14px;">Edit</a>`
+                    : ''}
+            </div>
+
+            ${e.maps.length ? `
+            <div class="section-card">
+                <div class="section-title">Maps</div>
+                ${e.maps.map(m => {
+                    const won = m.scoreUs > m.scoreThem;
+                    const lost = m.scoreUs < m.scoreThem;
+                    return `<div class="map-row">
+                        <div class="map-name">${m.mapName}</div>
+                        <div class="map-score ${won?'score-win':lost?'score-loss':'score-draw'}">${m.scoreUs} – ${m.scoreThem}</div>
+                        <span class="badge badge-${m.result}">${m.result.toUpperCase()}</span>
+                    </div>`;
+                }).join('')}
+            </div>` : ''}
+
+            ${ytId ? `
+            <div class="section-card">
+                <div class="section-title">🎬 VOD</div>
+                <div class="vod-wrapper">
+                    <iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1" allowfullscreen></iframe>
+                </div>
+            </div>` : ''}
+
+            ${e.notes ? `
+            <div class="section-card">
+                <div class="section-title">Notes</div>
+                <div class="notes-text">${e.notes}</div>
+            </div>` : ''}
+
+            ${e.screenshots?.length ? `
+            <div class="section-card">
+                <div class="section-title">📸 Screenshots (${e.screenshots.length})</div>
+                <div class="screenshot-grid">
+                    ${e.screenshots.map(s => `
+                        <div class="screenshot-item">
+                            <img src="${s.url}" alt="${s.caption||'screenshot'}" onclick="openLightbox('${s.url}')">
+                        </div>`).join('')}
+                </div>
+            </div>` : ''}
+        `;
+    } catch (err) {
+        document.getElementById('detailContent').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+}
+
+window.openLightbox = (src) => {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+};
+window.closeLightbox = () => {
+    document.getElementById('lightbox').classList.remove('open');
+};</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Hub — Assets</title>
+    <link rel="stylesheet" href="/css/hub.css">
+    <style>.team-section { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:20px; }
+        .team-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+        .team-logo { width:48px; height:48px; border-radius:var(--radius); object-fit:cover; background:var(--bg3); border:1px solid var(--border); }
+        .team-name { font-weight:700; font-size:1rem; }
+        .team-region { font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
+        .assets-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:12px; }
+        .asset-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; text-align:center; }
+        .asset-img { width:100%; height:90px; object-fit:cover; background:var(--bg2); display:block; }
+        .asset-img-placeholder { width:100%; height:90px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; background:var(--bg2); }
+        .asset-name { font-size:0.7rem; padding:6px 8px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .asset-dl { display:block; padding:5px; border-top:1px solid var(--border); font-size:0.7rem; color:var(--accent); text-decoration:none; text-align:center; }
+        .asset-dl:hover { background:var(--bg2); }
+        .section-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin:14px 0 8px; }</style>
+</head>
+<body>
+<div class="hub-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+        <div class="page-content">
+        <div class="page-header">
+            <div>
+                <h1>Assets & Gallery</h1>
+                <p>Team logos and player photos</p>
+            </div>
+            <input type="text" id="searchInput" class="form-input" placeholder="Search team or player…" style="max-width:220px;" oninput="renderTeams()">
+        </div>
+        <div id="teamsList"><p style="color:var(--text-muted);">Loading…</p></div>
+        </div>
+    </main>
+</div>
+
+<script type="module">import { api, requireAuth } from '/js/api.js';
+import { buildSidebar, toast } from '/js/utils.js';
+
+const user = requireAuth(['social', 'owner']);
+if (!user) throw new Error('redirect');
+document.getElementById('sidebar').innerHTML = buildSidebar(user.role === 'owner' ? 'owner' : 'social', 'assets');
+
+let teamsData = [];
+let hubTeamMap = {};
+
+async function load() {
+    try {
+        const [assetsRes, hubRes] = await Promise.allSettled([
+            api('/api/site/assets'),
+            api('/api/team/all'),
+        ]);
+        teamsData = assetsRes.status === 'fulfilled' ? (assetsRes.value.teams || assetsRes.value || []) : [];
+        if (hubRes.status === 'fulfilled') {
+            for (const t of hubRes.value) hubTeamMap[t.name.toLowerCase()] = { _id: t._id, logoUrl: t.logos?.main?.url || t.logoUrl || null };
+        }
+        renderTeams();
+    } catch (err) {
+        document.getElementById('teamsList').innerHTML = `<p style="color:var(--error);">${err.message}</p>`;
+    }
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+window.renderTeams = () => {
+    const q   = document.getElementById('searchInput').value.toLowerCase();
+    const el  = document.getElementById('teamsList');
+    const filtered = teamsData.filter(t =>
+        !q || t.name?.toLowerCase().includes(q) ||
+        (t.players||[]).some(p => typeof p==='object' && p.name?.toLowerCase().includes(q)) ||
+        (t.coaches||[]).some(c => typeof c==='object' && c.name?.toLowerCase().includes(q))
+    );
+    if (!filtered.length) { el.innerHTML = '<p style="color:var(--text-muted);">No results.</p>'; return; }
+
+    el.innerHTML = filtered.map(t => {
+        const players = (t.players||[]).filter(p => typeof p==='object' && p.photo);
+        const coaches = (t.coaches||[]).filter(c => typeof c==='object' && c.photo);
+        const hubEntry = hubTeamMap[t.name?.toLowerCase()];
+        const logoUrl  = hubEntry?.logoUrl || t.logoUrl || null;
+        return `
+        <div class="team-section">
+            <div class="team-header">
+                ${logoUrl ? `<img class="team-logo" src="${esc(logoUrl)}" alt="">` : `<div class="team-logo" style="display:flex;align-items:center;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24" style="color:var(--text-muted);opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></div>`}
+                <div style="flex:1;">
+                    <div class="team-name">${esc(t.name)}</div>
+                    <div class="team-region">${esc(t.region||'')}</div>
+                </div>
+                ${hubEntry?._id ? `<a href="/manager/team-gallery.html?team=${hubEntry._id}" class="btn btn-secondary" style="font-size:0.74rem;white-space:nowrap;">Gallery →</a>` : ''}
+            </div>
+            ${players.length ? `
+                <div class="section-label">Players</div>
+                <div class="assets-grid">
+                    ${players.map(p=>`
+                    <div class="asset-card">
+                        <img class="asset-img" src="${esc(p.photo)}" alt="${esc(p.name)}" loading="lazy">
+                        <div class="asset-name">${esc(p.name)}</div>
+                        <a class="asset-dl" href="${esc(p.photo)}" download target="_blank">↓ Download</a>
+                    </div>`).join('')}
+                </div>` : ''}
+            ${coaches.length ? `
+                <div class="section-label">Coaches</div>
+                <div class="assets-grid">
+                    ${coaches.map(c=>`
+                    <div class="asset-card">
+                        <img class="asset-img" src="${esc(c.photo)}" alt="${esc(c.name)}" loading="lazy">
+                        <div class="asset-name">${esc(c.name)}</div>
+                        <a class="asset-dl" href="${esc(c.photo)}" download target="_blank">↓ Download</a>
+                    </div>`).join('')}
+                </div>` : ''}
+            ${!players.length && !coaches.length ? `<p style="font-size:0.78rem;color:var(--text-muted);">No photos uploaded for this team yet.</p>` : ''}
+        </div>`;
+    }).join('');
+};
+
+load();</script>
+</body>
+</html>
